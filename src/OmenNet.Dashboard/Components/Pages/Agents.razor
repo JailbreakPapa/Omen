@@ -1,0 +1,108 @@
+@page "/agents"
+@rendermode InteractiveServer
+@using OmenNet.Dashboard.Services
+@inject IDashboardService Dashboard
+@inject ICoordinatorClient Client
+
+<PageTitle>Agents - OmenNet</PageTitle>
+
+<div class="agents-page">
+    <div class="page-header">
+        <h1>Build Agents</h1>
+        <div class="header-stats">
+            <span class="stat">@AgentList.Count(a => a.State == AgentState.Idle) idle</span>
+            <span class="stat">@AgentList.Count(a => a.State == AgentState.Busy) busy</span>
+            <span class="stat offline">@AgentList.Count(a => a.State == AgentState.Offline) offline</span>
+        </div>
+    </div>
+    
+    <div class="agents-grid">
+        @foreach (var agent in AgentList)
+        {
+            <div class="agent-card @agent.State.ToString().ToLower()">
+                <div class="agent-header">
+                    <span class="status-dot @GetStatusIcon(agent.State)"></span>
+                    <h3>@agent.Name</h3>
+                    <span class="agent-id">@agent.Id</span>
+                </div>
+                
+                <div class="agent-details">
+                    <div class="detail">
+                        <span class="label">Platform</span>
+                        <span class="value">@agent.Platform / @agent.Architecture</span>
+                    </div>
+                    <div class="detail">
+                        <span class="label">Concurrency</span>
+                        <span class="value">@agent.CurrentJobs / @agent.MaxConcurrency</span>
+                    </div>
+                    <div class="detail">
+                        <span class="label">Actions Completed</span>
+                        <span class="value">@agent.ActionsCompleted.ToString("N0")</span>
+                    </div>
+                    <div class="detail">
+                        <span class="label">CPU Time</span>
+                        <span class="value">@agent.TotalCpuTime.ToString(@"hh\:mm\:ss")</span>
+                    </div>
+                    <div class="detail">
+                        <span class="label">Last Seen</span>
+                        <span class="value">@FormatLastSeen(agent.LastHeartbeat)</span>
+                    </div>
+                </div>
+                
+                <div class="agent-actions">
+                    @if (agent.State != AgentState.Offline)
+                    {
+                        <button class="btn-secondary" @onclick="() => DisconnectAgent(agent.Id)">
+                            Disconnect
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<AgentInfo> AgentList { get; set; } = [];
+    
+    protected override void OnInitialized()
+    {
+        AgentList = Dashboard.GetAgents();
+        Dashboard.DataChanged += OnDataChanged;
+    }
+    
+    private void OnDataChanged(object? sender, EventArgs e)
+    {
+        AgentList = Dashboard.GetAgents();
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private string GetStatusIcon(AgentState state) => state switch
+    {
+        AgentState.Idle => "idle",
+        AgentState.Busy => "busy",
+        AgentState.Offline => "offline",
+        AgentState.Error => "error",
+        _ => "offline"
+    };
+    
+    private string FormatLastSeen(DateTime lastHeartbeat)
+    {
+        var ago = DateTime.UtcNow - lastHeartbeat;
+        return ago.TotalSeconds < 60 
+            ? $"{(int)ago.TotalSeconds}s ago" 
+            : ago.TotalMinutes < 60 
+                ? $"{(int)ago.TotalMinutes}m ago"
+                : $"{(int)ago.TotalHours}h ago";
+    }
+    
+    private async Task DisconnectAgent(string agentId)
+    {
+        await Client.DisconnectAgentAsync(agentId);
+    }
+    
+    public void Dispose()
+    {
+        Dashboard.DataChanged -= OnDataChanged;
+    }
+}

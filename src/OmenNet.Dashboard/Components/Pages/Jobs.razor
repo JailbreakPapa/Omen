@@ -1,0 +1,105 @@
+@page "/jobs"
+@rendermode InteractiveServer
+@using OmenNet.Dashboard.Services
+@inject IDashboardService Dashboard
+@inject ICoordinatorClient Client
+
+<PageTitle>Jobs - OmenNet</PageTitle>
+
+<div class="jobs-page">
+    <div class="page-header">
+        <h1>Build Jobs</h1>
+    </div>
+    
+    <div class="jobs-list">
+        @if (JobList.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <span class="icon icon-2x icon-box"></span>
+                </div>
+                <h3>No active jobs</h3>
+                <p>All quiet on the build front!</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var job in JobList)
+            {
+                <div class="job-card">
+                    <div class="job-main">
+                        <div class="job-info">
+                            <h3>@job.ProjectName</h3>
+                            <span class="job-meta">
+                                @job.Platform / @job.Configuration • 
+                                Started @FormatStartTime(job.StartTime) •
+                                by @job.SubmittedBy
+                            </span>
+                        </div>
+                        
+                        <div class="job-progress-section">
+                            <div class="progress-bar large">
+                                <div class="progress-fill" style="width: @GetProgress(job)%"></div>
+                            </div>
+                            <div class="progress-details">
+                                <span>@job.CompletedActions / @job.TotalActions actions</span>
+                                <span class="cached">@job.CachedActions cached</span>
+                                @if (job.FailedActions > 0)
+                                {
+                                    <span class="failed">@job.FailedActions failed</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="job-actions">
+                        <button class="btn-danger" @onclick="() => CancelJob(job.JobId)">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<BuildJobInfo> JobList { get; set; } = [];
+    
+    protected override void OnInitialized()
+    {
+        JobList = Dashboard.GetActiveJobs();
+        Dashboard.DataChanged += OnDataChanged;
+    }
+    
+    private void OnDataChanged(object? sender, EventArgs e)
+    {
+        JobList = Dashboard.GetActiveJobs();
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private double GetProgress(BuildJobInfo job)
+    {
+        return job.TotalActions > 0 
+            ? (double)(job.CompletedActions + job.CachedActions) / job.TotalActions * 100 
+            : 0;
+    }
+    
+    private string FormatStartTime(DateTime startTime)
+    {
+        var ago = DateTime.UtcNow - startTime;
+        return ago.TotalMinutes < 60 
+            ? $"{(int)ago.TotalMinutes}m ago"
+            : $"{(int)ago.TotalHours}h {(int)(ago.TotalMinutes % 60)}m ago";
+    }
+    
+    private async Task CancelJob(string jobId)
+    {
+        await Client.CancelJobAsync(jobId);
+    }
+    
+    public void Dispose()
+    {
+        Dashboard.DataChanged -= OnDataChanged;
+    }
+}

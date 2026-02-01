@@ -1,0 +1,63 @@
+@page "/history"
+@rendermode InteractiveServer
+@using OmenNet.Dashboard.Services
+@inject IDashboardService Dashboard
+
+<PageTitle>Build History - OmenNet</PageTitle>
+
+<div class="history-page">
+    <div class="page-header">
+        <h1>Build History</h1>
+    </div>
+    
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Job ID</th>
+                <th>Project</th>
+                <th>Started</th>
+                <th>Duration</th>
+                <th>Actions</th>
+                <th>Cached</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in HistoryList)
+            {
+                <tr class="@(entry.Success ? "" : "failed-row")">
+                    <td class="job-id">@entry.JobId</td>
+                    <td>@entry.ProjectName</td>
+                    <td>@entry.StartTime.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@entry.Duration.ToString(@"mm\:ss")</td>
+                    <td>@entry.TotalActions</td>
+                    <td>@entry.CachedActions (@((100.0 * entry.CachedActions / Math.Max(1, entry.TotalActions)).ToString("F0"))%)</td>
+                    <td class="status @(entry.Success ? "success" : "failed")">
+                        @(entry.Success ? "✓ Success" : "✗ Failed")
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private IReadOnlyList<BuildHistoryEntry> HistoryList { get; set; } = [];
+    
+    protected override void OnInitialized()
+    {
+        HistoryList = Dashboard.GetHistory();
+        Dashboard.DataChanged += OnDataChanged;
+    }
+    
+    private void OnDataChanged(object? sender, EventArgs e)
+    {
+        HistoryList = Dashboard.GetHistory();
+        InvokeAsync(StateHasChanged);
+    }
+    
+    public void Dispose()
+    {
+        Dashboard.DataChanged -= OnDataChanged;
+    }
+}

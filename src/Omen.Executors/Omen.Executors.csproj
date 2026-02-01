@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12.0</LangVersion>
+    <RootNamespace>Omen.Executors</RootNamespace>
+    <AssemblyName>Omen.Executors</AssemblyName>
+    <Description>Omen Build System - Local, parallel, and hybrid build executors</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Omen.Core\Omen.Core.csproj" />
+    <ProjectReference Include="..\Omen.Distributed\Omen.Distributed.csproj" />
+  </ItemGroup>
+
+</Project>

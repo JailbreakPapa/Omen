@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12.0</LangVersion>
+    <RootNamespace>Omen.Optimizations</RootNamespace>
+    <AssemblyName>Omen.Optimizations</AssemblyName>
+    <Description>Omen Build System - Unity builds, PCH, and caching optimizations</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Omen.Core\Omen.Core.csproj" />
+  </ItemGroup>
+
+</Project>

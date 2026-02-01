@@ -1,0 +1,81 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OmenNet Dashboard</title>
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/icons.css" />
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <span class="icon icon-xl icon-flame"></span>
+                <span class="title">OmenNet</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/" class="@(IsActive("/") ? "active" : "")"><span class="icon icon-lg icon-dashboard"></span> Dashboard</a></li>
+                <li><a href="/agents" class="@(IsActive("/agents") ? "active" : "")"><span class="icon icon-lg icon-server"></span> Agents</a></li>
+                <li><a href="/jobs" class="@(IsActive("/jobs") ? "active" : "")"><span class="icon icon-lg icon-cog"></span> Jobs</a></li>
+                <li><a href="/history" class="@(IsActive("/history") ? "active" : "")"><span class="icon icon-lg icon-history"></span> History</a></li>
+                <li><a href="/cache" class="@(IsActive("/cache") ? "active" : "")"><span class="icon icon-lg icon-database"></span> Cache</a></li>
+                <li><a href="/settings" class="@(IsActive("/settings") ? "active" : "")"><span class="icon icon-lg icon-settings"></span> Settings</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="status-indicator @(CoordinatorConnected ? "connected" : "disconnected")">
+                    <span class="status-dot"></span>
+                    @(CoordinatorConnected ? "Connected" : "Disconnected")
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <h1>@PageTitle</h1>
+                <div class="header-actions">
+                    <span class="timestamp">Last updated: @LastUpdated.ToString("HH:mm:ss")</span>
+                </div>
+            </header>
+
+            <div class="content">
+                @Body
+            </div>
+        </main>
+    </div>
+</body>
+</html>
+
+@code {
+    [Inject] private IDashboardService DashboardService { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private bool CoordinatorConnected => DashboardService.CurrentStatus?.IsRunning ?? false;
+    private DateTime LastUpdated { get; set; } = DateTime.Now;
+    private string PageTitle { get; set; } = "Dashboard";
+
+    protected override void OnInitialized()
+    {
+        DashboardService.DataChanged += OnDataChanged;
+    }
+
+    private void OnDataChanged(object? sender, EventArgs e)
+    {
+        LastUpdated = DateTime.Now;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsActive(string path)
+    {
+        return Navigation.Uri.EndsWith(path) ||
+               (path == "/" && Navigation.Uri.EndsWith(Navigation.BaseUri));
+    }
+
+    public void Dispose()
+    {
+        DashboardService.DataChanged -= OnDataChanged;
+    }
+}

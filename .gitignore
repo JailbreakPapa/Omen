@@ -1,0 +1,50 @@
+# Build outputs
+bin/
+obj/
+Binaries/
+Intermediate/
+artifacts/
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Rider
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# NuGet
+*.nupkg
+packages/
+
+# Logs
+*.log
+
+# Test results
+TestResults/
+
+# Local cache
+.cache/
+
+# Docs builds
+/docs-site/build/
+/docs-site/.cache/
+/docs/api/_site/
+
+# Local env files
+/docs-site/.env
+.env
+
+# Ignore example project stuff
+examples/ExampleGame/.vs
+examples/ExampleGame/.vscode
+examples/ExampleGame/Binaries
+examples/ExampleGame/Intermediate
+.vs/
+.config/
+/src/Omen.QtUI/build

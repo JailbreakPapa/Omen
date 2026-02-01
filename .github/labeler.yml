@@ -1,0 +1,32 @@
+# Omen Build System - Labels for PR automation
+core:
+  - changed-files:
+    - any-glob-to-any-file: 'src/Omen.Core/**/*'
+
+cli:
+  - changed-files:
+    - any-glob-to-any-file: 'src/Omen.CLI/**/*'
+
+platforms:
+  - changed-files:
+    - any-glob-to-any-file: 'src/Omen.Platforms/**/*'
+
+distributed:
+  - changed-files:
+    - any-glob-to-any-file: 'src/Omen.Distributed/**/*'
+
+tests:
+  - changed-files:
+    - any-glob-to-any-file: 'tests/**/*'
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: '**/*.md'
+
+ci:
+  - changed-files:
+    - any-glob-to-any-file: '.github/**/*'
+
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file: '**/*.csproj'

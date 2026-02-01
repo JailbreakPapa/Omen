@@ -1,0 +1,119 @@
+@page "/cache"
+@rendermode InteractiveServer
+@using OmenNet.Dashboard.Services
+@inject IDashboardService Dashboard
+
+<PageTitle>Cache - OmenNet</PageTitle>
+
+<div class="cache-page">
+    <div class="page-header">
+        <h1>Content Addressable Storage</h1>
+    </div>
+    
+    @if (Stats != null)
+    {
+        <div class="stats-grid">
+            <div class="stat-card large">
+                <div class="stat-icon">
+                    <span class="icon icon-2x icon-box"></span>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">@FormatNumber(Stats.TotalObjects)</div>
+                    <div class="stat-label">Total Objects</div>
+                </div>
+            </div>
+            
+            <div class="stat-card large">
+                <div class="stat-icon">
+                    <span class="icon icon-2x icon-database"></span>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">@FormatBytes(Stats.TotalSizeBytes)</div>
+                    <div class="stat-label">Total Size</div>
+                </div>
+            </div>
+            
+            <div class="stat-card large highlight">
+                <div class="stat-icon">
+                    <span class="icon icon-2x icon-trending-up"></span>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">@Stats.HitRatio.ToString("P1")</div>
+                    <div class="stat-label">Hit Ratio</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="cache-details">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Cache Performance</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="performance-grid">
+                        <div class="perf-stat">
+                            <span class="value success">@FormatNumber(Stats.CacheHits)</span>
+                            <span class="label">Cache Hits</span>
+                        </div>
+                        <div class="perf-stat">
+                            <span class="value">@FormatNumber(Stats.CacheMisses)</span>
+                            <span class="label">Cache Misses</span>
+                        </div>
+                    </div>
+                    
+                    <div class="hit-ratio-bar">
+                        <div class="hits" style="width: @(Stats.HitRatio * 100)%"></div>
+                        <div class="misses" style="width: @((1 - Stats.HitRatio) * 100)%"></div>
+                    </div>
+                    <div class="ratio-legend">
+                        <span class="hit-legend">Hits (@Stats.HitRatio.ToString("P1"))</span>
+                        <span class="miss-legend">Misses (@((1 - Stats.HitRatio).ToString("P1")))</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private CasStats? Stats { get; set; }
+    
+    protected override void OnInitialized()
+    {
+        Stats = Dashboard.GetCasStats();
+        Dashboard.DataChanged += OnDataChanged;
+    }
+    
+    private void OnDataChanged(object? sender, EventArgs e)
+    {
+        Stats = Dashboard.GetCasStats();
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private string FormatNumber(long num)
+    {
+        return num switch
+        {
+            >= 1_000_000 => $"{num / 1_000_000.0:F1}M",
+            >= 1_000 => $"{num / 1_000.0:F1}K",
+            _ => num.ToString("N0")
+        };
+    }
+    
+    private string FormatBytes(long bytes)
+    {
+        return bytes switch
+        {
+            >= 1L << 40 => $"{bytes / (double)(1L << 40):F1} TB",
+            >= 1L << 30 => $"{bytes / (double)(1L << 30):F1} GB",
+            >= 1L << 20 => $"{bytes / (double)(1L << 20):F1} MB",
+            >= 1L << 10 => $"{bytes / (double)(1L << 10):F1} KB",
+            _ => $"{bytes} B"
+        };
+    }
+    
+    public void Dispose()
+    {
+        Dashboard.DataChanged -= OnDataChanged;
+    }
+}

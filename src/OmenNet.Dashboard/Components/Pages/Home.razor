@@ -1,0 +1,301 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using OmenNet.Dashboard.Services
+@inject IDashboardService Dashboard
+@implements IDisposable
+
+<PageTitle>OmenNet Dashboard</PageTitle>
+
+<div class="dashboard">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <span class="icon icon-2x icon-server"></span>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">@Stats.ActiveAgents / @Stats.TotalAgents</div>
+                <div class="stat-label">Active Agents</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <span class="icon icon-2x icon-zap"></span>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">@Stats.ActiveJobs</div>
+                <div class="stat-label">Active Jobs</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <span class="icon icon-2x icon-layers"></span>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">@Stats.QueuedActions</div>
+                <div class="stat-label">Queued Actions</div>
+            </div>
+        </div>
+
+        <div class="stat-card highlight">
+            <div class="stat-icon">
+                <span class="icon icon-2x icon-trending-up"></span>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">@(Stats.CacheHitRatio.ToString("P1"))</div>
+                <div class="stat-label">Cache Hit Ratio</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid">
+        <!-- Active Jobs Panel -->
+        <div class="panel jobs-panel">
+            <div class="panel-header">
+                <h2>Active Jobs</h2>
+                <span class="badge">@ActiveJobs.Count</span>
+            </div>
+            <div class="panel-content">
+                @if (ActiveJobs.Count == 0)
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <span class="icon icon-2x icon-box"></span>
+                        </div>
+                        <span>No active jobs</span>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var job in ActiveJobs)
+                    {
+                        <div class="job-card">
+                            <div class="job-header">
+                                <span class="job-name">@job.ProjectName</span>
+                                <span class="job-platform">@job.Platform / @job.Configuration</span>
+                            </div>
+                            <div class="job-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: @GetJobProgress(job)%"></div>
+                                </div>
+                                <span class="progress-text">@job.CompletedActions / @job.TotalActions</span>
+                            </div>
+                            <div class="job-stats">
+                                <span class="cached"><span class="icon icon-sm icon-database"></span> @job.CachedActions cached</span>
+                                @if (job.FailedActions > 0)
+                                {
+                                    <span class="failed"><span class="icon icon-sm icon-x-circle"></span> @job.FailedActions failed</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- Agents Panel -->
+        <div class="panel agents-panel">
+            <div class="panel-header">
+                <h2>Agents</h2>
+                <a href="/agents" class="link">View All</a>
+            </div>
+            <div class="panel-content">
+                @if (Agents.Count == 0)
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <span class="icon icon-2x icon-server"></span>
+                        </div>
+                        <span>No agents connected</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="agent-list">
+                        @foreach (var agent in Agents.Take(5))
+                        {
+                            <div class="agent-row @agent.State.ToString().ToLower()">
+                                <span class="agent-status">@GetAgentStatusIndicator(agent.State)</span>
+                                <span class="agent-name">@agent.Name</span>
+                                <span class="agent-platform">@agent.Platform</span>
+                                <span class="agent-jobs">@agent.CurrentJobs / @agent.MaxConcurrency jobs</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Recent Builds Panel -->
+        <div class="panel history-panel">
+            <div class="panel-header">
+                <h2>Recent Builds</h2>
+                <a href="/history" class="link">View All</a>
+            </div>
+            <div class="panel-content">
+                @if (HistoryList.Count == 0)
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <span class="icon icon-2x icon-history"></span>
+                        </div>
+                        <span>No build history</span>
+                    </div>
+                }
+                else
+                {
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var entry in HistoryList.Take(8))
+                            {
+                                <tr>
+                                    <td>@entry.ProjectName</td>
+                                    <td>@entry.Duration.ToString(@"mm\:ss")</td>
+                                    <td>@entry.TotalActions (@entry.CachedActions cached)</td>
+                                    <td class="@(entry.Success ? "success" : "failed")">
+                                        @if (entry.Success)
+                                        {
+                                            <span class="icon icon-sm icon-check-circle"></span>
+                                            <text> Success</text>
+                                        }
+                                        else
+                                        {
+                                            <span class="icon icon-sm icon-x-circle"></span>
+                                            <text> Failed</text>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+
+        <!-- Cache Stats Panel -->
+        <div class="panel cache-panel">
+            <div class="panel-header">
+                <h2>Cache Statistics</h2>
+            </div>
+            <div class="panel-content">
+                @if (CasStats != null)
+                {
+                    <div class="cache-stats">
+                        <div class="cache-stat">
+                            <span class="label">Total Objects</span>
+                            <span class="value">@FormatNumber(CasStats.TotalObjects)</span>
+                        </div>
+                        <div class="cache-stat">
+                            <span class="label">Total Size</span>
+                            <span class="value">@FormatBytes(CasStats.TotalSizeBytes)</span>
+                        </div>
+                        <div class="cache-stat">
+                            <span class="label">Cache Hits</span>
+                            <span class="value success">@FormatNumber(CasStats.CacheHits)</span>
+                        </div>
+                        <div class="cache-stat">
+                            <span class="label">Cache Misses</span>
+                            <span class="value">@FormatNumber(CasStats.CacheMisses)</span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <span class="icon icon-2x icon-database"></span>
+                        </div>
+                        <span>Cache data unavailable</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private DashboardStats Stats { get; set; } = new(false, 0, 0, 0, 0, 0, 0, TimeSpan.Zero);
+    private IReadOnlyList<AgentInfo> Agents { get; set; } = [];
+    private IReadOnlyList<BuildJobInfo> ActiveJobs { get; set; } = [];
+    private IReadOnlyList<BuildHistoryEntry> HistoryList { get; set; } = [];
+    private CasStats? CasStats { get; set; }
+
+    protected override void OnInitialized()
+    {
+        RefreshData();
+        Dashboard.DataChanged += OnDataChanged;
+    }
+
+    private void RefreshData()
+    {
+        Stats = Dashboard.GetCurrentStats();
+        Agents = Dashboard.GetAgents();
+        ActiveJobs = Dashboard.GetActiveJobs();
+        HistoryList = Dashboard.GetHistory();
+        CasStats = Dashboard.GetCasStats();
+    }
+
+    private void OnDataChanged(object? sender, EventArgs e)
+    {
+        RefreshData();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private double GetJobProgress(BuildJobInfo job)
+    {
+        return job.TotalActions > 0
+            ? (double)(job.CompletedActions + job.CachedActions) / job.TotalActions * 100
+            : 0;
+    }
+
+    private MarkupString GetAgentStatusIndicator(AgentState state)
+    {
+        var (color, cssClass) = state switch
+        {
+            AgentState.Idle => ("#3fb950", "status-idle"),
+            AgentState.Busy => ("#d29922", "status-busy"),
+            AgentState.Offline => ("#6e7681", "status-offline"),
+            AgentState.Error => ("#f85149", "status-error"),
+            _ => ("#6e7681", "status-unknown")
+        };
+        return new MarkupString($"<span class='status-dot' style='background:{color}; display:inline-block; width:8px; height:8px; border-radius:50%;'></span>");
+    }
+
+    private string FormatNumber(long num)
+    {
+        return num switch
+        {
+            >= 1_000_000 => $"{num / 1_000_000.0:F1}M",
+            >= 1_000 => $"{num / 1_000.0:F1}K",
+            _ => num.ToString()
+        };
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        return bytes switch
+        {
+            >= 1L << 40 => $"{bytes / (double)(1L << 40):F1} TB",
+            >= 1L << 30 => $"{bytes / (double)(1L << 30):F1} GB",
+            >= 1L << 20 => $"{bytes / (double)(1L << 20):F1} MB",
+            >= 1L << 10 => $"{bytes / (double)(1L << 10):F1} KB",
+            _ => $"{bytes} B"
+        };
+    }
+
+    public void Dispose()
+    {
+        Dashboard.DataChanged -= OnDataChanged;
+    }
+}

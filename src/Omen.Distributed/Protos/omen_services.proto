@@ -1,0 +1,359 @@
+syntax = "proto3";
+
+option csharp_namespace = "Omen.Distributed.Protos";
+
+package omen;
+
+// OmenNet Coordinator Service - manages build action distribution
+service OmenCoordinator {
+    // Submit a build action for remote execution
+    rpc Execute(ExecuteRequest) returns (stream OperationStatus);
+    
+    // Wait for an operation to complete
+    rpc WaitExecution(WaitExecutionRequest) returns (stream OperationStatus);
+    
+    // Get cached action result
+    rpc GetActionResult(GetActionResultRequest) returns (ActionResult);
+    
+    // Update cached action result
+    rpc UpdateActionResult(UpdateActionResultRequest) returns (UpdateActionResultResponse);
+    
+    // Get coordinator status
+    rpc GetStatus(GetStatusRequest) returns (CoordinatorStatus);
+}
+
+// OmenNet Agent Service - worker node operations
+service OmenAgent {
+    // Register an agent with the coordinator
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    
+    // Send heartbeat to coordinator
+    rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+    
+    // Dequeue an operation to execute
+    rpc DequeueOperation(DequeueOperationRequest) returns (QueuedOperation);
+    
+    // Report execution result
+    rpc ReportResult(ReportResultRequest) returns (ReportResultResponse);
+    
+    // Unregister from coordinator
+    rpc Unregister(UnregisterRequest) returns (UnregisterResponse);
+}
+
+// Content Addressable Storage Service
+service ContentAddressableStorage {
+    // Check which blobs are missing
+    rpc FindMissingBlobs(FindMissingBlobsRequest) returns (FindMissingBlobsResponse);
+    
+    // Batch upload small blobs
+    rpc BatchUpdateBlobs(BatchUpdateBlobsRequest) returns (BatchUpdateBlobsResponse);
+    
+    // Batch read blobs
+    rpc BatchReadBlobs(BatchReadBlobsRequest) returns (BatchReadBlobsResponse);
+    
+    // Get storage statistics
+    rpc GetStatistics(GetStorageStatisticsRequest) returns (StorageStatistics);
+}
+
+// Streaming service for large files
+service ByteStream {
+    // Read a blob
+    rpc Read(ReadRequest) returns (stream ReadResponse);
+    
+    // Write a blob
+    rpc Write(stream WriteRequest) returns (WriteResponse);
+}
+
+// ============ Common Types ============
+
+message Digest {
+    string hash = 1;
+    int64 size_bytes = 2;
+}
+
+message Platform {
+    map<string, string> properties = 1;
+}
+
+// ============ Execute Types ============
+
+message ExecuteRequest {
+    string instance_name = 1;
+    Action action = 2;
+    bool skip_cache_lookup = 3;
+}
+
+message Action {
+    Digest command_digest = 1;
+    Digest input_root_digest = 2;
+    repeated string output_files = 3;
+    repeated string output_directories = 4;
+    Platform platform = 5;
+    int64 timeout_seconds = 6;
+    bool do_not_cache = 7;
+}
+
+message Command {
+    repeated string arguments = 1;
+    repeated EnvironmentVariable environment_variables = 2;
+    repeated string output_files = 3;
+    repeated string output_directories = 4;
+    string working_directory = 5;
+    Platform platform = 6;
+}
+
+message EnvironmentVariable {
+    string name = 1;
+    string value = 2;
+}
+
+message WaitExecutionRequest {
+    string operation_name = 1;
+}
+
+message OperationStatus {
+    string name = 1;
+    bool done = 2;
+    OperationState state = 3;
+    ActionResult result = 4;
+    string error_message = 5;
+    int32 error_code = 6;
+    ExecutionMetadata metadata = 7;
+}
+
+enum OperationState {
+    OPERATION_STATE_UNKNOWN = 0;
+    QUEUED = 1;
+    EXECUTING = 2;
+    COMPLETED = 3;
+    FAILED = 4;
+    CANCELLED = 5;
+}
+
+message ExecutionMetadata {
+    string worker_id = 1;
+    int64 queued_timestamp = 2;
+    int64 execution_start_timestamp = 3;
+    int64 execution_completed_timestamp = 4;
+    int64 input_fetch_start_timestamp = 5;
+    int64 input_fetch_completed_timestamp = 6;
+    int64 output_upload_start_timestamp = 7;
+    int64 output_upload_completed_timestamp = 8;
+}
+
+// ============ Action Result Types ============
+
+message GetActionResultRequest {
+    string instance_name = 1;
+    Digest action_digest = 2;
+}
+
+message ActionResult {
+    repeated OutputFile output_files = 1;
+    repeated OutputDirectory output_directories = 2;
+    int32 exit_code = 3;
+    bytes stdout_raw = 4;
+    Digest stdout_digest = 5;
+    bytes stderr_raw = 6;
+    Digest stderr_digest = 7;
+    ExecutionMetadata execution_metadata = 8;
+}
+
+message OutputFile {
+    string path = 1;
+    Digest digest = 2;
+    bool is_executable = 3;
+}
+
+message OutputDirectory {
+    string path = 1;
+    Digest tree_digest = 2;
+}
+
+message UpdateActionResultRequest {
+    string instance_name = 1;
+    Digest action_digest = 2;
+    ActionResult action_result = 3;
+}
+
+message UpdateActionResultResponse {
+}
+
+// ============ Agent Types ============
+
+message RegisterRequest {
+    string agent_id = 1;
+    AgentCapabilities capabilities = 2;
+}
+
+message AgentCapabilities {
+    Platform platform = 1;
+    int32 max_concurrent_actions = 2;
+    int64 available_memory_bytes = 3;
+    int32 cpu_cores = 4;
+    repeated string supported_toolchains = 5;
+}
+
+message RegisterResponse {
+    bool success = 1;
+    string message = 2;
+    string assigned_id = 3;
+}
+
+message HeartbeatRequest {
+    string agent_id = 1;
+    AgentStatus status = 2;
+}
+
+message AgentStatus {
+    int32 active_actions = 1;
+    int32 queued_actions = 2;
+    double cpu_usage = 3;
+    int64 available_memory_bytes = 4;
+    int64 cache_size_bytes = 5;
+}
+
+message HeartbeatResponse {
+    bool acknowledged = 1;
+    repeated string cancel_operations = 2;
+}
+
+message DequeueOperationRequest {
+    string agent_id = 1;
+    Platform platform = 2;
+    int32 max_operations = 3;
+}
+
+message QueuedOperation {
+    string operation_name = 1;
+    Action action = 2;
+    Command command = 3;
+    Digest action_digest = 4;
+    int32 priority = 5;
+}
+
+message ReportResultRequest {
+    string agent_id = 1;
+    string operation_name = 2;
+    ActionResult result = 3;
+    bool success = 4;
+    string error_message = 5;
+}
+
+message ReportResultResponse {
+    bool acknowledged = 1;
+}
+
+message UnregisterRequest {
+    string agent_id = 1;
+}
+
+message UnregisterResponse {
+    bool success = 1;
+}
+
+// ============ Coordinator Status ============
+
+message GetStatusRequest {
+}
+
+message CoordinatorStatus {
+    int32 registered_agents = 1;
+    int32 active_agents = 2;
+    int32 queued_operations = 3;
+    int32 executing_operations = 4;
+    int64 completed_operations = 5;
+    int64 failed_operations = 6;
+    int64 cache_hits = 7;
+    int64 cache_misses = 8;
+    repeated AgentInfo agents = 9;
+}
+
+message AgentInfo {
+    string agent_id = 1;
+    Platform platform = 2;
+    AgentStatus status = 3;
+    int64 last_heartbeat = 4;
+    bool is_active = 5;
+}
+
+// ============ CAS Types ============
+
+message FindMissingBlobsRequest {
+    string instance_name = 1;
+    repeated Digest blob_digests = 2;
+}
+
+message FindMissingBlobsResponse {
+    repeated Digest missing_blob_digests = 1;
+}
+
+message BatchUpdateBlobsRequest {
+    string instance_name = 1;
+    repeated UpdateBlobRequest requests = 2;
+}
+
+message UpdateBlobRequest {
+    Digest digest = 1;
+    bytes data = 2;
+}
+
+message BatchUpdateBlobsResponse {
+    repeated UpdateBlobResponse responses = 1;
+}
+
+message UpdateBlobResponse {
+    Digest digest = 1;
+    int32 status_code = 2;
+    string error_message = 3;
+}
+
+message BatchReadBlobsRequest {
+    string instance_name = 1;
+    repeated Digest digests = 2;
+}
+
+message BatchReadBlobsResponse {
+    repeated ReadBlobResponse responses = 1;
+}
+
+message ReadBlobResponse {
+    Digest digest = 1;
+    bytes data = 2;
+    int32 status_code = 3;
+    string error_message = 4;
+}
+
+message GetStorageStatisticsRequest {
+    string instance_name = 1;
+}
+
+message StorageStatistics {
+    int64 total_blobs = 1;
+    int64 total_size_bytes = 2;
+    int64 upload_count = 3;
+    int64 download_count = 4;
+}
+
+// ============ ByteStream Types ============
+
+message ReadRequest {
+    string resource_name = 1;
+    int64 read_offset = 2;
+    int64 read_limit = 3;
+}
+
+message ReadResponse {
+    bytes data = 1;
+}
+
+message WriteRequest {
+    string resource_name = 1;
+    int64 write_offset = 2;
+    bool finish_write = 3;
+    bytes data = 4;
+}
+
+message WriteResponse {
+    int64 committed_size = 1;
+}
