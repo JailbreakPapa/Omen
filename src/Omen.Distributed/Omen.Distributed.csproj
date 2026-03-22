@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="5.3.0" />
     <Protobuf Include="Protos\*.proto" GrpcServices="Both" />
   </ItemGroup>
 

@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="5.3.0" />
     <ProjectReference Include="..\Omen.Core\Omen.Core.csproj" />
   </ItemGroup>
 
