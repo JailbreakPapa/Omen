@@ -11,7 +11,7 @@
     
     <!-- CLI -->
     <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-    <PackageVersion Include="Spectre.Console" Version="0.48.0" />
+    <PackageVersion Include="Spectre.Console" Version="0.55.2" />
     
     <!-- Distributed -->
     <PackageVersion Include="Grpc.AspNetCore" Version="2.59.0" />
