@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Collections.Immutable" />
     <ProjectReference Include="..\Omen.Core\Omen.Core.csproj" />
   </ItemGroup>
 
