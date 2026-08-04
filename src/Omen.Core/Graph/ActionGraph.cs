@@ -251,7 +251,7 @@ public sealed class ActionGraph
     /// </summary>
     public bool IsUpToDate(BuildAction action, IDigestCalculator calculator, ActionDigestStore digestStore)
     {
-        if (action.Outputs.Count == 0 || action.Outputs.Any(o => !File.Exists(o.Path)))
+        if (!IsUpToDate(action))
             return false;
 
         var currentDigest = action.ComputeDigest(calculator);

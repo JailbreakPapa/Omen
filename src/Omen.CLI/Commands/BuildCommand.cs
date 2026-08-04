@@ -263,7 +263,8 @@ public static class BuildCommand
             table.AddRow("Total Actions", result.TotalActions.ToString());
             table.AddRow("Compiled", result.SuccessfulActions.ToString());
             table.AddRow("Cached", $"[cyan]{result.CachedActions}[/]");
-            table.AddRow("Skipped", result.SkippedActions.ToString());
+            var actuallySkipped = graph.Actions.Count(a => a.Status == ActionStatus.Skipped);
+            table.AddRow("Skipped", actuallySkipped.ToString());
             table.AddRow("Duration", $"{stopwatch.Elapsed.TotalSeconds:F2}s");
             
             AnsiConsole.Write(table);

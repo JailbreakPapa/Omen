@@ -389,6 +389,62 @@ public class ActionGraphTests
         Directory.Delete(tempDir, recursive: true);
     }
 
+    [Fact]
+    public void IsUpToDate_WithDigest_ReturnsFalseWhenSourceEditedButCommandLineUnchanged()
+    {
+        // Regression test: a digest match alone must NOT be enough to skip an action.
+        // BuildAction.ComputeDigest hashes Type|CommandLine|Inputs(Path:Digest)|Environment,
+        // and FileItem.Digest is never populated anywhere in the codebase, so the digest is
+        // blind to a source file's content - only its path and the command line affect it.
+        // Editing a .cpp's body without touching any compiler flag must still trigger a
+        // rebuild, which only the timestamp check (source newer than output) can catch.
+
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), "OmenTests", nameof(ActionGraphTests), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var storePath = Path.Combine(tempDir, "digests.json");
+        var sourcePath = Path.Combine(tempDir, "source.cpp");
+        var outputPath = Path.Combine(tempDir, "out.obj");
+
+        File.WriteAllText(outputPath, "object file from the first build");
+        File.SetLastWriteTimeUtc(outputPath, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        File.WriteAllText(sourcePath, "edited source body");
+        File.SetLastWriteTimeUtc(sourcePath, new DateTime(2020, 1, 1, 0, 1, 0, DateTimeKind.Utc)); // newer than output
+
+        var calculator = new Sha256DigestCalculator();
+        var store = new ActionDigestStore(storePath);
+
+        var action = new BuildAction
+        {
+            Id = "compile1",
+            Type = ActionType.Compile,
+            Description = "Test action compile1",
+            CommandLine = "test.exe /SAME_FLAG", // unchanged since the recorded digest
+            WorkingDirectory = "/test",
+            Inputs = [new FileItem { Path = sourcePath }],
+            Outputs = [new FileItem { Path = outputPath }]
+        };
+
+        // Record the digest as if this action had already been built successfully once.
+        // Digest depends only on Type/CommandLine/Input paths, so it is identical
+        // before and after the source edit above.
+        var digest = action.ComputeDigest(calculator);
+        store.Set(outputPath, digest);
+
+        var graph = new ActionGraph();
+        graph.AddAction(action);
+
+        // Act
+        var upToDate = graph.IsUpToDate(action, calculator, store);
+
+        // Assert - the digest matches, but the source is newer than the output, so this
+        // must still be rebuilt.
+        upToDate.Should().BeFalse();
+
+        Directory.Delete(tempDir, recursive: true);
+    }
+
     private static BuildAction CreateAction(
         string id, 
         ActionType type = ActionType.Compile,
