@@ -185,6 +185,69 @@ public class ActionGraphBuilderTests : IDisposable
     }
 
     [Fact]
+    public void MonolithicTarget_IndependentModuleDependingOnFoldedModule_DoesNotReferenceFoldedModule()
+    {
+        // Arrange: TestModuleC (BinaryType = StaticLibrary, stays independent under Monolithic)
+        // depends on TestModuleB (BinaryType = SharedLibrary, gets folded into the aggregate
+        // link under Monolithic). C must not treat B as a library to link against or depend on,
+        // since B no longer produces its own artifact.
+        var context = CreateTestContext(_projectRoot);
+        WriteSourceFile("Source/ModuleB", "ModuleB.cpp");
+        WriteSourceFile("Source/ModuleC", "ModuleC.cpp");
+        var moduleB = new TestModuleB(context) { SourceDirectory = "Source/ModuleB", BinaryType = TargetType.SharedLibrary };
+        var moduleC = new TestModuleC(context) { SourceDirectory = "Source/ModuleC", BinaryType = TargetType.StaticLibrary };
+        moduleC.PublicDependencies.Add(moduleB.Name);
+        var target = new TestTarget(context) { Type = TargetType.Executable, LinkType = LinkType.Monolithic };
+        var builder = CreateBuilder(context);
+
+        // Act
+        var graph = builder.Build(target, [moduleB, moduleC]);
+
+        // Assert: B was folded, so it has no independent link/archive action.
+        graph.Actions.Should().NotContain(a => (a.Type == ActionType.Link || a.Type == ActionType.Archive) && a.ModuleName == moduleB.Name);
+
+        // Assert: C is still independently archived (its BinaryType is StaticLibrary, not SharedLibrary).
+        var moduleCLinkAction = graph.Actions.Should()
+            .ContainSingle(a => a.ModuleName == moduleC.Name && (a.Type == ActionType.Link || a.Type == ActionType.Archive))
+            .Which;
+        moduleCLinkAction.Type.Should().Be(ActionType.Archive);
+
+        // Assert: C's link command line does not reference a library path for the folded module B.
+        var wouldBeModuleBLibrary = Path.ChangeExtension(Path.Combine(context.OutputDirectory, moduleB.Name + ".dll"), ".lib");
+        moduleCLinkAction.CommandLine.Should().NotContain(wouldBeModuleBLibrary);
+
+        // Assert: C's action has no dependency edge onto a (nonexistent) independent action for B.
+        moduleCLinkAction.Dependencies.Should().NotContain(a => a.ModuleName == moduleB.Name);
+    }
+
+    [Fact]
+    public void MonolithicTarget_StaticLibraryModule_StaysIndependentAndSkipsRegistration()
+    {
+        // Arrange: a StaticLibrary-BinaryType module is unaffected by monolithic folding —
+        // the fold condition is specifically BinaryType == SharedLibrary — so it should still
+        // get its own archive action, and since nothing was actually folded, no registration
+        // file should be generated.
+        var context = CreateTestContext(_projectRoot);
+        WriteSourceFile("Source/Runtime", "Runtime.cpp");
+        var runtimeModule = new TestModule(context) { SourceDirectory = "Source/Runtime", BinaryType = TargetType.StaticLibrary };
+        var target = new TestTarget(context) { Type = TargetType.Executable, LinkType = LinkType.Monolithic };
+        var builder = CreateBuilder(context);
+
+        // Act
+        var graph = builder.Build(target, [runtimeModule]);
+
+        // Assert: one independent archive action for the module, plus the target's own link action.
+        var linkActions = graph.Actions.Where(a => a.Type is ActionType.Link or ActionType.Archive).ToList();
+        var moduleArchiveAction = linkActions.Should().ContainSingle(a => a.Description.Contains("TestModule")).Which;
+        moduleArchiveAction.Type.Should().Be(ActionType.Archive);
+        var targetLinkAction = linkActions.Single(a => a.ModuleName is null);
+        targetLinkAction.Dependencies.Should().Contain(moduleArchiveAction);
+
+        // Assert: no module was folded, so no registration file was generated.
+        File.Exists(Path.Combine(context.IntermediateDirectory, "StaticModuleRegistration.g.cpp")).Should().BeFalse();
+    }
+
+    [Fact]
     public void ModularTarget_KeepsSharedLibraryModulesIndependent()
     {
         // Arrange
