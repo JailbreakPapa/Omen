@@ -13,7 +13,9 @@ public enum TargetPlatform
     Linux,
     FreeBSD,
     Android,
-    iOS
+    iOS,
+    Prospero,
+    Xbox
 }
 /// <summary>
 /// NDA Restricted target platforms for compilation.

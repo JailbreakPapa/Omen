@@ -1,10 +1,12 @@
 // Omen Build System
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
+using System.Reflection;
 using Omen.Core.Configuration;
 using Omen.Core.Interfaces;
 using Omen.Platforms.Android;
 using Omen.Platforms.Apple;
+using Omen.Platforms.Console;
 using Omen.Platforms.Unix;
 using Omen.Platforms.Windows;
 
@@ -56,6 +58,8 @@ public static class PlatformFactory
             TargetPlatform.FreeBSD => TargetArchitecture.X64,
             TargetPlatform.Android => TargetArchitecture.ARM64,
             TargetPlatform.iOS => TargetArchitecture.ARM64,
+            TargetPlatform.Prospero => TargetArchitecture.X64,
+            TargetPlatform.Xbox => TargetArchitecture.X64,
             _ => TargetArchitecture.X64
         };
     }
@@ -109,13 +113,54 @@ public static class PlatformFactory
     
     private static IReadOnlyList<IPlatformSDK> DiscoverAllSdks()
     {
-        return
-        [
+        var sdks = new List<IPlatformSDK>
+        {
             new WindowsSDK(),
             new LinuxSDK(),
             new FreeBsdSDK(),
             new AndroidNdkSDK(),
-            new AppleSDK()
-        ];
+            new AppleSDK(),
+            new ProsperoSDK(),
+            new XboxSDK()
+        };
+
+        sdks.AddRange(DiscoverExternalSdks(Environment.GetEnvironmentVariable("OMEN_EXTRA_PLATFORMS_DIR")));
+        return sdks;
+    }
+
+    /// <summary>
+    /// Loads additional IPlatformSDK implementations from assemblies in a directory, so a
+    /// new platform can be added without editing this factory. Isolated as its own method
+    /// (not folded into DiscoverAllSdks) so it's testable without the surrounding Lazy&lt;&gt;
+    /// cache.
+    /// </summary>
+    internal static IReadOnlyList<IPlatformSDK> DiscoverExternalSdks(string? extraPlatformsDirectory)
+    {
+        if (string.IsNullOrEmpty(extraPlatformsDirectory) || !Directory.Exists(extraPlatformsDirectory))
+            return [];
+
+        var discovered = new List<IPlatformSDK>();
+        foreach (var dll in Directory.GetFiles(extraPlatformsDirectory, "*.dll"))
+        {
+            Assembly assembly;
+            try
+            {
+                assembly = Assembly.LoadFrom(dll);
+            }
+            catch (Exception ex) when (ex is BadImageFormatException or FileLoadException)
+            {
+                continue;
+            }
+
+            foreach (var type in assembly.GetTypes())
+            {
+                if (type.IsAbstract || !typeof(IPlatformSDK).IsAssignableFrom(type))
+                    continue;
+                if (Activator.CreateInstance(type) is IPlatformSDK sdk)
+                    discovered.Add(sdk);
+            }
+        }
+
+        return discovered;
     }
 }
