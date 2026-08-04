@@ -636,9 +636,14 @@ public sealed class VisualStudioGenerator
                     var nmakeOutput = $"$(SolutionDir)Binaries\\Windows_{config}\\{module.Name}{targetOutputExtension}";
 
                     sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
-                    sb.AppendLine($"    <NMakeBuildCommandLine>omen build {target.Name} -Configuration={config} -Platform={platform}</NMakeBuildCommandLine>");
-                    sb.AppendLine($"    <NMakeReBuildCommandLine>omen rebuild {target.Name} -Configuration={config} -Platform={platform}</NMakeReBuildCommandLine>");
-                    sb.AppendLine($"    <NMakeCleanCommandLine>omen clean {target.Name} -Configuration={config} -Platform={platform}</NMakeCleanCommandLine>");
+                    // BuildCommand registers --configuration/-c and --arch/-a (the VS "platform"
+                    // token here is x64/ARM64, an architecture, not one of BuildCommand's
+                    // --platform values like Windows/Linux). RebuildCommand and CleanCommand only
+                    // register --platform/-p and --configuration/-c - neither has an --arch option,
+                    // so there is nowhere to route the VS platform token for those two.
+                    sb.AppendLine($"    <NMakeBuildCommandLine>omen build {target.Name} --configuration {config} --arch {platform}</NMakeBuildCommandLine>");
+                    sb.AppendLine($"    <NMakeReBuildCommandLine>omen rebuild {target.Name} --configuration {config}</NMakeReBuildCommandLine>");
+                    sb.AppendLine($"    <NMakeCleanCommandLine>omen clean {target.Name} --configuration {config}</NMakeCleanCommandLine>");
                     sb.AppendLine($"    <NMakeOutput>{nmakeOutput}</NMakeOutput>");
                     sb.AppendLine($"    <NMakePreprocessorDefinitions>{string.Join(";", definitions)}</NMakePreprocessorDefinitions>");
                     sb.AppendLine($"    <NMakeIncludeSearchPath>{string.Join(";", includePaths)}</NMakeIncludeSearchPath>");
