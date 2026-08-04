@@ -74,6 +74,33 @@ public class GemRulesTests : IDisposable
     }
 
     [Fact]
+    public void DefineFlavor_Static_DefaultsBinaryTypeToStaticLibrary()
+    {
+        // A "Static" flavor that isn't actually a static library is never what a gem author
+        // meant - it must default to producing its own linkable artifact rather than silently
+        // folding into whatever aggregate consumes it (see ActionGraphBuilder fix for the
+        // matching "folded dependency" failure mode).
+        var gem = new TestCameraGem(CreateContext());
+        gem.Flavors[GemFlavorKind.Static].BinaryType.Should().Be(TargetType.StaticLibrary);
+    }
+
+    private sealed class GemWithUndefaultedTools : GemRules
+    {
+        public GemWithUndefaultedTools(BuildContext context) : base(context)
+        {
+            LoadManifest("Gems/Camera");
+            DefineFlavor(GemFlavorKind.Tools); // intentionally left without setting BinaryType
+        }
+    }
+
+    [Fact]
+    public void DefineFlavor_NonStaticKinds_LeaveBinaryTypeUnsetByDefault()
+    {
+        var gem = new GemWithUndefaultedTools(CreateContext());
+        gem.Flavors[GemFlavorKind.Tools].BinaryType.Should().BeNull();
+    }
+
+    [Fact]
     public void CreateAlias_MapsAliasToFlavor()
     {
         var gem = new TestCameraGem(CreateContext());

@@ -248,6 +248,33 @@ public class ActionGraphBuilderTests : IDisposable
     }
 
     [Fact]
+    public void IndependentModule_DependingOnFoldedModule_ThrowsInvalidOperationException()
+    {
+        // Arrange: TestModuleC is independently linked (BinaryType set) and depends on
+        // TestModuleB, a real known module whose BinaryType is unset - i.e. B is folded into
+        // some other aggregate link rather than producing its own artifact. Silently omitting
+        // B from C's link would produce missing symbols at link time with no diagnostic, so
+        // this must fail loudly instead. This is distinct from a dependency name that doesn't
+        // resolve to any known module at all (not asserted here - that's the pre-existing,
+        // intentional "handled elsewhere" case and must not throw).
+        var context = CreateTestContext(_projectRoot);
+        WriteSourceFile("Source/ModuleB", "ModuleB.cpp");
+        WriteSourceFile("Source/ModuleC", "ModuleC.cpp");
+        var moduleB = new TestModuleB(context) { SourceDirectory = "Source/ModuleB" }; // BinaryType left unset - folded
+        var moduleC = new TestModuleC(context) { SourceDirectory = "Source/ModuleC", BinaryType = TargetType.SharedLibrary };
+        moduleC.PublicDependencies.Add(moduleB.Name);
+        var target = new TestTarget(context) { Type = TargetType.Executable };
+        var builder = CreateBuilder(context);
+
+        // Act
+        var act = () => builder.Build(target, [moduleB, moduleC]);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage($"*{moduleC.Name}*{moduleB.Name}*");
+    }
+
+    [Fact]
     public void ModularTarget_KeepsSharedLibraryModulesIndependent()
     {
         // Arrange

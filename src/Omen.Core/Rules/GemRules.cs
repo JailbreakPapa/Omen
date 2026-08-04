@@ -65,6 +65,13 @@ public abstract class GemRules
     protected GemFlavor DefineFlavor(GemFlavorKind kind)
     {
         var flavor = new GemFlavor { Kind = kind };
+        // A "Static" flavor that isn't a static library is never what a gem author meant -
+        // default it so it links independently instead of silently folding into whatever
+        // aggregate happens to consume it. Other flavor kinds keep BinaryType unset by default.
+        if (kind == GemFlavorKind.Static)
+        {
+            flavor.BinaryType = TargetType.StaticLibrary;
+        }
         Flavors[kind] = flavor;
         return flavor;
     }

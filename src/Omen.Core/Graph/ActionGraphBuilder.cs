@@ -108,11 +108,26 @@ public sealed class ActionGraphBuilder
 
         // A module dependency that is itself independently linked contributes its produced
         // library rather than its object files (those were already absorbed into its own
-        // link/archive action).
-        var dependencyLibraries = module.PublicDependencies.Concat(module.PrivateDependencies)
-            .Select(depName => independentModuleLibraries.GetValueOrDefault(depName))
-            .Where(path => path != null)
-            .Select(path => path!);
+        // link/archive action). A dependency name that isn't a known module at all is not our
+        // concern here (handled elsewhere). But a dependency that IS a known module and simply
+        // has no BinaryType set is folded into some other aggregate link rather than producing
+        // its own artifact - silently dropping it would mean missing symbols at link time, so
+        // fail loudly instead.
+        var dependencyLibraries = new List<string>();
+        foreach (var depName in module.PublicDependencies.Concat(module.PrivateDependencies))
+        {
+            if (independentModuleLibraries.TryGetValue(depName, out var libraryPath))
+            {
+                dependencyLibraries.Add(libraryPath);
+            }
+            else if (_moduleDict.TryGetValue(depName, out var depModule) && !depModule.BinaryType.HasValue)
+            {
+                throw new InvalidOperationException(
+                    $"Module '{module.Name}' is independently linked and depends on module '{depName}', " +
+                    $"which has no BinaryType set and is folded into an aggregate link rather than producing " +
+                    $"its own artifact. '{depName}' must declare a BinaryType to be linked against independently.");
+            }
+        }
 
         var linkRequest = new LinkRequest
         {
