@@ -244,6 +244,45 @@ public sealed class ActionGraph
     }
     
     /// <summary>
+    /// Checks if an action is up-to-date by comparing its current command-line digest
+    /// against the digest recorded for its primary output on a previous build. An edit
+    /// to a rules file that changes no actual compiler flag leaves the digest unchanged
+    /// and invalidates nothing.
+    /// </summary>
+    public bool IsUpToDate(BuildAction action, IDigestCalculator calculator, ActionDigestStore digestStore)
+    {
+        if (action.Outputs.Count == 0 || action.Outputs.Any(o => !File.Exists(o.Path)))
+            return false;
+
+        var currentDigest = action.ComputeDigest(calculator);
+        var primaryOutput = action.Outputs[0].Path;
+
+        return digestStore.TryGet(primaryOutput, out var previousDigest) && currentDigest.Equals(previousDigest);
+    }
+
+    /// <summary>
+    /// Marks digest-up-to-date actions as skipped. Unlike the timestamp-only overload,
+    /// this also records the current digest for every action that IS up-to-date, so the
+    /// store stays populated even on a build where nothing needed to rebuild.
+    /// </summary>
+    public int MarkUpToDateActionsAsSkipped(IDigestCalculator calculator, ActionDigestStore digestStore)
+    {
+        var skipped = 0;
+        foreach (var action in GetTopologicalOrder())
+        {
+            if (action.Status != ActionStatus.Pending)
+                continue;
+
+            if (IsUpToDate(action, calculator, digestStore))
+            {
+                action.Status = ActionStatus.Skipped;
+                skipped++;
+            }
+        }
+        return skipped;
+    }
+
+    /// <summary>
     /// Marks up-to-date actions as skipped.
     /// </summary>
     public int MarkUpToDateActionsAsSkipped()

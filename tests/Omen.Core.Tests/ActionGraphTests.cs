@@ -314,6 +314,81 @@ public class ActionGraphTests
         actionB.Priority.Should().BeLessThanOrEqualTo(1000);
     }
 
+    [Fact]
+    public void IsUpToDate_WithDigest_ReturnsFalseWhenCommandLineChanged()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), "OmenTests", nameof(ActionGraphTests), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var storePath = Path.Combine(tempDir, "digests.json");
+        var outputPath = Path.Combine(tempDir, "out.obj");
+        File.WriteAllText(outputPath, "stale object file");
+
+        var calculator = new Sha256DigestCalculator();
+        var store = new ActionDigestStore(storePath);
+
+        var originalAction = CreateAction("compile1");
+        var originalDigest = originalAction.ComputeDigest(calculator);
+        store.Set(outputPath, originalDigest);
+
+        var changedAction = new BuildAction
+        {
+            Id = "compile1",
+            Type = ActionType.Compile,
+            Description = "Test action compile1",
+            CommandLine = "test.exe /DIFFERENT_FLAG",
+            WorkingDirectory = "/test",
+            Outputs = [new FileItem { Path = outputPath }]
+        };
+        var graph = new ActionGraph();
+        graph.AddAction(changedAction);
+
+        // Act
+        var upToDate = graph.IsUpToDate(changedAction, calculator, store);
+
+        // Assert
+        upToDate.Should().BeFalse();
+
+        Directory.Delete(tempDir, recursive: true);
+    }
+
+    [Fact]
+    public void IsUpToDate_WithDigest_ReturnsTrueWhenCommandLineUnchanged()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), "OmenTests", nameof(ActionGraphTests), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var storePath = Path.Combine(tempDir, "digests.json");
+        var outputPath = Path.Combine(tempDir, "out.obj");
+        File.WriteAllText(outputPath, "up to date object file");
+
+        var calculator = new Sha256DigestCalculator();
+        var store = new ActionDigestStore(storePath);
+
+        var action = new BuildAction
+        {
+            Id = "compile1",
+            Type = ActionType.Compile,
+            Description = "Test action compile1",
+            CommandLine = "test.exe /SAME_FLAG",
+            WorkingDirectory = "/test",
+            Outputs = [new FileItem { Path = outputPath }]
+        };
+        var digest = action.ComputeDigest(calculator);
+        store.Set(outputPath, digest);
+
+        var graph = new ActionGraph();
+        graph.AddAction(action);
+
+        // Act
+        var upToDate = graph.IsUpToDate(action, calculator, store);
+
+        // Assert
+        upToDate.Should().BeTrue();
+
+        Directory.Delete(tempDir, recursive: true);
+    }
+
     private static BuildAction CreateAction(
         string id, 
         ActionType type = ActionType.Compile,

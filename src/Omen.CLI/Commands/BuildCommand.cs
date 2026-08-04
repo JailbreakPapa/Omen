@@ -201,7 +201,14 @@ public static class BuildCommand
         var digestCalculator = new Sha256DigestCalculator();
         var graphBuilder = new ActionGraphBuilder(context, toolchain, digestCalculator);
         var graph = graphBuilder.Build(targetRules, modules);
-        
+
+        var digestStore = new ActionDigestStore(Path.Combine(context.IntermediateDirectory, ".buildtool", "digests.json"));
+        var skipped = graph.MarkUpToDateActionsAsSkipped(digestCalculator, digestStore);
+        if (skipped > 0)
+        {
+            AnsiConsole.MarkupLine($"[cyan]{skipped} action(s) already up to date (unchanged command line), skipped.[/]");
+        }
+
         AnsiConsole.MarkupLine($"[green]Created action graph with {graph.Actions.Count} actions[/]\n");
         
         if (graph.Actions.Count == 0)
@@ -260,7 +267,14 @@ public static class BuildCommand
             table.AddRow("Duration", $"{stopwatch.Elapsed.TotalSeconds:F2}s");
             
             AnsiConsole.Write(table);
-            
+
+            foreach (var action in graph.Actions.Where(a => a.Status is ActionStatus.Completed or ActionStatus.Skipped))
+            {
+                if (action.Outputs.Count == 0 || !File.Exists(action.Outputs[0].Path)) continue;
+                digestStore.Set(action.Outputs[0].Path, action.ComputeDigest(digestCalculator));
+            }
+            digestStore.Save();
+
             return 0;
         }
         else
