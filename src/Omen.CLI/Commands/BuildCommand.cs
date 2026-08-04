@@ -60,7 +60,11 @@ public static class BuildCommand
         var coordinatorOption = new Option<string?>(
             "--coordinator",
             "Coordinator address for distributed builds");
-        
+
+        var dryRunOption = new Option<bool>(
+            "--dry-run",
+            "Print derived command lines without executing the build");
+
         command.AddArgument(targetArgument);
         command.AddOption(platformOption);
         command.AddOption(configOption);
@@ -69,7 +73,8 @@ public static class BuildCommand
         command.AddOption(cleanOption);
         command.AddOption(distributeOption);
         command.AddOption(coordinatorOption);
-        
+        command.AddOption(dryRunOption);
+
         command.SetHandler(async (context) =>
         {
             var target = context.ParseResult.GetValueForArgument(targetArgument);
@@ -80,9 +85,10 @@ public static class BuildCommand
             var clean = context.ParseResult.GetValueForOption(cleanOption);
             var distribute = context.ParseResult.GetValueForOption(distributeOption);
             var coordinator = context.ParseResult.GetValueForOption(coordinatorOption);
-            
+            var dryRun = context.ParseResult.GetValueForOption(dryRunOption);
+
             context.ExitCode = await ExecuteBuildAsync(
-                target, platform, config, arch, jobs, clean, distribute, coordinator);
+                target, platform, config, arch, jobs, clean, distribute, coordinator, dryRun);
         });
         
         return command;
@@ -96,7 +102,8 @@ public static class BuildCommand
         int? jobs,
         bool clean,
         bool distribute,
-        string? coordinator)
+        string? coordinator,
+        bool dryRun)
     {
         var stopwatch = Stopwatch.StartNew();
         
@@ -220,7 +227,16 @@ public static class BuildCommand
         }
 
         AnsiConsole.MarkupLine($"[green]Created action graph with {graph.Actions.Count} actions[/]\n");
-        
+
+        if (dryRun)
+        {
+            foreach (var action in graph.GetTopologicalOrder())
+            {
+                AnsiConsole.WriteLine($"[{action.Type}] {action.ModuleName ?? "(target)"}: {action.CommandLine}");
+            }
+            return 0;
+        }
+
         if (graph.Actions.Count == 0)
         {
             AnsiConsole.MarkupLine("[green]Nothing to build - up to date![/]");
