@@ -161,4 +161,44 @@ public class ActionGraphBuilderTests : IDisposable
         // Assert
         act.Should().Throw<InvalidOperationException>().WithMessage("*TestModule*Executable*");
     }
+
+    [Fact]
+    public void MonolithicTarget_FoldsSharedLibraryModulesAndGeneratesRegistration()
+    {
+        // Arrange
+        var context = CreateTestContext(_projectRoot);
+        WriteSourceFile("Source/Camera", "Camera.cpp");
+        var cameraModule = new TestModule(context) { SourceDirectory = "Source/Camera", BinaryType = TargetType.SharedLibrary };
+        var target = new TestTarget(context) { Type = TargetType.Executable, LinkType = LinkType.Monolithic };
+        var builder = CreateBuilder(context);
+
+        // Act
+        var graph = builder.Build(target, [cameraModule]);
+
+        // Assert: no independent link action for the module (folded into the target link)
+        graph.Actions.Should().NotContain(a => (a.Type == ActionType.Link || a.Type == ActionType.Archive) && a.Description.Contains("Link TestModule"));
+
+        // Assert: a registration source file was generated listing the folded module
+        var registrationPath = Path.Combine(context.IntermediateDirectory, "StaticModuleRegistration.g.cpp");
+        File.Exists(registrationPath).Should().BeTrue();
+        File.ReadAllText(registrationPath).Should().Contain("TestModule");
+    }
+
+    [Fact]
+    public void ModularTarget_KeepsSharedLibraryModulesIndependent()
+    {
+        // Arrange
+        var context = CreateTestContext(_projectRoot);
+        WriteSourceFile("Source/Camera", "Camera.cpp");
+        var cameraModule = new TestModule(context) { SourceDirectory = "Source/Camera", BinaryType = TargetType.SharedLibrary };
+        var target = new TestTarget(context) { Type = TargetType.Executable, LinkType = LinkType.Modular };
+        var builder = CreateBuilder(context);
+
+        // Act
+        var graph = builder.Build(target, [cameraModule]);
+
+        // Assert
+        graph.Actions.Should().Contain(a => a.Type == ActionType.Link && a.Description == "Link TestModule");
+        File.Exists(Path.Combine(context.IntermediateDirectory, "StaticModuleRegistration.g.cpp")).Should().BeFalse();
+    }
 }
