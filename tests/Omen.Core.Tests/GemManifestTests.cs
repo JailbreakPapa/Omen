@@ -70,4 +70,60 @@ public class GemManifestTests : IDisposable
         var act = () => GemManifest.Load("/does/not/exist/gem.json");
         act.Should().Throw<FileNotFoundException>();
     }
+
+    [Fact]
+    public void Load_GemNameIsNotString_Throws()
+    {
+        File.WriteAllText(_path, """{ "gem_name": 123, "version": "1.0.0" }""");
+
+        var act = () => GemManifest.Load(_path);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*gem_name*must be a string*");
+    }
+
+    [Fact]
+    public void Load_VersionIsNotString_Throws()
+    {
+        File.WriteAllText(_path, """{ "gem_name": "Test", "version": 123 }""");
+
+        var act = () => GemManifest.Load(_path);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*version*must be a string*");
+    }
+
+    [Fact]
+    public void Load_DependencyIsNotString_Throws()
+    {
+        File.WriteAllText(_path, """
+        {
+            "gem_name": "Test",
+            "version": "1.0.0",
+            "dependencies": ["Valid", 123]
+        }
+        """);
+
+        var act = () => GemManifest.Load(_path);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*dependencies[1]*must be a string*");
+    }
+
+    [Fact]
+    public void Load_TagIsNotString_Throws()
+    {
+        File.WriteAllText(_path, """
+        {
+            "gem_name": "Test",
+            "version": "1.0.0",
+            "user_tags": ["Valid", null]
+        }
+        """);
+
+        var act = () => GemManifest.Load(_path);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*user_tags[1]*must be a string*");
+    }
 }

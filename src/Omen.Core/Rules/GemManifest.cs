@@ -26,31 +26,47 @@ public sealed class GemManifest
         using var doc = JsonDocument.Parse(stream);
         var root = doc.RootElement;
 
-        var gemName = root.TryGetProperty("gem_name", out var nameEl) ? nameEl.GetString() : null;
-        if (gemName == null)
+        if (!root.TryGetProperty("gem_name", out var nameEl))
             throw new InvalidOperationException($"'{gemJsonPath}' is missing 'gem_name'.");
 
-        var version = root.TryGetProperty("version", out var versionEl) ? versionEl.GetString() ?? "0.0.0" : "0.0.0";
+        if (nameEl.ValueKind != JsonValueKind.String)
+            throw new InvalidOperationException($"'{gemJsonPath}' field 'gem_name' must be a string, got {nameEl.ValueKind}.");
+
+        var gemName = nameEl.GetString();
+
+        var version = "0.0.0";
+        if (root.TryGetProperty("version", out var versionEl))
+        {
+            if (versionEl.ValueKind != JsonValueKind.String)
+                throw new InvalidOperationException($"'{gemJsonPath}' field 'version' must be a string, got {versionEl.ValueKind}.");
+            version = versionEl.GetString() ?? "0.0.0";
+        }
 
         return new GemManifest
         {
             GemName = gemName,
             Version = version,
-            Dependencies = ReadStringArray(root, "dependencies"),
-            Tags = ReadStringArray(root, "user_tags")
+            Dependencies = ReadStringArray(root, "dependencies", gemJsonPath),
+            Tags = ReadStringArray(root, "user_tags", gemJsonPath)
         };
     }
 
-    private static List<string> ReadStringArray(JsonElement root, string propertyName)
+    private static List<string> ReadStringArray(JsonElement root, string propertyName, string gemJsonPath)
     {
         var result = new List<string>();
         if (!root.TryGetProperty(propertyName, out var arrayEl) || arrayEl.ValueKind != JsonValueKind.Array)
             return result;
 
+        var index = 0;
         foreach (var item in arrayEl.EnumerateArray())
         {
+            if (item.ValueKind != JsonValueKind.String)
+                throw new InvalidOperationException(
+                    $"'{gemJsonPath}' array '{propertyName}[{index}]' must be a string, got {item.ValueKind}.");
+
             var value = item.GetString();
             if (value != null) result.Add(value);
+            index++;
         }
         return result;
     }
