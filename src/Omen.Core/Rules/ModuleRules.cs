@@ -258,10 +258,17 @@ public abstract class ModuleRules
     /// </summary>
     public bool IsCSharpProject => Language == ModuleLanguage.CSharp;
 
-    protected ModuleRules(BuildContext context)
+    protected ModuleRules(BuildContext context) : this(context, explicitName: null) { }
+
+    /// <summary>
+    /// Used by generated module wrappers (e.g. a gem flavor, Task 10) that need a Name
+    /// other than the declaring class's own name. Hand-written .module.cs files should
+    /// keep using the single-argument constructor.
+    /// </summary>
+    protected ModuleRules(BuildContext context, string? explicitName)
     {
         Context = context;
-        Name = GetType().Name;
+        Name = explicitName ?? GetType().Name;
     }
 
     /// <summary>
