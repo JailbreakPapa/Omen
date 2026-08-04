@@ -36,29 +36,17 @@ Global
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{736b9487-62b2-7d69-1692-27e221d1324b}.Debug|x64.ActiveCfg = Debug|x64
-		{736b9487-62b2-7d69-1692-27e221d1324b}.Debug|x64.Build.0 = Debug|x64
 		{736b9487-62b2-7d69-1692-27e221d1324b}.Debug|ARM64.ActiveCfg = Debug|ARM64
-		{736b9487-62b2-7d69-1692-27e221d1324b}.Debug|ARM64.Build.0 = Debug|ARM64
 		{736b9487-62b2-7d69-1692-27e221d1324b}.Development|x64.ActiveCfg = Development|x64
-		{736b9487-62b2-7d69-1692-27e221d1324b}.Development|x64.Build.0 = Development|x64
 		{736b9487-62b2-7d69-1692-27e221d1324b}.Development|ARM64.ActiveCfg = Development|ARM64
-		{736b9487-62b2-7d69-1692-27e221d1324b}.Development|ARM64.Build.0 = Development|ARM64
 		{736b9487-62b2-7d69-1692-27e221d1324b}.Shipping|x64.ActiveCfg = Shipping|x64
-		{736b9487-62b2-7d69-1692-27e221d1324b}.Shipping|x64.Build.0 = Shipping|x64
 		{736b9487-62b2-7d69-1692-27e221d1324b}.Shipping|ARM64.ActiveCfg = Shipping|ARM64
-		{736b9487-62b2-7d69-1692-27e221d1324b}.Shipping|ARM64.Build.0 = Shipping|ARM64
 		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Debug|x64.ActiveCfg = Debug|x64
-		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Debug|x64.Build.0 = Debug|x64
 		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Debug|ARM64.ActiveCfg = Debug|ARM64
-		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Debug|ARM64.Build.0 = Debug|ARM64
 		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Development|x64.ActiveCfg = Development|x64
-		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Development|x64.Build.0 = Development|x64
 		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Development|ARM64.ActiveCfg = Development|ARM64
-		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Development|ARM64.Build.0 = Development|ARM64
 		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Shipping|x64.ActiveCfg = Shipping|x64
-		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Shipping|x64.Build.0 = Shipping|x64
 		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Shipping|ARM64.ActiveCfg = Shipping|ARM64
-		{568744cb-47a7-ab06-4eef-802b5f5b4bc4}.Shipping|ARM64.Build.0 = Shipping|ARM64
 		{4e4db30b-9840-06c4-6a28-1e2a5636af2b}.Debug|x64.ActiveCfg = Debug|x64
 		{4e4db30b-9840-06c4-6a28-1e2a5636af2b}.Debug|x64.Build.0 = Debug|x64
 		{4e4db30b-9840-06c4-6a28-1e2a5636af2b}.Debug|ARM64.ActiveCfg = Debug|ARM64
@@ -72,17 +60,11 @@ Global
 		{4e4db30b-9840-06c4-6a28-1e2a5636af2b}.Shipping|ARM64.ActiveCfg = Shipping|ARM64
 		{4e4db30b-9840-06c4-6a28-1e2a5636af2b}.Shipping|ARM64.Build.0 = Shipping|ARM64
 		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Debug|x64.ActiveCfg = Debug|x64
-		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Debug|x64.Build.0 = Debug|x64
 		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Debug|ARM64.ActiveCfg = Debug|ARM64
-		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Debug|ARM64.Build.0 = Debug|ARM64
 		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Development|x64.ActiveCfg = Development|x64
-		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Development|x64.Build.0 = Development|x64
 		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Development|ARM64.ActiveCfg = Development|ARM64
-		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Development|ARM64.Build.0 = Development|ARM64
 		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Shipping|x64.ActiveCfg = Shipping|x64
-		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Shipping|x64.Build.0 = Shipping|x64
 		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Shipping|ARM64.ActiveCfg = Shipping|ARM64
-		{a1c43968-b5e9-af05-bac6-c82a0ba08af8}.Shipping|ARM64.Build.0 = Shipping|ARM64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

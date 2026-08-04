@@ -171,6 +171,14 @@ public sealed class VisualStudioGenerator
         sb.AppendLine("\tGlobalSection(ProjectConfigurationPlatforms) = postSolution");
         foreach (var (name, _, guid, isCSharp) in projects)
         {
+            // C++ module (dependency, non-main) projects carry no build command of their
+            // own -- the NMake-converted main project already builds everything via
+            // `omen build`. Omitting their Build.0 entry keeps "Build Solution" from
+            // having MSBuild compile them a second time for real; ActiveCfg is still
+            // written so they remain mapped/browsable. C# projects are outside this task's
+            // NMake conversion and keep building normally.
+            var isBuildable = isCSharp || IsMainModule(_moduleDict[name], target, modules);
+
             foreach (var config in new[] { "Debug", "Development", "Shipping" })
             {
                 foreach (var platform in new[] { "x64", "ARM64" })
@@ -178,9 +186,10 @@ public sealed class VisualStudioGenerator
                     // C# projects use AnyCPU, need to map platforms
                     var projectConfig = isCSharp ? MapToCSharpConfig(config) : config;
                     var projectPlatform = isCSharp ? "Any CPU" : platform;
-                    
+
                     sb.AppendLine($"\t\t{{{guid}}}.{config}|{platform}.ActiveCfg = {projectConfig}|{projectPlatform}");
-                    sb.AppendLine($"\t\t{{{guid}}}.{config}|{platform}.Build.0 = {projectConfig}|{projectPlatform}");
+                    if (isBuildable)
+                        sb.AppendLine($"\t\t{{{guid}}}.{config}|{platform}.Build.0 = {projectConfig}|{projectPlatform}");
                 }
             }
         }
@@ -435,13 +444,14 @@ public sealed class VisualStudioGenerator
             _ => "v143"
         };
 
-        // Determine if this module is the "main" module that produces the executable
-        var dependedOnBy = allModules.Where(m =>
-            m.PublicDependencies.Contains(module.Name) ||
-            m.PrivateDependencies.Contains(module.Name)).ToList();
-
-        var isMainModule = dependedOnBy.Count == 0 &&
-            (module.PublicDependencies.Count > 0 || module.PrivateDependencies.Count > 0);
+        // Determine if this module is the "main" module that produces the executable.
+        // Prefer the target's explicit LaunchModuleName when set: pure dependency-topology
+        // (below) can't tell which target a root module belongs to once a project has more
+        // than one TargetRules, so every target's root module would otherwise satisfy the
+        // topology check and all collide on being treated as "the" main module. Falling
+        // back to topology when LaunchModuleName is unset keeps today's single-target
+        // projects (e.g. ExampleGame, which doesn't set it) behaving exactly as before.
+        var isMainModule = IsMainModule(module, target, allModules);
 
         // Module type: main module uses target type, others are static libraries
         var configType = isMainModule ?
@@ -891,6 +901,28 @@ public sealed class VisualStudioGenerator
     #endregion
 
     #region Helper Methods
+
+    /// <summary>
+    /// Determines whether <paramref name="module"/> is the module that actually drives
+    /// <paramref name="target"/>'s build (the one converted to an NMake/Makefile project,
+    /// and the only one whose solution entry is marked buildable). Prefers the target's
+    /// explicit <see cref="TargetRules.LaunchModuleName"/> when set; falls back to
+    /// dependency-topology (the root of the graph -- nothing depends on it -- that itself
+    /// has dependencies) when unset. The topology fallback is only reliable for
+    /// single-target projects: with multiple targets sharing a module dictionary, every
+    /// target's root module would otherwise satisfy it independently and collide.
+    /// </summary>
+    private static bool IsMainModule(ModuleRules module, TargetRules target, IReadOnlyList<ModuleRules> allModules)
+    {
+        if (target.LaunchModuleName != null)
+            return module.Name == target.LaunchModuleName;
+
+        var hasDependents = allModules.Any(m =>
+            m.PublicDependencies.Contains(module.Name) ||
+            m.PrivateDependencies.Contains(module.Name));
+
+        return !hasDependents && (module.PublicDependencies.Count > 0 || module.PrivateDependencies.Count > 0);
+    }
 
     private List<string> BuildIncludePaths(ModuleRules module)
     {
