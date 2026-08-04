@@ -49,7 +49,7 @@ public sealed class ActionGraphBuilder
 
             if (LinksIndependently(module, target))
             {
-                var libraryPath = BuildModuleBinaryAction(graph, module, objectFiles, compileActions);
+                var libraryPath = BuildModuleBinaryAction(graph, module, objectFiles, compileActions, independentModuleLibraries);
                 independentModuleLibraries[module.Name] = libraryPath;
             }
             else
@@ -78,15 +78,26 @@ public sealed class ActionGraphBuilder
         ActionGraph graph,
         ModuleRules module,
         List<FileItem> objectFiles,
-        List<BuildAction> compileActions)
+        List<BuildAction> compileActions,
+        Dictionary<string, string> independentModuleLibraries)
     {
         var outputExtension = module.BinaryType switch
         {
             TargetType.SharedLibrary => _toolchain.SharedLibraryExtension,
             TargetType.StaticLibrary => _toolchain.StaticLibraryExtension,
-            _ => _toolchain.SharedLibraryExtension
+            _ => throw new InvalidOperationException(
+                $"Module '{module.Name}' has BinaryType '{module.BinaryType}', but independently-linked modules only " +
+                $"support {nameof(TargetType.SharedLibrary)} or {nameof(TargetType.StaticLibrary)}.")
         };
         var outputPath = Path.Combine(_context.OutputDirectory, module.Name + outputExtension);
+
+        // A module dependency that is itself independently linked contributes its produced
+        // library rather than its object files (those were already absorbed into its own
+        // link/archive action).
+        var dependencyLibraries = module.PublicDependencies.Concat(module.PrivateDependencies)
+            .Select(depName => independentModuleLibraries.GetValueOrDefault(depName))
+            .Where(path => path != null)
+            .Select(path => path!);
 
         var linkRequest = new LinkRequest
         {
@@ -94,7 +105,7 @@ public sealed class ActionGraphBuilder
             OutputFile = outputPath,
             OutputType = module.BinaryType!.Value,
             Configuration = _context.Configuration,
-            Libraries = module.PublicLibraries.Concat(module.PrivateLibraries).Distinct().ToList(),
+            Libraries = module.PublicLibraries.Concat(module.PrivateLibraries).Concat(dependencyLibraries).Distinct().ToList(),
             SystemLibraries = module.PublicSystemLibraries.Distinct().ToList(),
             GenerateDebugInfo = true
         };
@@ -121,6 +132,16 @@ public sealed class ActionGraphBuilder
             compileAction.Dependents.Add(action);
         }
 
+        // Ensure an independently-linked dependency is built before this module's own
+        // link/archive action (same pattern used at the target level in BuildLinkAction).
+        foreach (var depName in module.PublicDependencies.Concat(module.PrivateDependencies))
+        {
+            if (independentModuleLibraries.ContainsKey(depName))
+            {
+                LinkAfterModuleAction(graph, action, depName);
+            }
+        }
+
         graph.AddAction(action);
 
         // A shared library's linkable artifact on Windows is its import lib, not the DLL
@@ -128,6 +149,21 @@ public sealed class ActionGraphBuilder
         return module.BinaryType == TargetType.SharedLibrary
             ? Path.ChangeExtension(outputPath, _toolchain.StaticLibraryExtension)
             : outputPath;
+    }
+
+    /// <summary>
+    /// Wires <paramref name="consumer"/> to depend on the link/archive action of the
+    /// independently-linked module named <paramref name="moduleName"/>, so the dependency's
+    /// binary is built before the action that links against it.
+    /// </summary>
+    private static void LinkAfterModuleAction(ActionGraph graph, BuildAction consumer, string moduleName)
+    {
+        var moduleAction = graph.Actions.FirstOrDefault(a => a.ModuleName == moduleName && a.Type is ActionType.Link or ActionType.Archive);
+        if (moduleAction != null)
+        {
+            consumer.Dependencies.Add(moduleAction);
+            moduleAction.Dependents.Add(consumer);
+        }
     }
 
     private (List<FileItem> ObjectFiles, List<BuildAction> Actions) BuildModuleActions(
@@ -351,12 +387,7 @@ public sealed class ActionGraphBuilder
         // consumes them, even though the target doesn't compile their objects itself.
         foreach (var moduleName in independentModuleLibraries.Keys)
         {
-            var moduleLinkAction = graph.Actions.FirstOrDefault(a => a.ModuleName == moduleName && a.Type is ActionType.Link or ActionType.Archive);
-            if (moduleLinkAction != null)
-            {
-                linkAction.Dependencies.Add(moduleLinkAction);
-                moduleLinkAction.Dependents.Add(linkAction);
-            }
+            LinkAfterModuleAction(graph, linkAction, moduleName);
         }
 
         graph.AddAction(linkAction);
