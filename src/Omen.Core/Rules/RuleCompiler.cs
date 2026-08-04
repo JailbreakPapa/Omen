@@ -33,13 +33,14 @@ public sealed class RuleCompiler
     {
         var moduleFiles = Directory.GetFiles(projectRoot, "*.module.cs", SearchOption.AllDirectories);
         var targetFiles = Directory.GetFiles(projectRoot, "*.target.cs", SearchOption.AllDirectories);
-        
-        if (moduleFiles.Length == 0 && targetFiles.Length == 0)
+        var gemFiles = Directory.GetFiles(projectRoot, "*.gem.cs", SearchOption.AllDirectories);
+
+        if (moduleFiles.Length == 0 && targetFiles.Length == 0 && gemFiles.Length == 0)
         {
             throw new InvalidOperationException($"No rule files found in '{projectRoot}'.");
         }
-        
-        var allFiles = moduleFiles.Concat(targetFiles).ToList();
+
+        var allFiles = moduleFiles.Concat(targetFiles).Concat(gemFiles).ToList();
         
         // Check if we have a valid cached assembly
         var cacheKey = ComputeCacheKey(allFiles);
@@ -55,7 +56,7 @@ public sealed class RuleCompiler
             assembly = await CompileFilesAsync(allFiles, cachedAssemblyPath, ct);
         }
         
-        return new CompiledRules(assembly, moduleFiles, targetFiles);
+        return new CompiledRules(assembly, moduleFiles, targetFiles, gemFiles);
     }
     
     private async Task<Assembly> CompileFilesAsync(List<string> files, string outputPath, CancellationToken ct)
@@ -168,44 +169,55 @@ public sealed class RuleCompiler
 public sealed class CompiledRules
 {
     private readonly Assembly _assembly;
-    
+
     public IReadOnlyList<string> ModuleFiles { get; }
     public IReadOnlyList<string> TargetFiles { get; }
-    
-    internal CompiledRules(Assembly assembly, IReadOnlyList<string> moduleFiles, IReadOnlyList<string> targetFiles)
+    public IReadOnlyList<string> GemFiles { get; }
+
+    internal CompiledRules(Assembly assembly, IReadOnlyList<string> moduleFiles, IReadOnlyList<string> targetFiles, IReadOnlyList<string> gemFiles)
     {
         _assembly = assembly;
         ModuleFiles = moduleFiles;
         TargetFiles = targetFiles;
+        GemFiles = gemFiles;
     }
-    
+
     /// <summary>
-    /// Creates instances of all ModuleRules in the compiled assembly.
+    /// Creates instances of every hand-written ModuleRules in the compiled assembly,
+    /// plus one synthesized ModuleRules per flavor of every discovered GemRules.
     /// </summary>
     public IReadOnlyList<ModuleRules> CreateModuleRules(BuildContext context)
     {
         var moduleType = typeof(ModuleRules);
         var rules = new List<ModuleRules>();
-        
+
         foreach (var type in _assembly.GetTypes())
         {
-            if (type.IsAbstract || !moduleType.IsAssignableFrom(type))
+            if (type.IsAbstract || !moduleType.IsAssignableFrom(type) || typeof(GemFlavorModuleRules).IsAssignableFrom(type))
                 continue;
-            
+
             var constructor = type.GetConstructor([typeof(BuildContext)]);
             if (constructor == null)
             {
                 throw new InvalidOperationException(
                     $"Module rule type '{type.Name}' must have a constructor that takes BuildContext.");
             }
-            
+
             var instance = (ModuleRules)constructor.Invoke([context]);
             rules.Add(instance);
         }
-        
+
+        foreach (var gem in CreateGemRules(context))
+        {
+            foreach (var flavor in gem.Flavors.Values)
+            {
+                rules.Add(new GemFlavorModuleRules(context, gem, flavor));
+            }
+        }
+
         return rules;
     }
-    
+
     /// <summary>
     /// Creates instances of all TargetRules in the compiled assembly.
     /// </summary>
@@ -213,41 +225,67 @@ public sealed class CompiledRules
     {
         var targetType = typeof(TargetRules);
         var rules = new List<TargetRules>();
-        
+
         foreach (var type in _assembly.GetTypes())
         {
             if (type.IsAbstract || !targetType.IsAssignableFrom(type))
                 continue;
-            
+
             var constructor = type.GetConstructor([typeof(BuildContext)]);
             if (constructor == null)
             {
                 throw new InvalidOperationException(
                     $"Target rule type '{type.Name}' must have a constructor that takes BuildContext.");
             }
-            
+
             var instance = (TargetRules)constructor.Invoke([context]);
             rules.Add(instance);
         }
-        
+
         return rules;
     }
-    
+
+    /// <summary>
+    /// Creates instances of all GemRules in the compiled assembly.
+    /// </summary>
+    public IReadOnlyList<GemRules> CreateGemRules(BuildContext context)
+    {
+        var gemType = typeof(GemRules);
+        var rules = new List<GemRules>();
+
+        foreach (var type in _assembly.GetTypes())
+        {
+            if (type.IsAbstract || !gemType.IsAssignableFrom(type))
+                continue;
+
+            var constructor = type.GetConstructor([typeof(BuildContext)]);
+            if (constructor == null)
+            {
+                throw new InvalidOperationException(
+                    $"Gem rule type '{type.Name}' must have a constructor that takes BuildContext.");
+            }
+
+            rules.Add((GemRules)constructor.Invoke([context]));
+        }
+
+        return rules;
+    }
+
     /// <summary>
     /// Gets a specific target by name.
     /// </summary>
     public TargetRules? GetTarget(string name, BuildContext context)
     {
-        return CreateTargetRules(context).FirstOrDefault(t => 
+        return CreateTargetRules(context).FirstOrDefault(t =>
             t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
-    
+
     /// <summary>
     /// Gets a specific module by name.
     /// </summary>
     public ModuleRules? GetModule(string name, BuildContext context)
     {
-        return CreateModuleRules(context).FirstOrDefault(m => 
+        return CreateModuleRules(context).FirstOrDefault(m =>
             m.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
 }
