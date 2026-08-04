@@ -18,6 +18,9 @@ artifacts/
 .DS_Store
 Thumbs.db
 
+# Superpowers subagent-driven-development scratch workspace
+.superpowers/
+
 # NuGet
 *.nupkg
 packages/
