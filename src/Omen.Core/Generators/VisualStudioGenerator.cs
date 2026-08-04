@@ -498,7 +498,7 @@ public sealed class VisualStudioGenerator
                 var useDebugLibs = config == "Debug" ? "true" : "false";
 
                 sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\" Label=\"Configuration\">");
-                sb.AppendLine($"    <ConfigurationType>{configType}</ConfigurationType>");
+                sb.AppendLine($"    <ConfigurationType>{(isMainModule ? "Makefile" : configType)}</ConfigurationType>");
                 sb.AppendLine($"    <UseDebugLibraries>{useDebugLibs}</UseDebugLibraries>");
                 sb.AppendLine($"    <PlatformToolset>{platformToolset}</PlatformToolset>");
                 sb.AppendLine("    <CharacterSet>Unicode</CharacterSet>");
@@ -579,7 +579,24 @@ public sealed class VisualStudioGenerator
         // Build all definitions including dependencies
         var allDefinitions = BuildDefinitions(module);
 
-        // Compiler/Linker settings
+        // Output extension for the target's final artifact (used by the main module's
+        // NMakeOutput below; VS project generation targets Windows only, same as the
+        // rest of this generator).
+        var targetOutputExtension = target.Type switch
+        {
+            TargetType.Executable => ".exe",
+            TargetType.SharedLibrary => ".dll",
+            TargetType.StaticLibrary => ".lib",
+            _ => ".exe"
+        };
+
+        // Compiler/Linker settings.
+        // The main module (the one that actually produces the target's output) is
+        // NMake-style: Visual Studio shells into `omen` for Build/Rebuild/Clean instead
+        // of compiling via ClCompile/Link items, so no ItemDefinitionGroup is emitted for
+        // it. It still gets NMakePreprocessorDefinitions/NMakeIncludeSearchPath so
+        // IntelliSense keeps working. Dependency modules are unaffected and keep compiling
+        // for real via MSBuild, as before.
         foreach (var config in new[] { "Debug", "Development", "Shipping" })
         {
             foreach (var platform in new[] { "x64", "ARM64" })
@@ -591,7 +608,7 @@ public sealed class VisualStudioGenerator
                 // Add config-specific definitions
                 var definitions = new List<string>(allDefinitions);
                 definitions.Add($"OMEN_CONFIG_{config.ToUpperInvariant()}=1");
-                
+
                 // Qt definitions
                 if (module.IsQtProject)
                 {
@@ -601,10 +618,26 @@ public sealed class VisualStudioGenerator
                     if (module.QtModules.Any(m => m.Equals("Gui", StringComparison.OrdinalIgnoreCase)))
                         definitions.Add("QT_GUI_LIB");
                 }
-                
-                definitions.Add("%(PreprocessorDefinitions)");
 
                 var includePaths = new List<string>(allIncludePaths);
+
+                if (isMainModule)
+                {
+                    var nmakeOutput = $"$(SolutionDir)Binaries\\Windows_{config}\\{module.Name}{targetOutputExtension}";
+
+                    sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
+                    sb.AppendLine($"    <NMakeBuildCommandLine>omen build {target.Name} -Configuration={config} -Platform={platform}</NMakeBuildCommandLine>");
+                    sb.AppendLine($"    <NMakeReBuildCommandLine>omen rebuild {target.Name} -Configuration={config} -Platform={platform}</NMakeReBuildCommandLine>");
+                    sb.AppendLine($"    <NMakeCleanCommandLine>omen clean {target.Name} -Configuration={config} -Platform={platform}</NMakeCleanCommandLine>");
+                    sb.AppendLine($"    <NMakeOutput>{nmakeOutput}</NMakeOutput>");
+                    sb.AppendLine($"    <NMakePreprocessorDefinitions>{string.Join(";", definitions)}</NMakePreprocessorDefinitions>");
+                    sb.AppendLine($"    <NMakeIncludeSearchPath>{string.Join(";", includePaths)}</NMakeIncludeSearchPath>");
+                    sb.AppendLine("  </PropertyGroup>");
+
+                    continue;
+                }
+
+                definitions.Add("%(PreprocessorDefinitions)");
                 includePaths.Add("%(AdditionalIncludeDirectories)");
 
                 sb.AppendLine($"  <ItemDefinitionGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
@@ -702,14 +735,18 @@ public sealed class VisualStudioGenerator
             }
         }
 
-        // Source files
-        sb.AppendLine("  <ItemGroup>");
-        foreach (var source in sourceFiles)
+        // Source files. Not emitted for the main (NMake) module: `omen build` compiles
+        // these, so MSBuild has no ClCompile items to invoke a compiler task on.
+        if (!isMainModule)
         {
-            var relativePath = Path.GetRelativePath(Path.GetDirectoryName(projectPath)!, source);
-            sb.AppendLine($"    <ClCompile Include=\"{relativePath}\" />");
+            sb.AppendLine("  <ItemGroup>");
+            foreach (var source in sourceFiles)
+            {
+                var relativePath = Path.GetRelativePath(Path.GetDirectoryName(projectPath)!, source);
+                sb.AppendLine($"    <ClCompile Include=\"{relativePath}\" />");
+            }
+            sb.AppendLine("  </ItemGroup>");
         }
-        sb.AppendLine("  </ItemGroup>");
 
         // Header files
         sb.AppendLine("  <ItemGroup>");

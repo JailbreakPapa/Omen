@@ -4,7 +4,10 @@
 using System.CommandLine;
 using Omen.Core.Configuration;
 using Omen.Core.Generators;
+using Omen.Core.Graph;
+using Omen.Core.Implementations;
 using Omen.Core.Rules;
+using Omen.Platforms;
 using Spectre.Console;
 
 namespace Omen.CLI.Commands;
@@ -132,6 +135,18 @@ public static class GenerateCommand
                 AnsiConsole.MarkupLine($"[red]Error:[/] Unknown IDE '{ide.EscapeMarkup()}'");
                 AnsiConsole.MarkupLine("[dim]Supported: vs2019, vs2022, vs2026, vscode, cmake, rider[/]");
                 return 1;
+        }
+
+        // Emit compile_commands.json for clangd/clang-tidy/editors other than the one
+        // just generated for, sourced from the same action graph a real build would use.
+        var toolchain = PlatformFactory.CreateToolchain(context.Platform, context.Architecture);
+        if (toolchain != null)
+        {
+            var digestCalculator = new Sha256DigestCalculator();
+            var graphBuilder = new ActionGraphBuilder(context, toolchain, digestCalculator);
+            var graph = graphBuilder.Build(target, modules);
+            CompileCommandsWriter.Write(graph, Path.Combine(workingDir, "compile_commands.json"));
+            AnsiConsole.MarkupLine("[green]✓[/] Generated compile_commands.json");
         }
 
         return 0;
