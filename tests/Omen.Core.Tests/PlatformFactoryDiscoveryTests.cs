@@ -32,4 +32,21 @@ public class PlatformFactoryDiscoveryTests
         result.Should().BeEmpty();
         Directory.Delete(dir, recursive: true);
     }
+
+    [Fact]
+    public void DiscoverExternalSdks_DirectoryWithMalformedDll_SkipsAndContinues()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "OmenTests", nameof(PlatformFactoryDiscoveryTests), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+
+        // Create a malformed .dll file (plain text, not a valid assembly)
+        var malformedDll = Path.Combine(dir, "malformed.dll");
+        File.WriteAllText(malformedDll, "This is not a valid assembly");
+
+        // Should not throw, should return empty since the malformed DLL is skipped
+        var result = PlatformFactory.DiscoverExternalSdks(dir);
+
+        result.Should().BeEmpty();
+        Directory.Delete(dir, recursive: true);
+    }
 }

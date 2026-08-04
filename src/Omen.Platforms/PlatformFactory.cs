@@ -152,12 +152,30 @@ public static class PlatformFactory
                 continue;
             }
 
-            foreach (var type in assembly.GetTypes())
+            Type[]? types;
+            try
+            {
+                types = assembly.GetTypes();
+            }
+            catch (Exception ex) when (ex is ReflectionTypeLoadException or TypeLoadException)
+            {
+                continue;
+            }
+
+            foreach (var type in types)
             {
                 if (type.IsAbstract || !typeof(IPlatformSDK).IsAssignableFrom(type))
                     continue;
-                if (Activator.CreateInstance(type) is IPlatformSDK sdk)
-                    discovered.Add(sdk);
+
+                try
+                {
+                    if (Activator.CreateInstance(type) is IPlatformSDK sdk)
+                        discovered.Add(sdk);
+                }
+                catch (Exception ex) when (ex is MissingMethodException or TargetInvocationException)
+                {
+                    continue;
+                }
             }
         }
 
