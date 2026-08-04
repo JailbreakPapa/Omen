@@ -445,6 +445,70 @@ public class ActionGraphTests
         Directory.Delete(tempDir, recursive: true);
     }
 
+    [Fact]
+    public void MarkUpToDateActionsAsSkipped_DoesNotSkipActionWhoseDependencyWillRebuild()
+    {
+        // Regression test: a link action's own on-disk timestamps can look up to date
+        // (its .obj input predates the previously-built .exe) even though its compile
+        // dependency is about to produce a fresher .obj later in this same build. The
+        // upfront skip pass must not trust stale timestamps for an action sitting behind
+        // a Pending (not-yet-skipped) dependency.
+
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), "OmenTests", nameof(ActionGraphTests), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var sourcePath = Path.Combine(tempDir, "Game.cpp");
+        var objPath = Path.Combine(tempDir, "Game.obj");
+        var exePath = Path.Combine(tempDir, "Game.exe");
+
+        File.WriteAllText(objPath, "object file from the first build");
+        File.SetLastWriteTimeUtc(objPath, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        File.WriteAllText(exePath, "exe file from the first build");
+        File.SetLastWriteTimeUtc(exePath, new DateTime(2020, 1, 1, 0, 1, 0, DateTimeKind.Utc)); // newer than obj
+
+        File.WriteAllText(sourcePath, "edited source body");
+        File.SetLastWriteTimeUtc(sourcePath, new DateTime(2020, 1, 1, 0, 2, 0, DateTimeKind.Utc)); // newer than obj, triggers recompile
+
+        var compileAction = new BuildAction
+        {
+            Id = "compile-game",
+            Type = ActionType.Compile,
+            Description = "Compile Game.cpp",
+            CommandLine = "cl.exe Game.cpp",
+            WorkingDirectory = tempDir,
+            Inputs = [new FileItem { Path = sourcePath }],
+            Outputs = [new FileItem { Path = objPath }]
+        };
+
+        var linkAction = new BuildAction
+        {
+            Id = "link-game",
+            Type = ActionType.Link,
+            Description = "Link Game.exe",
+            CommandLine = "link.exe Game.obj",
+            WorkingDirectory = tempDir,
+            Inputs = [new FileItem { Path = objPath }], // same FileItem list a link action's aggregate inputs would reference
+            Outputs = [new FileItem { Path = exePath }]
+        };
+
+        var graph = new ActionGraph();
+        graph.AddAction(compileAction);
+        graph.AddAction(linkAction);
+        graph.AddDependency("link-game", "compile-game");
+
+        // Act
+        graph.MarkUpToDateActionsAsSkipped();
+
+        // Assert - the compile is correctly not skipped (source is newer than its obj),
+        // and the link must not be skipped either, since it depends on a fresh obj that
+        // doesn't exist yet.
+        compileAction.Status.Should().Be(ActionStatus.Pending);
+        linkAction.Status.Should().Be(ActionStatus.Pending);
+
+        Directory.Delete(tempDir, recursive: true);
+    }
+
     private static BuildAction CreateAction(
         string id, 
         ActionType type = ActionType.Compile,

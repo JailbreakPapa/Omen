@@ -273,6 +273,11 @@ public sealed class ActionGraph
             if (action.Status != ActionStatus.Pending)
                 continue;
 
+            // A Pending dependency will still execute this build and produce a fresh
+            // output, which the on-disk timestamps below can't see yet - don't trust them.
+            if (action.Dependencies.Any(d => d.Status == ActionStatus.Pending))
+                continue;
+
             if (IsUpToDate(action, calculator, digestStore))
             {
                 action.Status = ActionStatus.Skipped;
@@ -290,7 +295,15 @@ public sealed class ActionGraph
         var skipped = 0;
         foreach (var action in GetTopologicalOrder())
         {
-            if (action.Status == ActionStatus.Pending && IsUpToDate(action))
+            if (action.Status != ActionStatus.Pending)
+                continue;
+
+            // A Pending dependency will still execute this build and produce a fresh
+            // output, which the on-disk timestamps below can't see yet - don't trust them.
+            if (action.Dependencies.Any(d => d.Status == ActionStatus.Pending))
+                continue;
+
+            if (IsUpToDate(action))
             {
                 action.Status = ActionStatus.Skipped;
                 skipped++;
