@@ -49,6 +49,12 @@ public abstract class ModuleRules
     public List<string> PrivateDependencies { get; } = [];
 
     /// <summary>
+    /// Modules this module (and anything reachable through its dependency closure) must
+    /// never depend on, with a mandatory reason. Checked by <see cref="LayeringValidator"/>.
+    /// </summary>
+    public List<(string ModuleName, string Reason)> ForbiddenDependencies { get; } = [];
+
+    /// <summary>
     /// Public include paths exposed to dependent modules.
     /// </summary>
     public List<string> PublicIncludePaths { get; } = [];

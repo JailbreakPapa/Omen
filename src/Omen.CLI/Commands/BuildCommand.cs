@@ -183,7 +183,17 @@ public static class BuildCommand
         var modules = compiledRules.CreateModuleRules(context);
         
         AnsiConsole.MarkupLine($"[green]Found {targets.Count} target(s), {modules.Count} module(s)[/]");
-        
+
+        try
+        {
+            LayeringValidator.Validate(modules);
+        }
+        catch (LayeringViolationException ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Layering violation:[/] {ex.Message.EscapeMarkup()}");
+            return 1;
+        }
+
         if (modules.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No modules to build.[/]");
