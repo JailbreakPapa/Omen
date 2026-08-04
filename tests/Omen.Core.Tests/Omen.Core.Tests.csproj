@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Omen.Core\Omen.Core.csproj" />
+    <ProjectReference Include="..\..\src\Omen.Platforms\Omen.Platforms.csproj" />
   </ItemGroup>
 
 </Project>

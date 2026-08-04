@@ -33,27 +33,101 @@ public sealed class ActionGraphBuilder
         var graph = new ActionGraph();
         var moduleOutputs = new Dictionary<string, List<FileItem>>();
         var moduleCompileActions = new Dictionary<string, List<BuildAction>>();
+        var independentModuleLibraries = new Dictionary<string, string>(); // module name -> library path for dependents
 
-        // Build module dictionary for dependency resolution
         _moduleDict = modules.ToDictionary(m => m.Name);
 
-        // Build modules in dependency order
         var orderedModules = TopologicalSortModules(modules);
+        var aggregateObjectFiles = new List<FileItem>();
+        var aggregateCompileActions = new List<BuildAction>();
 
         foreach (var module in orderedModules)
         {
             var (objectFiles, compileActions) = BuildModuleActions(graph, module, target, moduleOutputs);
             moduleOutputs[module.Name] = objectFiles;
             moduleCompileActions[module.Name] = compileActions;
+
+            if (LinksIndependently(module, target))
+            {
+                var libraryPath = BuildModuleBinaryAction(graph, module, objectFiles, compileActions);
+                independentModuleLibraries[module.Name] = libraryPath;
+            }
+            else
+            {
+                aggregateObjectFiles.AddRange(objectFiles);
+                aggregateCompileActions.AddRange(compileActions);
+            }
         }
 
-        // Create link action for the target
-        BuildLinkAction(graph, target, modules, moduleOutputs, moduleCompileActions);
+        BuildLinkAction(graph, target, modules, aggregateObjectFiles, aggregateCompileActions, independentModuleLibraries);
 
-        // Compute priorities for scheduling
         graph.ComputePriorities();
 
         return graph;
+    }
+
+    /// <summary>
+    /// True when a module is linked as its own independent binary rather than folded
+    /// into the target's aggregate link. Monolithic targets fold every module regardless
+    /// of BinaryType (see Task 4).
+    /// </summary>
+    private static bool LinksIndependently(ModuleRules module, TargetRules target) =>
+        module.BinaryType.HasValue;
+
+    private string BuildModuleBinaryAction(
+        ActionGraph graph,
+        ModuleRules module,
+        List<FileItem> objectFiles,
+        List<BuildAction> compileActions)
+    {
+        var outputExtension = module.BinaryType switch
+        {
+            TargetType.SharedLibrary => _toolchain.SharedLibraryExtension,
+            TargetType.StaticLibrary => _toolchain.StaticLibraryExtension,
+            _ => _toolchain.SharedLibraryExtension
+        };
+        var outputPath = Path.Combine(_context.OutputDirectory, module.Name + outputExtension);
+
+        var linkRequest = new LinkRequest
+        {
+            ObjectFiles = objectFiles.Select(o => o.Path).ToList(),
+            OutputFile = outputPath,
+            OutputType = module.BinaryType!.Value,
+            Configuration = _context.Configuration,
+            Libraries = module.PublicLibraries.Concat(module.PrivateLibraries).Distinct().ToList(),
+            SystemLibraries = module.PublicSystemLibraries.Distinct().ToList(),
+            GenerateDebugInfo = true
+        };
+        var commandLine = BuildLinkCommandLine(linkRequest);
+
+        var action = new BuildAction
+        {
+            Id = GenerateActionId(),
+            Type = module.BinaryType == TargetType.StaticLibrary ? ActionType.Archive : ActionType.Link,
+            Description = $"Link {module.Name}",
+            CommandLine = commandLine,
+            WorkingDirectory = _context.ProjectRoot,
+            Inputs = objectFiles,
+            Outputs = [new FileItem { Path = outputPath }],
+            ModuleName = module.Name,
+            CanExecuteRemotely = false,
+            EstimatedDuration = TimeSpan.FromSeconds(10),
+            Environment = new Dictionary<string, string>(_toolchain.Environment)
+        };
+
+        foreach (var compileAction in compileActions)
+        {
+            action.Dependencies.Add(compileAction);
+            compileAction.Dependents.Add(action);
+        }
+
+        graph.AddAction(action);
+
+        // A shared library's linkable artifact on Windows is its import lib, not the DLL
+        // itself; the toolchain places it alongside the DLL with the same base name.
+        return module.BinaryType == TargetType.SharedLibrary
+            ? Path.ChangeExtension(outputPath, _toolchain.StaticLibraryExtension)
+            : outputPath;
     }
 
     private (List<FileItem> ObjectFiles, List<BuildAction> Actions) BuildModuleActions(
@@ -210,11 +284,11 @@ public sealed class ActionGraphBuilder
         ActionGraph graph,
         TargetRules target,
         IReadOnlyList<ModuleRules> modules,
-        Dictionary<string, List<FileItem>> moduleOutputs,
-        Dictionary<string, List<BuildAction>> moduleCompileActions)
+        List<FileItem> aggregateObjectFiles,
+        List<BuildAction> aggregateCompileActions,
+        Dictionary<string, string> independentModuleLibraries)
     {
-        var allObjectFiles = moduleOutputs.Values.SelectMany(o => o).ToList();
-        if (allObjectFiles.Count == 0) return;
+        if (aggregateObjectFiles.Count == 0 && independentModuleLibraries.Count == 0) return;
 
         var outputName = target.OutputName ?? target.Name;
         var outputExtension = target.Type switch
@@ -229,15 +303,16 @@ public sealed class ActionGraphBuilder
             target.OutputDirectory ?? _context.OutputDirectory,
             outputName + outputExtension);
 
-        // Collect all libraries
-        var libraries = modules.SelectMany(m => m.PublicLibraries.Concat(m.PrivateLibraries)).Distinct().ToList();
+        var libraries = modules.SelectMany(m => m.PublicLibraries.Concat(m.PrivateLibraries))
+            .Concat(independentModuleLibraries.Values)
+            .Distinct().ToList();
         var systemLibraries = modules.SelectMany(m => m.PublicSystemLibraries).Distinct().ToList();
         var frameworks = modules.SelectMany(m => m.PublicFrameworks).Distinct().ToList();
         var linkerFlags = modules.SelectMany(m => m.AdditionalLinkerFlags).Distinct().ToList();
 
         var linkRequest = new LinkRequest
         {
-            ObjectFiles = allObjectFiles.Select(o => o.Path).ToList(),
+            ObjectFiles = aggregateObjectFiles.Select(o => o.Path).ToList(),
             OutputFile = outputPath,
             OutputType = target.Type,
             Configuration = _context.Configuration,
@@ -259,20 +334,28 @@ public sealed class ActionGraphBuilder
             Description = $"Link {outputName}",
             CommandLine = commandLine,
             WorkingDirectory = _context.ProjectRoot,
-            Inputs = allObjectFiles,
+            Inputs = aggregateObjectFiles,
             Outputs = [new FileItem { Path = outputPath }],
-            CanExecuteRemotely = false, // Linking is usually local
+            CanExecuteRemotely = false,
             EstimatedDuration = TimeSpan.FromSeconds(10),
             Environment = new Dictionary<string, string>(_toolchain.Environment)
         };
 
-        // Add dependencies on all compile actions
-        foreach (var compileActions in moduleCompileActions.Values)
+        foreach (var compileAction in aggregateCompileActions)
         {
-            foreach (var compileAction in compileActions)
+            linkAction.Dependencies.Add(compileAction);
+            compileAction.Dependents.Add(linkAction);
+        }
+
+        // Ensure independent module binaries are linked/archived before the target that
+        // consumes them, even though the target doesn't compile their objects itself.
+        foreach (var moduleName in independentModuleLibraries.Keys)
+        {
+            var moduleLinkAction = graph.Actions.FirstOrDefault(a => a.ModuleName == moduleName && a.Type is ActionType.Link or ActionType.Archive);
+            if (moduleLinkAction != null)
             {
-                linkAction.Dependencies.Add(compileAction);
-                compileAction.Dependents.Add(linkAction);
+                linkAction.Dependencies.Add(moduleLinkAction);
+                moduleLinkAction.Dependents.Add(linkAction);
             }
         }
 

@@ -169,6 +169,14 @@ public abstract class ModuleRules
     /// </summary>
     public string? SourceDirectory { get; set; }
 
+    /// <summary>
+    /// When set, this module is linked as its own independent binary (its object files
+    /// are archived/linked separately) instead of folding its objects into the target's
+    /// link. Dependents link against the resulting artifact rather than absorbing its
+    /// objects directly. When null (the default), behavior is unchanged from today.
+    /// </summary>
+    public TargetType? BinaryType { get; set; }
+
     // ============== C# Specific Properties ==============
 
     /// <summary>
