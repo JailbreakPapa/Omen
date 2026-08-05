@@ -291,4 +291,59 @@ public class ActionGraphBuilderTests : IDisposable
         graph.Actions.Should().Contain(a => a.Type == ActionType.Link && a.Description == "Link TestModule");
         File.Exists(Path.Combine(context.IntermediateDirectory, "StaticModuleRegistration.g.cpp")).Should().BeFalse();
     }
+
+    [Fact]
+    public void IndependentStaticLibraryModule_UsesArchiverNotLinker()
+    {
+        // Regression test: an independently-linked StaticLibrary module was tagged
+        // ActionType.Archive correctly, but its actual command line was still built via
+        // BuildLinkCommandLine (the linker), never a dedicated archiver command - so it
+        // invoked link.exe with linker flags on a .lib output, which fails with
+        // "LNK1561: entry point must be defined" since link.exe expects to produce an
+        // executable or DLL, not bundle an archive. Caught by an actual end-to-end build.
+
+        // Arrange
+        var context = CreateTestContext(_projectRoot);
+        WriteSourceFile("Source/Runtime", "Runtime.cpp");
+        var module = new TestModule(context) { SourceDirectory = "Source/Runtime", BinaryType = TargetType.StaticLibrary };
+        var target = new TestTarget(context) { Type = TargetType.Executable };
+        var builder = CreateBuilder(context);
+
+        // Act
+        var graph = builder.Build(target, [module]);
+
+        // Assert
+        var archiveAction = graph.Actions.Single(a => a.Type == ActionType.Archive && a.ModuleName == "TestModule");
+        archiveAction.CommandLine.Should().StartWith("\"lib.exe\"");
+        archiveAction.CommandLine.Should().NotContain("link.exe");
+        archiveAction.CommandLine.Should().NotContain("/DEBUG");
+        archiveAction.CommandLine.Should().NotContain("/INCREMENTAL");
+    }
+
+    [Fact]
+    public void StaticLibraryTarget_UsesArchiverNotLinker()
+    {
+        // Same bug, target-level path: a TargetType.StaticLibrary target's aggregate link
+        // action was also tagged ActionType.Archive but built its command line via
+        // BuildLinkCommandLine. This predates this session's work (the ActionType/CommandLine
+        // split existed in the original codebase) - exercised here since a StaticLibrary
+        // target was never actually built end-to-end before.
+
+        // Arrange
+        var context = CreateTestContext(_projectRoot);
+        WriteSourceFile("Source/TestModule", "TestModule.cpp");
+        var module = new TestModule(context);
+        var target = new TestTarget(context) { Type = TargetType.StaticLibrary };
+        var builder = CreateBuilder(context);
+
+        // Act
+        var graph = builder.Build(target, [module]);
+
+        // Assert
+        var archiveAction = graph.Actions.Single(a => a.Type == ActionType.Archive && a.ModuleName == null);
+        archiveAction.CommandLine.Should().StartWith("\"lib.exe\"");
+        archiveAction.CommandLine.Should().NotContain("link.exe");
+        archiveAction.CommandLine.Should().NotContain("/DEBUG");
+        archiveAction.CommandLine.Should().NotContain("/INCREMENTAL");
+    }
 }

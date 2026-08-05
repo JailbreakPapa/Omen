@@ -129,17 +129,29 @@ public sealed class ActionGraphBuilder
             }
         }
 
-        var linkRequest = new LinkRequest
+        string commandLine;
+        if (module.BinaryType == TargetType.StaticLibrary)
         {
-            ObjectFiles = objectFiles.Select(o => o.Path).ToList(),
-            OutputFile = outputPath,
-            OutputType = module.BinaryType!.Value,
-            Configuration = _context.Configuration,
-            Libraries = module.PublicLibraries.Concat(module.PrivateLibraries).Concat(dependencyLibraries).Distinct().ToList(),
-            SystemLibraries = module.PublicSystemLibraries.Distinct().ToList(),
-            GenerateDebugInfo = true
-        };
-        var commandLine = BuildLinkCommandLine(linkRequest);
+            commandLine = BuildArchiveCommandLine(new ArchiveRequest
+            {
+                ObjectFiles = objectFiles.Select(o => o.Path).ToList(),
+                OutputFile = outputPath
+            });
+        }
+        else
+        {
+            var linkRequest = new LinkRequest
+            {
+                ObjectFiles = objectFiles.Select(o => o.Path).ToList(),
+                OutputFile = outputPath,
+                OutputType = module.BinaryType!.Value,
+                Configuration = _context.Configuration,
+                Libraries = module.PublicLibraries.Concat(module.PrivateLibraries).Concat(dependencyLibraries).Distinct().ToList(),
+                SystemLibraries = module.PublicSystemLibraries.Distinct().ToList(),
+                GenerateDebugInfo = true
+            };
+            commandLine = BuildLinkCommandLine(linkRequest);
+        }
 
         var action = new BuildAction
         {
@@ -426,22 +438,33 @@ public sealed class ActionGraphBuilder
         var frameworks = modules.SelectMany(m => m.PublicFrameworks).Distinct().ToList();
         var linkerFlags = modules.SelectMany(m => m.AdditionalLinkerFlags).Distinct().ToList();
 
-        var linkRequest = new LinkRequest
+        string commandLine;
+        if (target.Type == TargetType.StaticLibrary)
         {
-            ObjectFiles = aggregateObjectFiles.Select(o => o.Path).ToList(),
-            OutputFile = outputPath,
-            OutputType = target.Type,
-            Configuration = _context.Configuration,
-            Libraries = libraries,
-            SystemLibraries = systemLibraries,
-            Frameworks = frameworks,
-            GenerateDebugInfo = target.GenerateDebugInfo,
-            IncrementalLinking = target.UseIncrementalLinking,
-            EnableLTO = target.EnableLTO,
-            AdditionalFlags = linkerFlags
-        };
-
-        var commandLine = BuildLinkCommandLine(linkRequest);
+            commandLine = BuildArchiveCommandLine(new ArchiveRequest
+            {
+                ObjectFiles = aggregateObjectFiles.Select(o => o.Path).ToList(),
+                OutputFile = outputPath
+            });
+        }
+        else
+        {
+            var linkRequest = new LinkRequest
+            {
+                ObjectFiles = aggregateObjectFiles.Select(o => o.Path).ToList(),
+                OutputFile = outputPath,
+                OutputType = target.Type,
+                Configuration = _context.Configuration,
+                Libraries = libraries,
+                SystemLibraries = systemLibraries,
+                Frameworks = frameworks,
+                GenerateDebugInfo = target.GenerateDebugInfo,
+                IncrementalLinking = target.UseIncrementalLinking,
+                EnableLTO = target.EnableLTO,
+                AdditionalFlags = linkerFlags
+            };
+            commandLine = BuildLinkCommandLine(linkRequest);
+        }
 
         var linkAction = new BuildAction
         {
@@ -797,6 +820,35 @@ public sealed class ActionGraphBuilder
         }
 
         return $"\"{_toolchain.LinkerPath}\" {string.Join(" ", args)}";
+    }
+
+    /// <summary>
+    /// Builds the archiver command line for a static library. This is a distinct tool from
+    /// the linker (lib.exe/ar, not link.exe/ld) - an archive just bundles object files, it
+    /// doesn't resolve symbols or take linker flags, so it must never share BuildLinkCommandLine.
+    /// </summary>
+    private string BuildArchiveCommandLine(ArchiveRequest request)
+    {
+        var args = new List<string>();
+
+        if (_context.Platform == TargetPlatform.Windows)
+        {
+            args.Add("/nologo");
+            args.Add($"/OUT:\"{request.OutputFile}\"");
+
+            foreach (var obj in request.ObjectFiles)
+                args.Add($"\"{obj}\"");
+        }
+        else
+        {
+            args.Add("rcs");
+            args.Add($"\"{request.OutputFile}\"");
+
+            foreach (var obj in request.ObjectFiles)
+                args.Add($"\"{obj}\"");
+        }
+
+        return $"\"{_toolchain.ArchiverPath}\" {string.Join(" ", args)}";
     }
 
     private string GenerateActionId() => $"action_{Interlocked.Increment(ref _actionCounter):D6}";
