@@ -4,6 +4,8 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Omen.Core.Configuration;
+using Omen.GUI.Models;
+using Omen.GUI.Services;
 using Omen.Platforms;
 
 namespace Omen.GUI.ViewModels;
@@ -38,6 +40,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         BuildConfiguration.Shipping
     ];
 
+    public ObservableCollection<ProjectTreeNode> ProjectTreeRoots { get; } = [];
+
+    private readonly GuiSettings _settings = GuiSettings.Load();
+
     public MainWindowViewModel()
     {
         foreach (var (platform, _, _) in PlatformFactory.GetAvailablePlatforms())
@@ -46,5 +52,29 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         SelectedPlatform = AvailablePlatforms.FirstOrDefault();
+
+        if (!string.IsNullOrEmpty(_settings.LastProjectPath) && Directory.Exists(_settings.LastProjectPath))
+        {
+            LoadProject(_settings.LastProjectPath);
+        }
+    }
+
+    public void LoadProject(string path)
+    {
+        ProjectTreeRoots.Clear();
+        ProjectTreeRoots.Add(ProjectTreeNode.BuildTree(path));
+
+        ProjectPath = path;
+        StatusText = $"Project: {Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar))}";
+
+        _settings.LastProjectPath = path;
+        _settings.Save();
+    }
+
+    public void CloseProject()
+    {
+        ProjectTreeRoots.Clear();
+        ProjectPath = null;
+        StatusText = "No project open";
     }
 }

@@ -3,6 +3,7 @@
 
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Omen.GUI.ViewModels;
 
 namespace Omen.GUI.Views;
@@ -16,15 +17,25 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
-    private void OnOpenProjectClick(object? sender, RoutedEventArgs e)
+    private async void OnOpenProjectClick(object? sender, RoutedEventArgs e)
     {
-        // Task 7: opens a folder picker and calls ViewModel.LoadProject(path).
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Open Omen Project",
+            AllowMultiple = false
+        });
+
+        var folder = folders.FirstOrDefault();
+        if (folder?.TryGetLocalPath() is { } path)
+        {
+            ViewModel.LoadProject(path);
+        }
     }
 
-    private void OnCloseProjectClick(object? sender, RoutedEventArgs e)
-    {
-        // Task 7.
-    }
+    private void OnCloseProjectClick(object? sender, RoutedEventArgs e) => ViewModel.CloseProject();
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => Close();
 
