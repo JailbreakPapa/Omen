@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Omen.GUI.ViewModels"
+        xmlns:conv="using:Omen.GUI.Converters"
         x:Class="Omen.GUI.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Omen Build System"
@@ -52,12 +53,22 @@
             </Grid>
         </Border>
 
-        <TreeView ItemsSource="{Binding ProjectTreeRoots}">
-            <TreeView.ItemTemplate>
-                <TreeDataTemplate ItemsSource="{Binding Children}">
-                    <TextBlock Text="{Binding Name}" />
-                </TreeDataTemplate>
-            </TreeView.ItemTemplate>
-        </TreeView>
+        <Grid ColumnDefinitions="250,*">
+            <TreeView Grid.Column="0" ItemsSource="{Binding ProjectTreeRoots}">
+                <TreeView.ItemTemplate>
+                    <TreeDataTemplate ItemsSource="{Binding Children}">
+                        <TextBlock Text="{Binding Name}" />
+                    </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+
+            <ListBox Grid.Column="1" ItemsSource="{Binding OutputLines}" FontFamily="Cascadia Code,Consolas,monospace" FontSize="12">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Text}" Foreground="{Binding Level, Converter={x:Static conv:OutputLevelToBrushConverter.Instance}}" TextWrapping="NoWrap" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
     </DockPanel>
 </Window>

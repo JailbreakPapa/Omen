@@ -48,25 +48,13 @@ public partial class MainWindow : Window
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => Close();
 
-    private void OnBuildClick(object? sender, RoutedEventArgs e)
-    {
-        // Task 8: calls ViewModel.BuildAsync().
-    }
+    private async void OnBuildClick(object? sender, RoutedEventArgs e) => await ViewModel.BuildAsync();
 
-    private void OnRebuildClick(object? sender, RoutedEventArgs e)
-    {
-        // Task 8: calls ViewModel.RebuildAsync().
-    }
+    private async void OnRebuildClick(object? sender, RoutedEventArgs e) => await ViewModel.RebuildAsync();
 
-    private void OnCleanClick(object? sender, RoutedEventArgs e)
-    {
-        // Task 8: calls ViewModel.CleanAsync().
-    }
+    private async void OnCleanClick(object? sender, RoutedEventArgs e) => await ViewModel.CleanAsync();
 
-    private void OnCancelClick(object? sender, RoutedEventArgs e)
-    {
-        // Task 8: calls ViewModel.CancelBuild().
-    }
+    private void OnCancelClick(object? sender, RoutedEventArgs e) => ViewModel.CancelBuild();
 
     private void OnGenerateVS2022Click(object? sender, RoutedEventArgs e)
     {

@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Omen.Core.Configuration;
+using Omen.Executors.Orchestration;
 using Omen.GUI.Models;
 using Omen.GUI.Services;
 using Omen.Platforms;
@@ -77,4 +78,82 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ProjectPath = null;
         StatusText = "No project open";
     }
+
+    public ObservableCollection<OutputLine> OutputLines { get; } = [];
+
+    private CancellationTokenSource? _buildCts;
+
+    public async Task BuildAsync()
+    {
+        if (ProjectPath == null || SelectedPlatform == null) return;
+
+        var targetFile = Directory.GetFiles(ProjectPath, "*.target.cs", SearchOption.AllDirectories).FirstOrDefault();
+        if (targetFile == null)
+        {
+            AppendLine("No .target.cs file found in this project.", OrchestratorEventLevel.Error);
+            return;
+        }
+
+        OutputLines.Clear();
+        IsBuilding = true;
+        ProgressValue = 0;
+        StatusText = "Building...";
+        _buildCts = new CancellationTokenSource();
+
+        var orchestrator = new BuildOrchestrator();
+        var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
+        var buildProgress = new Progress<Omen.Core.Interfaces.BuildProgress>(p => ProgressValue = p.PercentComplete);
+
+        var request = new BuildOrchestratorRequest
+        {
+            TargetFile = targetFile,
+            Platform = SelectedPlatform.Value,
+            Architecture = TargetArchitecture.X64,
+            Configuration = SelectedConfiguration
+        };
+
+        try
+        {
+            var result = await orchestrator.BuildAsync(request, eventsProgress, buildProgress, _buildCts.Token);
+            StatusText = result?.Success == true ? "Build succeeded" : "Build failed";
+        }
+        catch (OperationCanceledException)
+        {
+            AppendLine("Build cancelled.", OrchestratorEventLevel.Warning);
+            StatusText = "Build cancelled";
+        }
+        finally
+        {
+            IsBuilding = false;
+            _buildCts = null;
+        }
+    }
+
+    public async Task RebuildAsync()
+    {
+        await CleanAsync();
+        await BuildAsync();
+    }
+
+    public async Task CleanAsync()
+    {
+        if (ProjectPath == null) return;
+
+        OutputLines.Clear();
+        StatusText = "Cleaning...";
+
+        var orchestrator = new CleanOrchestrator();
+        var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
+
+        await orchestrator.CleanAsync(
+            new CleanOrchestratorRequest { ProjectRoot = ProjectPath, All = true },
+            eventsProgress);
+
+        StatusText = $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}";
+    }
+
+    public void CancelBuild() => _buildCts?.Cancel();
+
+    private void AppendLine(string text, OrchestratorEventLevel level) =>
+        OutputLines.Add(new OutputLine { Text = text, Level = level });
 }
