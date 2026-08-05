@@ -134,6 +134,24 @@ public sealed class BuildOrchestrator
 
         var result = await executor.ExecuteAsync(graph, buildProgress, ct);
 
+        // ParallelExecutor's own skip counter can't see actions this method already flipped
+        // from Pending to Skipped via the digest-based pre-pass above (its internal
+        // MarkUpToDateActionsAsSkipped() only counts actions still Pending) - recompute the
+        // true count from the graph, which (unlike callers) this method still has access to.
+        var trueSkippedCount = graph.Actions.Count(a => a.Status == ActionStatus.Skipped);
+        result = new BuildResult
+        {
+            Success = result.Success,
+            TotalDuration = result.TotalDuration,
+            TotalActions = result.TotalActions,
+            SuccessfulActions = result.SuccessfulActions,
+            FailedActions = result.FailedActions,
+            SkippedActions = trueSkippedCount,
+            CachedActions = result.CachedActions,
+            ActionResults = result.ActionResults,
+            OutputFiles = result.OutputFiles
+        };
+
         if (result.Success)
         {
             foreach (var action in graph.Actions.Where(a => a.Status is ActionStatus.Completed or ActionStatus.Skipped))

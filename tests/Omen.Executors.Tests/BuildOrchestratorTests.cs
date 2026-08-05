@@ -158,4 +158,62 @@ public class BuildOrchestratorTests : IDisposable
         result.Should().NotBeNull();
         result!.Success.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task BuildAsync_SecondBuild_ReportsTrueSkippedCountNotZero()
+    {
+        // Regression test: ParallelExecutor's own internal skip counter can't see actions
+        // BuildOrchestrator already flipped from Pending to Skipped via its digest-based
+        // pre-pass (that counter only counts actions still Pending at that point), so
+        // BuildResult.SkippedActions used to always come back 0 for a fully up-to-date
+        // rebuild. BuildOrchestrator must recompute the true count from the graph before
+        // returning, since callers (BuildCommand.cs) no longer have access to the graph
+        // themselves to work around it the way the pre-extraction code did.
+        var sourceDir = Path.Combine(_projectRoot, "Source", "App", "Private");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "Main.cpp"), "int main() { return 0; }\n");
+        File.WriteAllText(Path.Combine(_projectRoot, "Source", "App", "App.module.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppModule : ModuleRules
+            {
+                public AppModule(BuildContext context) : base(context)
+                {
+                    Type = ModuleType.Runtime;
+                    SourceDirectory = "Source/App";
+                }
+            }
+            """);
+        var targetFile = Path.Combine(_projectRoot, "App.target.cs");
+        File.WriteAllText(targetFile, """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppTarget : TargetRules
+            {
+                public AppTarget(BuildContext context) : base(context)
+                {
+                    Type = TargetType.Executable;
+                    LaunchModuleName = "AppModule";
+                    ExtraModules.Add("AppModule");
+                    UsePCHFiles = false;
+                    UseUnityBuild = false;
+                }
+            }
+            """);
+
+        var orchestrator = new BuildOrchestrator();
+
+        var first = await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null);
+        first.Should().NotBeNull();
+        first!.Success.Should().BeTrue();
+        first.TotalActions.Should().BeGreaterThan(0);
+
+        var second = await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null);
+
+        second.Should().NotBeNull();
+        second!.Success.Should().BeTrue();
+        second.SkippedActions.Should().Be(first.TotalActions);
+    }
 }
