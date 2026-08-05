@@ -2,6 +2,7 @@
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
 using System.CommandLine;
+using Omen.Executors.Orchestration;
 using Spectre.Console;
 
 namespace Omen.CLI.Commands;
@@ -47,66 +48,43 @@ public static class CleanCommand
         return command;
     }
     
-    public static Task<int> ExecuteCleanAsync(
+    public static async Task<int> ExecuteCleanAsync(
         string? target,
         string? platform,
         string? configuration,
         bool all = false)
     {
-        var workingDir = Environment.CurrentDirectory;
-        var intermediateDir = Path.Combine(workingDir, "Intermediate");
-        var binariesDir = Path.Combine(workingDir, "Binaries");
-        
-        var dirsToClean = new List<string>();
-        
-        if (all || (string.IsNullOrEmpty(platform) && string.IsNullOrEmpty(configuration)))
-        {
-            // Clean everything
-            if (Directory.Exists(intermediateDir))
-                dirsToClean.Add(intermediateDir);
-            if (Directory.Exists(binariesDir))
-                dirsToClean.Add(binariesDir);
-        }
-        else
-        {
-            // Clean specific platform/configuration
-            var pattern = $"{platform ?? "*"}_{configuration ?? "*"}";
-            
-            if (Directory.Exists(intermediateDir))
+        var orchestrator = new CleanOrchestrator();
+        var result = await orchestrator.CleanAsync(
+            new CleanOrchestratorRequest
             {
-                dirsToClean.AddRange(
-                    Directory.GetDirectories(intermediateDir, pattern));
-            }
-            
-            if (Directory.Exists(binariesDir))
-            {
-                dirsToClean.AddRange(
-                    Directory.GetDirectories(binariesDir, pattern));
-            }
-        }
-        
-        if (dirsToClean.Count == 0)
+                ProjectRoot = Environment.CurrentDirectory,
+                Platform = platform,
+                Configuration = configuration,
+                All = all
+            },
+            new Progress<OrchestratorEvent>(RenderEvent));
+
+        return result.DirectoriesFailed > 0 ? 1 : 0;
+    }
+
+    private static void RenderEvent(OrchestratorEvent evt)
+    {
+        var text = evt.Message.EscapeMarkup();
+        switch (evt.Level)
         {
-            AnsiConsole.MarkupLine("[yellow]Nothing to clean.[/]");
-            return Task.FromResult(0);
+            case OrchestratorEventLevel.Error:
+                AnsiConsole.MarkupLine($"  [red]{text}[/]");
+                break;
+            case OrchestratorEventLevel.Warning:
+                AnsiConsole.MarkupLine($"[yellow]{text}[/]");
+                break;
+            case OrchestratorEventLevel.Success:
+                AnsiConsole.MarkupLine($"[green]{text}[/]");
+                break;
+            default:
+                AnsiConsole.MarkupLine($"[blue]{text}[/]");
+                break;
         }
-        
-        AnsiConsole.MarkupLine($"[blue]Cleaning {dirsToClean.Count} directories...[/]");
-        
-        foreach (var dir in dirsToClean)
-        {
-            try
-            {
-                Directory.Delete(dir, recursive: true);
-                    AnsiConsole.MarkupLine($"  [green]✓[/] {Path.GetRelativePath(workingDir, dir).EscapeMarkup()}");
-            }
-            catch (Exception ex)
-            {
-                    AnsiConsole.MarkupLine($"  [red]✗[/] {Path.GetRelativePath(workingDir, dir).EscapeMarkup()}: {ex.Message.EscapeMarkup()}");
-            }
-        }
-        
-        AnsiConsole.MarkupLine("[green]Clean complete.[/]");
-        return Task.FromResult(0);
     }
 }
