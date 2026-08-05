@@ -2,12 +2,7 @@
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
 using System.CommandLine;
-using Omen.Core.Configuration;
-using Omen.Core.Generators;
-using Omen.Core.Graph;
-using Omen.Core.Implementations;
-using Omen.Core.Rules;
-using Omen.Platforms;
+using Omen.Executors.Orchestration;
 using Spectre.Console;
 
 namespace Omen.CLI.Commands;
@@ -49,390 +44,50 @@ public static class GenerateCommand
 
     private static async Task<int> GenerateProjectFilesAsync(string ide)
     {
-        var workingDir = Environment.CurrentDirectory;
-
-        AnsiConsole.MarkupLine($"[blue]Generating project files for {ide.EscapeMarkup()}...[/]");
-
-        // Find and compile rules
-        var targetFiles = Directory.GetFiles(workingDir, "*.target.cs", SearchOption.AllDirectories);
-        if (targetFiles.Length == 0)
+        var ideKind = ide switch
         {
-            AnsiConsole.MarkupLine("[red]Error:[/] No target file found. Create a .target.cs file first.");
-            return 1;
-        }
-
-        var ruleCompiler = new RuleCompiler(Path.Combine(workingDir, "Intermediate", "RuleCache"));
-        CompiledRules compiledRules;
-
-        try
-        {
-            await AnsiConsole.Status()
-                .StartAsync("Compiling build rules...", async ctx =>
-                {
-                    compiledRules = await ruleCompiler.CompileRulesAsync(workingDir);
-                });
-
-            compiledRules = await ruleCompiler.CompileRulesAsync(workingDir);
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine($"[red]Error compiling rules:[/] {ex.Message.EscapeMarkup()}");
-            return 1;
-        }
-
-        // Create a build context for instantiation
-        var context = new BuildContext
-        {
-            Platform = TargetPlatform.Windows,
-            Architecture = TargetArchitecture.X64,
-            Configuration = BuildConfiguration.Development,
-            ProjectRoot = workingDir,
-            IntermediateDirectory = Path.Combine(workingDir, "Intermediate"),
-            OutputDirectory = Path.Combine(workingDir, "Binaries")
+            "vs2019" => IdeKind.VS2019,
+            "vs2022" => IdeKind.VS2022,
+            "vs2026" => IdeKind.VS2026,
+            "vscode" => IdeKind.VSCode,
+            "cmake" => IdeKind.CMake,
+            "rider" => IdeKind.Rider,
+            _ => (IdeKind?)null
         };
 
-        var targets = compiledRules.CreateTargetRules(context);
-        var modules = compiledRules.CreateModuleRules(context);
-
-        if (targets.Count == 0)
+        if (ideKind == null)
         {
-            AnsiConsole.MarkupLine("[red]Error:[/] No targets found.");
+            AnsiConsole.MarkupLine($"[red]Error:[/] Unknown IDE '{ide.EscapeMarkup()}'");
+            AnsiConsole.MarkupLine("[dim]Supported: vs2019, vs2022, vs2026, vscode, cmake, rider[/]");
             return 1;
         }
 
-        var target = targets.First();
+        var orchestrator = new ProjectGenerationOrchestrator();
+        var success = await orchestrator.GenerateAsync(
+            new ProjectGenerationOrchestratorRequest { ProjectRoot = Environment.CurrentDirectory, Ide = ideKind.Value },
+            new Progress<OrchestratorEvent>(RenderEvent));
 
-        // Generate based on IDE
-        switch (ide)
+        return success ? 0 : 1;
+    }
+
+    private static void RenderEvent(OrchestratorEvent evt)
+    {
+        var text = evt.Message.EscapeMarkup();
+        switch (evt.Level)
         {
-            case "vs2019":
-                await GenerateVisualStudioAsync(workingDir, target, modules, VisualStudioGenerator.VisualStudioVersion.VS2019);
+            case OrchestratorEventLevel.Error:
+                AnsiConsole.MarkupLine($"[red]Error:[/] {text}");
                 break;
-
-            case "vs2022":
-                await GenerateVisualStudioAsync(workingDir, target, modules, VisualStudioGenerator.VisualStudioVersion.VS2022);
+            case OrchestratorEventLevel.Warning:
+                AnsiConsole.MarkupLine($"[yellow]{text}[/]");
                 break;
-
-            case "vs2026":
-                await GenerateVisualStudioAsync(workingDir, target, modules, VisualStudioGenerator.VisualStudioVersion.VS2026);
+            case OrchestratorEventLevel.Success:
+                AnsiConsole.MarkupLine($"[green]✓[/] {text}");
                 break;
-
-            case "vscode":
-                await GenerateVSCodeAsync(workingDir, target, modules);
-                break;
-
-            case "cmake":
-                await GenerateCMakeAsync(workingDir, target, modules);
-                break;
-
-            case "rider":
-                // Rider can use CMake projects
-                await GenerateCMakeAsync(workingDir, target, modules);
-                AnsiConsole.MarkupLine("[dim]Rider can open the generated CMakeLists.txt[/]");
-                break;
-
             default:
-                AnsiConsole.MarkupLine($"[red]Error:[/] Unknown IDE '{ide.EscapeMarkup()}'");
-                AnsiConsole.MarkupLine("[dim]Supported: vs2019, vs2022, vs2026, vscode, cmake, rider[/]");
-                return 1;
+                AnsiConsole.MarkupLine($"[dim]{text}[/]");
+                break;
         }
-
-        // Emit compile_commands.json for clangd/clang-tidy/editors other than the one
-        // just generated for, sourced from the same action graph a real build would use.
-        var toolchain = PlatformFactory.CreateToolchain(context.Platform, context.Architecture);
-        if (toolchain != null)
-        {
-            var digestCalculator = new Sha256DigestCalculator();
-            var graphBuilder = new ActionGraphBuilder(context, toolchain, digestCalculator);
-            var graph = graphBuilder.Build(target, modules);
-            CompileCommandsWriter.Write(graph, Path.Combine(workingDir, "compile_commands.json"));
-            AnsiConsole.MarkupLine("[green]✓[/] Generated compile_commands.json");
-        }
-
-        return 0;
-    }
-
-    private static async Task GenerateVisualStudioAsync(
-        string projectRoot,
-        TargetRules target,
-        IReadOnlyList<ModuleRules> modules,
-        VisualStudioGenerator.VisualStudioVersion version)
-    {
-        var generator = new VisualStudioGenerator(projectRoot, version);
-        
-        await AnsiConsole.Status()
-            .StartAsync("Generating Visual Studio solution...", async ctx =>
-            {
-                await generator.GenerateAsync(target, modules);
-            });
-
-        var solutionPath = Path.Combine(projectRoot, $"{target.Name}.sln");
-        AnsiConsole.MarkupLine($"[green]✓[/] Generated Visual Studio solution: {solutionPath.EscapeMarkup()}");
-        
-        var projectCount = modules.Count;
-        AnsiConsole.MarkupLine($"[dim]  • {projectCount} project(s) generated[/]");
-        AnsiConsole.MarkupLine($"[dim]  • Project files in: Intermediate/ProjectFiles/[/]");
-    }
-
-    private static async Task GenerateVSCodeAsync(
-        string projectRoot,
-        TargetRules target,
-        IReadOnlyList<ModuleRules> modules)
-    {
-        var vscodeDir = Path.Combine(projectRoot, ".vscode");
-        Directory.CreateDirectory(vscodeDir);
-
-        // Generate c_cpp_properties.json
-        var includePaths = new List<string> { "${workspaceFolder}/**" };
-        foreach (var module in modules)
-        {
-            var sourceDir = module.SourceDirectory ?? $"Source/{module.Name}";
-            includePaths.Add($"${{workspaceFolder}}/{sourceDir}/**");
-        }
-
-        var cppProperties = $$"""
-        {
-            "configurations": [
-                {
-                    "name": "Win32",
-                    "includePath": [
-                        {{string.Join(",\n                        ", includePaths.Select(p => $"\"{p}\""))}}
-                    ],
-                    "defines": [
-                        "_DEBUG",
-                        "UNICODE",
-                        "_UNICODE"
-                    ],
-                    "windowsSdkVersion": "10.0.22621.0",
-                    "compilerPath": "cl.exe",
-                    "cStandard": "c17",
-                    "cppStandard": "c++20",
-                    "intelliSenseMode": "windows-msvc-x64"
-                },
-                {
-                    "name": "Linux",
-                    "includePath": [
-                        {{string.Join(",\n                        ", includePaths.Select(p => $"\"{p}\""))}}
-                    ],
-                    "defines": [],
-                    "compilerPath": "/usr/bin/clang",
-                    "cStandard": "c17",
-                    "cppStandard": "c++20",
-                    "intelliSenseMode": "linux-clang-x64"
-                }
-            ],
-            "version": 4
-        }
-        """;
-
-        await File.WriteAllTextAsync(Path.Combine(vscodeDir, "c_cpp_properties.json"), cppProperties);
-
-        // Generate tasks.json
-        var tasks = $$"""
-        {
-            "version": "2.0.0",
-            "tasks": [
-                {
-                    "label": "Omen: Build (Debug)",
-                    "type": "shell",
-                    "command": "omen",
-                    "args": ["build", "-c", "Debug"],
-                    "group": {
-                        "kind": "build",
-                        "isDefault": true
-                    },
-                    "problemMatcher": ["$msCompile"]
-                },
-                {
-                    "label": "Omen: Build (Development)",
-                    "type": "shell",
-                    "command": "omen",
-                    "args": ["build", "-c", "Development"],
-                    "group": "build",
-                    "problemMatcher": ["$msCompile"]
-                },
-                {
-                    "label": "Omen: Build (Shipping)",
-                    "type": "shell",
-                    "command": "omen",
-                    "args": ["build", "-c", "Shipping"],
-                    "group": "build",
-                    "problemMatcher": ["$msCompile"]
-                },
-                {
-                    "label": "Omen: Clean",
-                    "type": "shell",
-                    "command": "omen",
-                    "args": ["clean"],
-                    "problemMatcher": []
-                },
-                {
-                    "label": "Omen: Rebuild",
-                    "type": "shell",
-                    "command": "omen",
-                    "args": ["rebuild", "-c", "Debug"],
-                    "problemMatcher": ["$msCompile"]
-                }
-            ]
-        }
-        """;
-
-        await File.WriteAllTextAsync(Path.Combine(vscodeDir, "tasks.json"), tasks);
-
-        // Generate launch.json
-        var launch = $$"""
-        {
-            "version": "0.2.0",
-            "configurations": [
-                {
-                    "name": "{{target.Name}} (Debug)",
-                    "type": "cppvsdbg",
-                    "request": "launch",
-                    "program": "${workspaceFolder}/Binaries/Windows_Debug/{{target.Name}}.exe",
-                    "args": [],
-                    "stopAtEntry": false,
-                    "cwd": "${workspaceFolder}",
-                    "environment": [],
-                    "console": "integratedTerminal",
-                    "preLaunchTask": "Omen: Build (Debug)"
-                },
-                {
-                    "name": "{{target.Name}} (Development)",
-                    "type": "cppvsdbg",
-                    "request": "launch",
-                    "program": "${workspaceFolder}/Binaries/Windows_Development/{{target.Name}}.exe",
-                    "args": [],
-                    "stopAtEntry": false,
-                    "cwd": "${workspaceFolder}",
-                    "environment": [],
-                    "console": "integratedTerminal",
-                    "preLaunchTask": "Omen: Build (Development)"
-                }
-            ]
-        }
-        """;
-
-        await File.WriteAllTextAsync(Path.Combine(vscodeDir, "launch.json"), launch);
-
-        AnsiConsole.MarkupLine($"[green]✓[/] Generated VS Code configuration in .vscode/");
-        AnsiConsole.MarkupLine("[dim]  • c_cpp_properties.json (IntelliSense)[/]");
-        AnsiConsole.MarkupLine("[dim]  • tasks.json (Build tasks)[/]");
-        AnsiConsole.MarkupLine("[dim]  • launch.json (Debug configurations)[/]");
-    }
-
-    private static async Task GenerateCMakeAsync(
-        string projectRoot,
-        TargetRules target,
-        IReadOnlyList<ModuleRules> modules)
-    {
-        var sb = new System.Text.StringBuilder();
-
-        sb.AppendLine("# Generated by Omen Build System");
-        sb.AppendLine("cmake_minimum_required(VERSION 3.20)");
-        sb.AppendLine($"project({target.Name} CXX)");
-        sb.AppendLine();
-        sb.AppendLine("set(CMAKE_CXX_STANDARD 20)");
-        sb.AppendLine("set(CMAKE_CXX_STANDARD_REQUIRED ON)");
-        sb.AppendLine("set(CMAKE_EXPORT_COMPILE_COMMANDS ON)");
-        sb.AppendLine();
-
-        foreach (var module in modules)
-        {
-            var sourceDir = module.SourceDirectory ?? $"Source/{module.Name}";
-            var fullSourceDir = Path.Combine(projectRoot, sourceDir);
-
-            sb.AppendLine($"# Module: {module.Name}");
-
-            // Collect source files
-            if (Directory.Exists(fullSourceDir))
-            {
-                var sources = Directory.GetFiles(fullSourceDir, "*.cpp", SearchOption.AllDirectories)
-                    .Concat(Directory.GetFiles(fullSourceDir, "*.c", SearchOption.AllDirectories))
-                    .Select(f => Path.GetRelativePath(projectRoot, f).Replace('\\', '/'))
-                    .ToList();
-
-                if (sources.Count > 0)
-                {
-                    var libType = module.Type == ModuleType.Runtime ? "SHARED" : "STATIC";
-                    sb.AppendLine($"add_library({module.Name} {libType}");
-                    foreach (var source in sources)
-                    {
-                        sb.AppendLine($"    {source}");
-                    }
-                    sb.AppendLine(")");
-                    sb.AppendLine();
-
-                    // Include directories
-                    sb.AppendLine($"target_include_directories({module.Name} PUBLIC");
-                    sb.AppendLine($"    {sourceDir}");
-                    foreach (var inc in module.PublicIncludePaths)
-                    {
-                        sb.AppendLine($"    {sourceDir}/{inc}");
-                    }
-                    sb.AppendLine(")");
-
-                    // Private includes
-                    if (module.PrivateIncludePaths.Count > 0)
-                    {
-                        sb.AppendLine($"target_include_directories({module.Name} PRIVATE");
-                        foreach (var inc in module.PrivateIncludePaths)
-                        {
-                            sb.AppendLine($"    {sourceDir}/{inc}");
-                        }
-                        sb.AppendLine(")");
-                    }
-
-                    // Definitions
-                    if (module.PublicDefinitions.Count > 0 || module.PrivateDefinitions.Count > 0)
-                    {
-                        sb.AppendLine($"target_compile_definitions({module.Name}");
-                        foreach (var def in module.PublicDefinitions)
-                        {
-                            sb.AppendLine($"    PUBLIC {def}");
-                        }
-                        foreach (var def in module.PrivateDefinitions)
-                        {
-                            sb.AppendLine($"    PRIVATE {def}");
-                        }
-                        sb.AppendLine(")");
-                    }
-
-                    // Dependencies
-                    if (module.PublicDependencies.Count > 0)
-                    {
-                        sb.AppendLine($"target_link_libraries({module.Name} PUBLIC");
-                        foreach (var dep in module.PublicDependencies)
-                        {
-                            sb.AppendLine($"    {dep}");
-                        }
-                        sb.AppendLine(")");
-                    }
-
-                    sb.AppendLine();
-                }
-            }
-        }
-
-        // Create main executable
-        sb.AppendLine($"# Main executable");
-        sb.AppendLine($"add_executable({target.Name}_exe");
-        sb.AppendLine($"    # Add your main.cpp here");
-        sb.AppendLine(")");
-        sb.AppendLine();
-        sb.AppendLine($"target_link_libraries({target.Name}_exe PRIVATE");
-        foreach (var module in modules)
-        {
-            sb.AppendLine($"    {module.Name}");
-        }
-        sb.AppendLine(")");
-        sb.AppendLine();
-        sb.AppendLine($"set_target_properties({target.Name}_exe PROPERTIES OUTPUT_NAME \"{target.Name}\")");
-
-        await File.WriteAllTextAsync(Path.Combine(projectRoot, "CMakeLists.txt"), sb.ToString());
-
-        AnsiConsole.MarkupLine($"[green]✓[/] Generated CMakeLists.txt");
-        AnsiConsole.MarkupLine($"[dim]  • {modules.Count} module(s) configured[/]");
-        AnsiConsole.MarkupLine("[dim]  • Use: cmake -B build && cmake --build build[/]");
     }
 
     private static Command CreateModuleCommand()
