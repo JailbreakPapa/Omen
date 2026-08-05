@@ -32,9 +32,19 @@ public sealed class ProjectTreeNode
 
     private static void Populate(ProjectTreeNode parent, string path)
     {
-        var directories = Directory.EnumerateDirectories(path)
-            .Where(d => !SkipDirectoryNames.Contains(Path.GetFileName(d)) && !Path.GetFileName(d).StartsWith('.'))
-            .OrderBy(d => d);
+        string[] directories;
+        try
+        {
+            directories = Directory.EnumerateDirectories(path)
+                .Where(d => !SkipDirectoryNames.Contains(Path.GetFileName(d)) && !Path.GetFileName(d).StartsWith('.'))
+                .OrderBy(d => d)
+                .ToArray();
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            // A locked/permission-denied subdirectory shouldn't abort the whole tree - skip it.
+            directories = [];
+        }
 
         foreach (var dir in directories)
         {
@@ -43,9 +53,18 @@ public sealed class ProjectTreeNode
             Populate(node, dir);
         }
 
-        var files = Directory.EnumerateFiles(path)
-            .Where(IsRelevantFile)
-            .OrderBy(f => f);
+        string[] files;
+        try
+        {
+            files = Directory.EnumerateFiles(path)
+                .Where(IsRelevantFile)
+                .OrderBy(f => f)
+                .ToArray();
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            files = [];
+        }
 
         foreach (var file in files)
         {

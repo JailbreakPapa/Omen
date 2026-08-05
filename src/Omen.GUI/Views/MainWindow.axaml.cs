@@ -31,7 +31,16 @@ public partial class MainWindow : Window
         var folder = folders.FirstOrDefault();
         if (folder?.TryGetLocalPath() is { } path)
         {
-            ViewModel.LoadProject(path);
+            try
+            {
+                ViewModel.LoadProject(path);
+            }
+            catch
+            {
+                // Last-resort guard: an unexpected failure anywhere in the load path must not
+                // crash the app. No UI messaging yet (output pane arrives in Task 8) - leave
+                // the project unopened.
+            }
         }
     }
 
