@@ -10,6 +10,7 @@ using Omen.Core.Implementations;
 using Omen.Core.Interfaces;
 using Omen.Core.Rules;
 using Omen.Executors;
+using Omen.Executors.Orchestration;
 using Omen.Platforms;
 using Spectre.Console;
 
@@ -106,152 +107,52 @@ public static class BuildCommand
         bool dryRun)
     {
         var stopwatch = Stopwatch.StartNew();
-        
+
         AnsiConsole.Write(new FigletText("OMEN").Color(Color.Orange1));
         AnsiConsole.MarkupLine("[bold]Omen Build System[/]\n");
-        
-        // Resolve target
+
         var targetFile = ResolveTargetFile(target);
         if (targetFile == null)
         {
             AnsiConsole.MarkupLine("[red]Error:[/] No target file found. Create a .target.cs file or specify a target.");
             return 1;
         }
-        
-        var workingDir = Path.GetDirectoryName(targetFile) ?? Environment.CurrentDirectory;
-        
-        // Parse platform
+
         var targetPlatform = ParsePlatform(platform);
         if (targetPlatform == null)
         {
             AnsiConsole.MarkupLine($"[red]Error:[/] Invalid platform '{platform}'");
             return 1;
         }
-        
+
         var targetArch = ParseArchitecture(arch);
         var buildConfig = ParseConfiguration(configuration);
-        
+
         AnsiConsole.MarkupLine($"[blue]Target:[/] {Path.GetFileName(targetFile)}");
         AnsiConsole.MarkupLine($"[blue]Platform:[/] {targetPlatform}");
         AnsiConsole.MarkupLine($"[blue]Architecture:[/] {targetArch}");
         AnsiConsole.MarkupLine($"[blue]Configuration:[/] {buildConfig}");
         AnsiConsole.WriteLine();
-        
-        // Create build context first (needed for rule instantiation)
-        var context = new BuildContext
-        {
-            Platform = targetPlatform.Value,
-            Architecture = targetArch,
-            Configuration = buildConfig,
-            ProjectRoot = workingDir,
-            IntermediateDirectory = Path.Combine(workingDir, "Intermediate", $"{targetPlatform}_{buildConfig}"),
-            OutputDirectory = Path.Combine(workingDir, "Binaries", $"{targetPlatform}_{buildConfig}"),
-            ParallelJobs = jobs ?? Environment.ProcessorCount,
-            UseDistributedBuild = distribute
-        };
-        
-        // Compile rules
-        var ruleCompiler = new RuleCompiler(Path.Combine(workingDir, "Intermediate", "RuleCache"));
-        
-        CompiledRules compiledRules;
-        try
-        {
-            await AnsiConsole.Status()
-                .StartAsync("Compiling build rules...", async ctx =>
-                {
-                    compiledRules = await ruleCompiler.CompileRulesAsync(workingDir);
-                });
-            
-            compiledRules = await ruleCompiler.CompileRulesAsync(workingDir);
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine($"[red]Error compiling rules:[/] {ex.Message.EscapeMarkup()}");
-            return 1;
-        }
-        
-        // Setup platform toolchain
-        var sdk = PlatformFactory.GetSDK(targetPlatform.Value);
-        if (sdk == null)
-        {
-            AnsiConsole.MarkupLine($"[red]Error:[/] No SDK found for platform {targetPlatform}");
-            return 1;
-        }
-        
-        var toolchain = PlatformFactory.CreateToolchain(targetPlatform.Value, targetArch);
-        if (toolchain == null)
-        {
-            AnsiConsole.MarkupLine($"[red]Error:[/] Could not create toolchain for {targetPlatform}/{targetArch}");
-            return 1;
-        }
-        
-        // Get targets and modules from compiled rules
-        var targets = compiledRules.CreateTargetRules(context);
-        var modules = compiledRules.CreateModuleRules(context);
-        
-        AnsiConsole.MarkupLine($"[green]Found {targets.Count} target(s), {modules.Count} module(s)[/]");
-
-        try
-        {
-            LayeringValidator.Validate(modules);
-        }
-        catch (LayeringViolationException ex)
-        {
-            AnsiConsole.MarkupLine($"[red]Layering violation:[/] {ex.Message.EscapeMarkup()}");
-            return 1;
-        }
-
-        if (modules.Count == 0)
-        {
-            AnsiConsole.MarkupLine("[yellow]No modules to build.[/]");
-            return 0;
-        }
-        
-        var targetRules = targets.FirstOrDefault();
-        if (targetRules == null)
-        {
-            AnsiConsole.MarkupLine("[red]Error:[/] No target found.");
-            return 1;
-        }
-        
-        // Build action graph
-        var digestCalculator = new Sha256DigestCalculator();
-        var graphBuilder = new ActionGraphBuilder(context, toolchain, digestCalculator);
-        var graph = graphBuilder.Build(targetRules, modules);
-
-        var digestStore = new ActionDigestStore(Path.Combine(context.IntermediateDirectory, ".buildtool", "digests.json"));
-        var skipped = graph.MarkUpToDateActionsAsSkipped(digestCalculator, digestStore);
-        if (skipped > 0)
-        {
-            AnsiConsole.MarkupLine($"[cyan]{skipped} action(s) already up to date (unchanged command line), skipped.[/]");
-        }
-
-        AnsiConsole.MarkupLine($"[green]Created action graph with {graph.Actions.Count} actions[/]\n");
 
         if (dryRun)
         {
-            foreach (var action in graph.GetTopologicalOrder())
-            {
-                AnsiConsole.WriteLine($"[{action.Type}] {action.ModuleName ?? "(target)"}: {action.CommandLine}");
-            }
-            return 0;
+            return await ExecuteDryRunAsync(targetFile, targetPlatform.Value, targetArch, buildConfig, jobs);
         }
 
-        if (graph.Actions.Count == 0)
+        var request = new BuildOrchestratorRequest
         {
-            AnsiConsole.MarkupLine("[green]Nothing to build - up to date![/]");
-            return 0;
-        }
-        
-        // Create executor
-        var actionCache = new Distributed.Cache.LocalActionCache(
-            Path.Combine(context.IntermediateDirectory, ".cache"));
-        
-        var executor = new ParallelExecutor(jobs, actionCache);
-        
-        // Execute build with progress
-        BuildResult result = null!;
-        
+            TargetFile = targetFile,
+            Platform = targetPlatform.Value,
+            Architecture = targetArch,
+            Configuration = buildConfig,
+            Jobs = jobs
+        };
+        var orchestrator = new BuildOrchestrator();
+
+        var eventProgress = new Progress<OrchestratorEvent>(RenderEvent);
+
+        BuildResult? result = null;
+
         await AnsiConsole.Progress()
             .AutoClear(false)
             .Columns(
@@ -261,74 +162,127 @@ public static class BuildCommand
                 new SpinnerColumn())
             .StartAsync(async ctx =>
             {
-                var buildTask = ctx.AddTask("[green]Building[/]", maxValue: graph.Actions.Count);
-                
-                var progress = new Progress<BuildProgress>(p =>
+                var buildTask = ctx.AddTask("[green]Building[/]", maxValue: 1);
+                var buildProgress = new Progress<BuildProgress>(p =>
                 {
+                    buildTask.MaxValue = p.TotalActions == 0 ? 1 : p.TotalActions;
                     buildTask.Value = p.CompletedActions;
                     buildTask.Description = $"[green]Building[/] ({p.ActiveActions} active)";
                 });
-                
-                result = await executor.ExecuteAsync(graph, progress);
-                
+
+                result = await orchestrator.BuildAsync(request, eventProgress, buildProgress);
+
                 buildTask.Value = buildTask.MaxValue;
             });
-        
+
         stopwatch.Stop();
-        
-        // Display results
+
         AnsiConsole.WriteLine();
-        
+
+        if (result == null)
+        {
+            return 1;
+        }
+
         if (result.Success)
         {
             var table = new Table();
             table.AddColumn("Metric");
             table.AddColumn("Value");
-            
+
             table.AddRow("Status", "[green]SUCCESS[/]");
             table.AddRow("Total Actions", result.TotalActions.ToString());
             table.AddRow("Compiled", result.SuccessfulActions.ToString());
             table.AddRow("Cached", $"[cyan]{result.CachedActions}[/]");
-            var actuallySkipped = graph.Actions.Count(a => a.Status == ActionStatus.Skipped);
-            table.AddRow("Skipped", actuallySkipped.ToString());
+            table.AddRow("Skipped", result.SkippedActions.ToString());
             table.AddRow("Duration", $"{stopwatch.Elapsed.TotalSeconds:F2}s");
-            
+
             AnsiConsole.Write(table);
-
-            foreach (var action in graph.Actions.Where(a => a.Status is ActionStatus.Completed or ActionStatus.Skipped))
-            {
-                if (action.Outputs.Count == 0 || !File.Exists(action.Outputs[0].Path)) continue;
-                digestStore.Set(action.Outputs[0].Path, action.ComputeDigest(digestCalculator));
-            }
-            digestStore.Save();
-
             return 0;
         }
-        else
+
+        return 1;
+    }
+
+    private static void RenderEvent(OrchestratorEvent evt)
+    {
+        var text = evt.Message.EscapeMarkup();
+        switch (evt.Level)
         {
-            AnsiConsole.MarkupLine("[red]BUILD FAILED[/]\n");
-
-            foreach (var actionResult in result.ActionResults.Where(r => !r.Success))
-            {
-                AnsiConsole.MarkupLine($"[red]Failed:[/] {actionResult.Action.Description.EscapeMarkup()}");
-                AnsiConsole.MarkupLine($"[dim]Command:[/] {actionResult.Action.CommandLine.EscapeMarkup()}");
-                AnsiConsole.MarkupLine($"[dim]Exit code:[/] {actionResult.ExitCode}");
-
-                if (!string.IsNullOrEmpty(actionResult.StandardOutput))
-                {
-                    AnsiConsole.MarkupLine("[dim]stdout:[/] " + actionResult.StandardOutput.EscapeMarkup());
-                }
-
-                if (!string.IsNullOrEmpty(actionResult.StandardError))
-                {
-                    AnsiConsole.MarkupLine("[dim]stderr:[/] " + actionResult.StandardError.EscapeMarkup());
-                }
-            }
-            
-            return 1;
+            case OrchestratorEventLevel.Error:
+                AnsiConsole.MarkupLine($"[red]{text}[/]");
+                break;
+            case OrchestratorEventLevel.Warning:
+                AnsiConsole.MarkupLine($"[yellow]{text}[/]");
+                break;
+            case OrchestratorEventLevel.Success:
+                AnsiConsole.MarkupLine($"[green]{text}[/]");
+                break;
+            default:
+                AnsiConsole.MarkupLine($"[dim]{text}[/]");
+                break;
         }
     }
-    
+
+    private static async Task<int> ExecuteDryRunAsync(
+        string targetFile,
+        TargetPlatform targetPlatform,
+        TargetArchitecture targetArch,
+        BuildConfiguration buildConfig,
+        int? jobs)
+    {
+        var workingDir = Path.GetDirectoryName(targetFile) ?? Environment.CurrentDirectory;
+
+        var context = new BuildContext
+        {
+            Platform = targetPlatform,
+            Architecture = targetArch,
+            Configuration = buildConfig,
+            ProjectRoot = workingDir,
+            IntermediateDirectory = Path.Combine(workingDir, "Intermediate", $"{targetPlatform}_{buildConfig}"),
+            OutputDirectory = Path.Combine(workingDir, "Binaries", $"{targetPlatform}_{buildConfig}"),
+            ParallelJobs = jobs ?? Environment.ProcessorCount
+        };
+
+        var ruleCompiler = new RuleCompiler(Path.Combine(workingDir, "Intermediate", "RuleCache"));
+        CompiledRules compiledRules;
+        try
+        {
+            compiledRules = await ruleCompiler.CompileRulesAsync(workingDir);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error compiling rules:[/] {ex.Message.EscapeMarkup()}");
+            return 1;
+        }
+
+        var toolchain = PlatformFactory.CreateToolchain(targetPlatform, targetArch);
+        if (toolchain == null)
+        {
+            AnsiConsole.MarkupLine($"[red]Error:[/] Could not create toolchain for {targetPlatform}/{targetArch}");
+            return 1;
+        }
+
+        var targets = compiledRules.CreateTargetRules(context);
+        var modules = compiledRules.CreateModuleRules(context);
+        var targetRules = targets.FirstOrDefault();
+        if (targetRules == null)
+        {
+            AnsiConsole.MarkupLine("[red]Error:[/] No target found.");
+            return 1;
+        }
+
+        var digestCalculator = new Sha256DigestCalculator();
+        var graphBuilder = new ActionGraphBuilder(context, toolchain, digestCalculator);
+        var graph = graphBuilder.Build(targetRules, modules);
+
+        foreach (var action in graph.GetTopologicalOrder())
+        {
+            AnsiConsole.WriteLine($"[{action.Type}] {action.ModuleName ?? "(target)"}: {action.CommandLine}");
+        }
+        return 0;
+    }
+
     private static string? ResolveTargetFile(string? target)
     {
         var searchDir = Environment.CurrentDirectory;
