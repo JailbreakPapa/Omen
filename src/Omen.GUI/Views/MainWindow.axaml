@@ -5,5 +5,53 @@
         x:DataType="vm:MainWindowViewModel"
         Title="Omen Build System"
         Width="1200" Height="800">
-    <TextBlock Text="Omen Build System" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20" />
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Open Project..." Click="OnOpenProjectClick" />
+                <MenuItem Header="_Close Project" Click="OnCloseProjectClick" />
+                <Separator />
+                <MenuItem Header="E_xit" Click="OnExitClick" />
+            </MenuItem>
+            <MenuItem Header="_Build">
+                <MenuItem Header="_Build" Click="OnBuildClick" />
+                <MenuItem Header="_Rebuild" Click="OnRebuildClick" />
+                <MenuItem Header="_Clean" Click="OnCleanClick" />
+                <Separator />
+                <MenuItem Header="C_ancel" Click="OnCancelClick" />
+            </MenuItem>
+            <MenuItem Header="_Project">
+                <MenuItem Header="_Generate Project Files">
+                    <MenuItem Header="Visual Studio 2022" Click="OnGenerateVS2022Click" />
+                    <MenuItem Header="Visual Studio 2019" Click="OnGenerateVS2019Click" />
+                    <Separator />
+                    <MenuItem Header="Visual Studio Code" Click="OnGenerateVSCodeClick" />
+                    <MenuItem Header="CMake" Click="OnGenerateCMakeClick" />
+                </MenuItem>
+            </MenuItem>
+        </Menu>
+
+        <Border DockPanel.Dock="Top" Padding="8" BorderThickness="0,0,0,1" BorderBrush="Gray">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Open" Click="OnOpenProjectClick" />
+                <TextBlock Text="Platform:" VerticalAlignment="Center" />
+                <ComboBox ItemsSource="{Binding AvailablePlatforms}" SelectedItem="{Binding SelectedPlatform}" MinWidth="100" />
+                <TextBlock Text="Config:" VerticalAlignment="Center" />
+                <ComboBox ItemsSource="{Binding Configurations}" SelectedItem="{Binding SelectedConfiguration}" MinWidth="100" />
+                <Button Content="Build" Click="OnBuildClick" IsEnabled="{Binding !IsBuilding}" />
+                <Button Content="Rebuild" Click="OnRebuildClick" IsEnabled="{Binding !IsBuilding}" />
+                <Button Content="Clean" Click="OnCleanClick" IsEnabled="{Binding !IsBuilding}" />
+                <Button Content="Cancel" Click="OnCancelClick" IsEnabled="{Binding IsBuilding}" />
+            </StackPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom" Padding="8" BorderThickness="0,1,0,0" BorderBrush="Gray">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding StatusText}" VerticalAlignment="Center" />
+                <ProgressBar Grid.Column="1" Value="{Binding ProgressValue}" Width="200" IsVisible="{Binding IsBuilding}" />
+            </Grid>
+        </Border>
+
+        <TextBlock Text="Project tree and build output go here (Tasks 7-8)" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    </DockPanel>
 </Window>
