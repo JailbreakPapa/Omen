@@ -114,7 +114,14 @@ public sealed class RuleCompiler
     
     private Assembly LoadAssembly(string path)
     {
-        return AssemblyLoadContext.Default.LoadFromAssemblyPath(path);
+        // Read into memory first rather than LoadFromAssemblyPath, which locks the file on
+        // Windows for the process lifetime - fine for the CLI's fresh-process-per-command
+        // model, but the GUI is a single long-lived process, so a second Build in a session
+        // would lock the cache DLL and a subsequent Clean/Rebuild would fail to delete
+        // Intermediate/RuleCache. Matches the fresh-compile path's LoadFromStream above.
+        var bytes = File.ReadAllBytes(path);
+        using var ms = new MemoryStream(bytes);
+        return AssemblyLoadContext.Default.LoadFromStream(ms);
     }
     
     private List<MetadataReference> BuildMetadataReferences()
