@@ -31,7 +31,7 @@ jobs:
       - name: Link check (optional)
         run: echo "Run link checks here (linkinator or similar)"
       - name: Upload site artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: docs-site-build
           path: docs-site/build
