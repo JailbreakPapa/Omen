@@ -56,7 +56,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         if (!string.IsNullOrEmpty(_settings.LastProjectPath) && Directory.Exists(_settings.LastProjectPath))
         {
-            LoadProject(_settings.LastProjectPath);
+            try
+            {
+                LoadProject(_settings.LastProjectPath);
+            }
+            catch (Exception)
+            {
+                // Last-resort guard: a bad/inaccessible last-project path must not crash
+                // startup before the window appears. Leave the project unopened.
+                CloseProject();
+            }
         }
     }
 
@@ -91,33 +100,33 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         if (ProjectPath == null || SelectedPlatform == null) return;
 
-        var targetFile = Directory.GetFiles(ProjectPath, "*.target.cs", SearchOption.AllDirectories).FirstOrDefault();
-        if (targetFile == null)
-        {
-            AppendLine("No .target.cs file found in this project.", OrchestratorEventLevel.Error);
-            return;
-        }
-
         OutputLines.Clear();
         if (manageBusyState) IsBuilding = true;
         ProgressValue = 0;
         StatusText = "Building...";
         _buildCts = new CancellationTokenSource();
 
-        var orchestrator = new BuildOrchestrator();
-        var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
-        var buildProgress = new Progress<Omen.Core.Interfaces.BuildProgress>(p => ProgressValue = p.PercentComplete);
-
-        var request = new BuildOrchestratorRequest
-        {
-            TargetFile = targetFile,
-            Platform = SelectedPlatform.Value,
-            Architecture = TargetArchitecture.X64,
-            Configuration = SelectedConfiguration
-        };
-
         try
         {
+            var targetFile = Directory.GetFiles(ProjectPath, "*.target.cs", SearchOption.AllDirectories).FirstOrDefault();
+            if (targetFile == null)
+            {
+                AppendLine("No .target.cs file found in this project.", OrchestratorEventLevel.Error);
+                return;
+            }
+
+            var orchestrator = new BuildOrchestrator();
+            var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
+            var buildProgress = new Progress<Omen.Core.Interfaces.BuildProgress>(p => ProgressValue = p.PercentComplete);
+
+            var request = new BuildOrchestratorRequest
+            {
+                TargetFile = targetFile,
+                Platform = SelectedPlatform.Value,
+                Architecture = TargetArchitecture.X64,
+                Configuration = SelectedConfiguration
+            };
+
             var result = await orchestrator.BuildAsync(request, eventsProgress, buildProgress, _buildCts.Token);
             StatusText = result?.Success == true ? "Build succeeded" : "Build failed";
         }
@@ -125,6 +134,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         {
             AppendLine("Build cancelled.", OrchestratorEventLevel.Warning);
             StatusText = "Build cancelled";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            AppendLine($"Unexpected error: {ex.Message}", OrchestratorEventLevel.Error);
+            StatusText = "Build failed";
         }
         finally
         {
@@ -166,6 +180,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
             StatusText = $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}";
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            AppendLine($"Unexpected error: {ex.Message}", OrchestratorEventLevel.Error);
+            StatusText = "Clean failed";
+        }
         finally
         {
             if (manageBusyState) IsBuilding = false;
@@ -194,6 +213,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             StatusText = success
                 ? $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}"
                 : "Project file generation failed";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            AppendLine($"Unexpected error: {ex.Message}", OrchestratorEventLevel.Error);
+            StatusText = "Project file generation failed";
         }
         finally
         {

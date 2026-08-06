@@ -22,7 +22,7 @@ public sealed class GuiSettings
             var json = File.ReadAllText(SettingsPath);
             return JsonSerializer.Deserialize<GuiSettings>(json) ?? new GuiSettings();
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             return new GuiSettings();
         }
@@ -30,10 +30,18 @@ public sealed class GuiSettings
 
     public void Save()
     {
-        var directory = Path.GetDirectoryName(SettingsPath);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
+        try
+        {
+            var directory = Path.GetDirectoryName(SettingsPath);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
 
-        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(this));
+            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(this));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A settings-save failure shouldn't crash a build that otherwise succeeded;
+            // silently not persisting is an acceptable degradation here.
+        }
     }
 }
