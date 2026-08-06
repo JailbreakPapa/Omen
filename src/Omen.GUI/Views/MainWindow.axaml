@@ -22,7 +22,7 @@
                 <MenuItem Header="C_ancel" Click="OnCancelClick" />
             </MenuItem>
             <MenuItem Header="_Project">
-                <MenuItem Header="_Generate Project Files">
+                <MenuItem Header="_Generate Project Files" IsEnabled="{Binding !IsBuilding}">
                     <MenuItem Header="Visual Studio 2022" Click="OnGenerateVS2022Click" />
                     <MenuItem Header="Visual Studio 2019" Click="OnGenerateVS2019Click" />
                     <Separator />

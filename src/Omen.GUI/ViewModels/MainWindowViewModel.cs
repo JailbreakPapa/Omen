@@ -179,18 +179,26 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         if (ProjectPath == null) return;
 
         OutputLines.Clear();
+        IsBuilding = true;
         StatusText = $"Generating {ide} project files...";
 
         var orchestrator = new ProjectGenerationOrchestrator();
         var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
 
-        var success = await orchestrator.GenerateAsync(
-            new ProjectGenerationOrchestratorRequest { ProjectRoot = ProjectPath, Ide = ide },
-            eventsProgress);
+        try
+        {
+            var success = await orchestrator.GenerateAsync(
+                new ProjectGenerationOrchestratorRequest { ProjectRoot = ProjectPath, Ide = ide },
+                eventsProgress);
 
-        StatusText = success
-            ? $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}"
-            : "Project file generation failed";
+            StatusText = success
+                ? $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}"
+                : "Project file generation failed";
+        }
+        finally
+        {
+            IsBuilding = false;
+        }
     }
 
     private void AppendLine(string text, OrchestratorEventLevel level) =>
