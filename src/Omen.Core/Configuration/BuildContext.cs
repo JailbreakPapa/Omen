@@ -1,6 +1,8 @@
 // Omen Build System
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
+using Omen.Core.Options;
+
 namespace Omen.Core.Configuration;
 
 /// <summary>
@@ -49,7 +51,21 @@ public sealed class BuildContext
     /// OmenNet coordinator address for distributed builds.
     /// </summary>
     public string? CoordinatorAddress { get; init; }
-    
+
+    /// <summary>
+    /// Build options declared during rule instantiation (via BuildOptions.Declare), collected
+    /// as a side effect of constructing TargetRules/ModuleRules/GemRules against this context -
+    /// mirrors how CMake's option() calls register into its cache during Configure.
+    /// </summary>
+    public List<BuildOptionDeclaration> DeclaredOptions { get; init; } = [];
+
+    /// <summary>
+    /// Persisted option overrides (from a prior Configure), consulted by BuildOptions.Declare
+    /// when a rules file declares an option - a name present here overrides that option's
+    /// compiled-in default for this build.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> CachedOptionValues { get; init; } = new Dictionary<string, string>();
+
     /// <summary>
     /// Gets a string identifier for this build context.
     /// </summary>
