@@ -83,7 +83,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private CancellationTokenSource? _buildCts;
 
-    public async Task BuildAsync()
+    // manageBusyState is false only when called from RebuildAsync, which owns IsBuilding for
+    // the whole Clean+Build sequence itself - otherwise IsBuilding would briefly flip back to
+    // false between the two phases (each phase's own finally resetting it), re-enabling
+    // Build/Rebuild/Clean for the split second before the next phase starts and flips it back.
+    public async Task BuildAsync(bool manageBusyState = true)
     {
         if (ProjectPath == null || SelectedPlatform == null) return;
 
@@ -95,7 +99,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         OutputLines.Clear();
-        IsBuilding = true;
+        if (manageBusyState) IsBuilding = true;
         ProgressValue = 0;
         StatusText = "Building...";
         _buildCts = new CancellationTokenSource();
@@ -124,32 +128,48 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
         finally
         {
-            IsBuilding = false;
+            if (manageBusyState) IsBuilding = false;
             _buildCts = null;
         }
     }
 
     public async Task RebuildAsync()
     {
-        await CleanAsync();
-        await BuildAsync();
+        IsBuilding = true;
+        try
+        {
+            await CleanAsync(manageBusyState: false);
+            await BuildAsync(manageBusyState: false);
+        }
+        finally
+        {
+            IsBuilding = false;
+        }
     }
 
-    public async Task CleanAsync()
+    public async Task CleanAsync(bool manageBusyState = true)
     {
         if (ProjectPath == null) return;
 
         OutputLines.Clear();
+        if (manageBusyState) IsBuilding = true;
         StatusText = "Cleaning...";
 
         var orchestrator = new CleanOrchestrator();
         var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
 
-        await orchestrator.CleanAsync(
-            new CleanOrchestratorRequest { ProjectRoot = ProjectPath, All = true },
-            eventsProgress);
+        try
+        {
+            await orchestrator.CleanAsync(
+                new CleanOrchestratorRequest { ProjectRoot = ProjectPath, All = true },
+                eventsProgress);
 
-        StatusText = $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}";
+            StatusText = $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}";
+        }
+        finally
+        {
+            if (manageBusyState) IsBuilding = false;
+        }
     }
 
     public void CancelBuild() => _buildCts?.Cancel();
