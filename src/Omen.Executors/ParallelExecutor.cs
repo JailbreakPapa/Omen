@@ -35,8 +35,13 @@ public sealed class ParallelExecutor : IExecutor
         var cachedCount = 0;
         var skippedCount = 0;
         
-        // Mark up-to-date actions as skipped
-        skippedCount = graph.MarkUpToDateActionsAsSkipped();
+        // BuildOrchestrator already runs a digest-aware up-to-date pass (which sees
+        // command-line changes, e.g. from a toggled build option) before invoking this
+        // executor. Re-running the timestamp-only overload here would re-evaluate those
+        // same still-Pending actions by file mtimes alone - which can't see a command-line
+        // change - and wrongly flip them back to Skipped, silently discarding a real
+        // rebuild. Just count what the caller already decided.
+        skippedCount = graph.Actions.Count(a => a.Status == ActionStatus.Skipped);
         
         // Compute priorities for scheduling
         graph.ComputePriorities();

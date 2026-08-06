@@ -218,6 +218,78 @@ public class BuildOrchestratorTests : IDisposable
     }
 
     [Fact]
+    public async Task BuildAsync_AfterCachedOptionValueChanges_RecompilesInsteadOfSkipping()
+    {
+        // Regression test: ParallelExecutor used to run its own second, timestamp-only
+        // up-to-date pass (graph.MarkUpToDateActionsAsSkipped(), no digest argument) after
+        // BuildOrchestrator's own digest-aware pass had already correctly left
+        // option-affected actions Pending. Since editing Intermediate/omen-cache.json
+        // touches no source file, the timestamp-only pass saw nothing to invalidate and
+        // flipped those actions straight back to Skipped, silently discarding a rebuild
+        // that a toggled build option (a real command-line change) requires.
+        var sourceDir = Path.Combine(_projectRoot, "Source", "App", "Private");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "Main.cpp"), "int main() { return 0; }\n");
+        File.WriteAllText(Path.Combine(_projectRoot, "Source", "App", "App.module.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppModule : ModuleRules
+            {
+                public AppModule(BuildContext context) : base(context)
+                {
+                    Type = ModuleType.Runtime;
+                    SourceDirectory = "Source/App";
+                }
+            }
+            """);
+        var targetFile = Path.Combine(_projectRoot, "App.target.cs");
+        File.WriteAllText(targetFile, """
+            using Omen.Core.Configuration;
+            using Omen.Core.Options;
+            using Omen.Core.Rules;
+
+            public class AppTarget : TargetRules
+            {
+                public AppTarget(BuildContext context) : base(context)
+                {
+                    Type = TargetType.Executable;
+                    LaunchModuleName = "AppModule";
+                    ExtraModules.Add("AppModule");
+                    UsePCHFiles = false;
+                    UseUnityBuild = false;
+
+                    if (BuildOptions.Declare(context, "ENABLE_FEATURE_X", "Enable feature X", false))
+                    {
+                        GlobalDefinitions.Add("FEATURE_X=1");
+                    }
+                }
+            }
+            """);
+
+        var cacheStore = new Omen.Core.Options.OptionCacheStore(Path.Combine(_projectRoot, "Intermediate", "omen-cache.json"));
+        var orchestrator = new BuildOrchestrator();
+
+        var first = await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null);
+        first.Should().NotBeNull();
+        first!.Success.Should().BeTrue();
+        first.TotalActions.Should().BeGreaterThan(0);
+
+        cacheStore.Save(new Dictionary<string, string> { ["ENABLE_FEATURE_X"] = "true" });
+        var second = await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null);
+
+        second.Should().NotBeNull();
+        second!.Success.Should().BeTrue();
+        second.SkippedActions.Should().Be(0);
+        second.SuccessfulActions.Should().Be(first.TotalActions);
+
+        // No further change - this rebuild really should skip everything.
+        var third = await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null);
+        third.Should().NotBeNull();
+        third!.SkippedActions.Should().Be(first.TotalActions);
+    }
+
+    [Fact]
     public async Task CleanAsync_AfterCacheHitBuild_DoesNotLockRuleCacheDll()
     {
         // Regression test for RuleCompiler's cache-hit path locking the cached rule DLL
