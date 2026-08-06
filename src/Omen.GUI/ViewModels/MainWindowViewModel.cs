@@ -2,6 +2,7 @@
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
 using System.Collections.ObjectModel;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Omen.Core.Configuration;
 using Omen.Executors.Orchestration;
@@ -18,6 +19,20 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _statusText = "No project open";
+
+    public enum BuildState { Idle, Building, Success, Failed }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusDotBrush))]
+    private BuildState _currentBuildState = BuildState.Idle;
+
+    public IBrush StatusDotBrush => CurrentBuildState switch
+    {
+        BuildState.Building => Brushes.DodgerBlue,
+        BuildState.Success => Brushes.LimeGreen,
+        BuildState.Failed => Brushes.OrangeRed,
+        _ => Brushes.Gray
+    };
 
     [ObservableProperty]
     private bool _isBuilding;
@@ -130,6 +145,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         OutputLines.Clear();
         if (manageBusyState) IsBuilding = true;
         ProgressValue = 0;
+        CurrentBuildState = BuildState.Building;
         StatusText = "Building...";
         _buildCts = new CancellationTokenSource();
 
@@ -155,16 +171,19 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             };
 
             var result = await orchestrator.BuildAsync(request, eventsProgress, buildProgress, _buildCts.Token);
+            CurrentBuildState = result?.Success == true ? BuildState.Success : BuildState.Failed;
             StatusText = result?.Success == true ? "Build succeeded" : "Build failed";
         }
         catch (OperationCanceledException)
         {
             AppendLine("Build cancelled.", OrchestratorEventLevel.Warning);
+            CurrentBuildState = BuildState.Failed;
             StatusText = "Build cancelled";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             AppendLine($"Unexpected error: {ex.Message}", OrchestratorEventLevel.Error);
+            CurrentBuildState = BuildState.Failed;
             StatusText = "Build failed";
         }
         finally
@@ -194,6 +213,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         OutputLines.Clear();
         if (manageBusyState) IsBuilding = true;
+        CurrentBuildState = BuildState.Building;
         StatusText = "Cleaning...";
 
         var orchestrator = new CleanOrchestrator();
@@ -205,11 +225,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 new CleanOrchestratorRequest { ProjectRoot = ProjectPath, All = true },
                 eventsProgress);
 
+            CurrentBuildState = BuildState.Success;
             StatusText = $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             AppendLine($"Unexpected error: {ex.Message}", OrchestratorEventLevel.Error);
+            CurrentBuildState = BuildState.Failed;
             StatusText = "Clean failed";
         }
         finally
@@ -226,6 +248,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         OutputLines.Clear();
         IsBuilding = true;
+        CurrentBuildState = BuildState.Building;
         StatusText = $"Generating {ide} project files...";
 
         var orchestrator = new ProjectGenerationOrchestrator();
@@ -237,6 +260,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 new ProjectGenerationOrchestratorRequest { ProjectRoot = ProjectPath, Ide = ide },
                 eventsProgress);
 
+            CurrentBuildState = success ? BuildState.Success : BuildState.Failed;
             StatusText = success
                 ? $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}"
                 : "Project file generation failed";
@@ -244,6 +268,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             AppendLine($"Unexpected error: {ex.Message}", OrchestratorEventLevel.Error);
+            CurrentBuildState = BuildState.Failed;
             StatusText = "Project file generation failed";
         }
         finally

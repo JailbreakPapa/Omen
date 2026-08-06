@@ -48,7 +48,10 @@
 
         <Border DockPanel.Dock="Bottom" Padding="8" BorderThickness="0,1,0,0" BorderBrush="Gray">
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="{Binding StatusText}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Ellipse Width="8" Height="8" Fill="{Binding StatusDotBrush}" />
+                    <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
+                </StackPanel>
                 <ProgressBar Grid.Column="1" Value="{Binding ProgressValue}" Width="200" IsVisible="{Binding IsBuilding}" />
             </Grid>
         </Border>
