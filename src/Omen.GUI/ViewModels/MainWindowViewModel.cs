@@ -174,6 +174,25 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public void CancelBuild() => _buildCts?.Cancel();
 
+    public async Task GenerateProjectFilesAsync(IdeKind ide)
+    {
+        if (ProjectPath == null) return;
+
+        OutputLines.Clear();
+        StatusText = $"Generating {ide} project files...";
+
+        var orchestrator = new ProjectGenerationOrchestrator();
+        var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
+
+        var success = await orchestrator.GenerateAsync(
+            new ProjectGenerationOrchestratorRequest { ProjectRoot = ProjectPath, Ide = ide },
+            eventsProgress);
+
+        StatusText = success
+            ? $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}"
+            : "Project file generation failed";
+    }
+
     private void AppendLine(string text, OrchestratorEventLevel level) =>
         OutputLines.Add(new OutputLine { Text = text, Level = level });
 }

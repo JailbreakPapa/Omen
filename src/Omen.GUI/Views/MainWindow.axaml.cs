@@ -4,6 +4,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Omen.Executors.Orchestration;
 using Omen.GUI.ViewModels;
 
 namespace Omen.GUI.Views;
@@ -56,23 +57,11 @@ public partial class MainWindow : Window
 
     private void OnCancelClick(object? sender, RoutedEventArgs e) => ViewModel.CancelBuild();
 
-    private void OnGenerateVS2022Click(object? sender, RoutedEventArgs e)
-    {
-        // Task 9.
-    }
+    private async void OnGenerateVS2022Click(object? sender, RoutedEventArgs e) => await ViewModel.GenerateProjectFilesAsync(IdeKind.VS2022);
 
-    private void OnGenerateVS2019Click(object? sender, RoutedEventArgs e)
-    {
-        // Task 9.
-    }
+    private async void OnGenerateVS2019Click(object? sender, RoutedEventArgs e) => await ViewModel.GenerateProjectFilesAsync(IdeKind.VS2019);
 
-    private void OnGenerateVSCodeClick(object? sender, RoutedEventArgs e)
-    {
-        // Task 9.
-    }
+    private async void OnGenerateVSCodeClick(object? sender, RoutedEventArgs e) => await ViewModel.GenerateProjectFilesAsync(IdeKind.VSCode);
 
-    private void OnGenerateCMakeClick(object? sender, RoutedEventArgs e)
-    {
-        // Task 9.
-    }
+    private async void OnGenerateCMakeClick(object? sender, RoutedEventArgs e) => await ViewModel.GenerateProjectFilesAsync(IdeKind.CMake);
 }
