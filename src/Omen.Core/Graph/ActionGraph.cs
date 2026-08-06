@@ -141,6 +141,9 @@ public sealed class ActionGraph
     /// </summary>
     public IReadOnlyList<BuildAction> GetCriticalPath()
     {
+        if (_actions.Count == 0)
+            return Array.Empty<BuildAction>();
+
         var longestPath = new Dictionary<string, (double Length, BuildAction? Next)>();
         
         // Initialize with estimated durations

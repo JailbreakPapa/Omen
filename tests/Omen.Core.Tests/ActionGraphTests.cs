@@ -296,6 +296,23 @@ public class ActionGraphTests
     }
 
     [Fact]
+    public void GetCriticalPath_WithEmptyGraph_ReturnsEmpty()
+    {
+        // Regression test: OrderByDescending().First() on an empty graph used to throw
+        // InvalidOperationException, which crashed ComputePriorities() and GetStatistics()
+        // for a target with zero actions (e.g. zero real modules).
+        var graph = new ActionGraph();
+
+        graph.GetCriticalPath().Should().BeEmpty();
+
+        var computePriorities = () => graph.ComputePriorities();
+        computePriorities.Should().NotThrow();
+
+        var getStatistics = () => graph.GetStatistics();
+        getStatistics.Should().NotThrow();
+    }
+
+    [Fact]
     public void ComputePriorities_AssignsLowerPriorityToCriticalPath()
     {
         // Arrange
