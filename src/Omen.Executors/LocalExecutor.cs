@@ -8,6 +8,11 @@ namespace Omen.Executors;
 
 /// <summary>
 /// Single-threaded local executor for debugging and simple builds.
+/// Delegates to ParallelExecutor, which no longer does its own up-to-date pass -
+/// unlike BuildOrchestrator, this class never calls one either, so any caller
+/// using it directly will always re-run every action instead of skipping
+/// unchanged ones. Currently unused in production; give it its own digest-aware
+/// pre-pass (see BuildOrchestrator.BuildAsync) before wiring it up for real use.
 /// </summary>
 public sealed class LocalExecutor : IExecutor
 {
