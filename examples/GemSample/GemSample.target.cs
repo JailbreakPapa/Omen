@@ -3,6 +3,7 @@
 // flavor, which itself privately depends on the gem's Static flavor.
 
 using Omen.Core.Configuration;
+using Omen.Core.Options;
 using Omen.Core.Rules;
 
 public class GemSampleTarget : TargetRules
@@ -16,5 +17,11 @@ public class GemSampleTarget : TargetRules
 
         UsePCHFiles = false;
         UseUnityBuild = false;
+
+        var verboseGreeting = BuildOptions.Declare(context, "VERBOSE_GREETING", "Print an extended greeting from the Greeter gem", false);
+        if (verboseGreeting)
+        {
+            GlobalDefinitions.Add("VERBOSE_GREETING=1");
+        }
     }
 }
