@@ -80,4 +80,30 @@ public partial class MainWindow : Window
     private async void OnGenerateVSCodeClick(object? sender, RoutedEventArgs e) => await ViewModel.GenerateProjectFilesAsync(IdeKind.VSCode);
 
     private async void OnGenerateCMakeClick(object? sender, RoutedEventArgs e) => await ViewModel.GenerateProjectFilesAsync(IdeKind.CMake);
+
+    private void OnToggleOptionsClick(object? sender, RoutedEventArgs e) =>
+        ViewModel.OptionsPanel.IsExpanded = !ViewModel.OptionsPanel.IsExpanded;
+
+    private async void OnConfigureOptionsClick(object? sender, RoutedEventArgs e) =>
+        await ViewModel.ConfigureOptionsAsync();
+
+    private async void OnBrowsePathClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: BuildOptionViewModel option }) return;
+
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = $"Select value for {option.Name}",
+            AllowMultiple = false
+        });
+
+        var folder = folders.FirstOrDefault();
+        if (folder?.TryGetLocalPath() is { } path)
+        {
+            option.Value = path;
+        }
+    }
 }

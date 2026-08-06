@@ -53,22 +53,76 @@
             </Grid>
         </Border>
 
-        <Grid ColumnDefinitions="250,*">
-            <TreeView Grid.Column="0" ItemsSource="{Binding ProjectTreeRoots}">
-                <TreeView.ItemTemplate>
-                    <TreeDataTemplate ItemsSource="{Binding Children}">
-                        <TextBlock Text="{Binding Name}" />
-                    </TreeDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
+        <Grid ColumnDefinitions="250,4,*,4,Auto">
+            <Border Grid.Column="0" Classes="pane" BorderThickness="0,0,1,0" BorderBrush="Gray">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Project" Classes="paneHeader" />
+                    <TreeView ItemsSource="{Binding ProjectTreeRoots}">
+                        <TreeView.ItemTemplate>
+                            <TreeDataTemplate ItemsSource="{Binding Children}">
+                                <TextBlock Text="{Binding Name}" />
+                            </TreeDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </DockPanel>
+            </Border>
 
-            <ListBox x:Name="OutputListBox" Grid.Column="1" ItemsSource="{Binding OutputLines}" FontFamily="Cascadia Code,Consolas,monospace" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Auto">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Text}" Foreground="{Binding Level, Converter={x:Static conv:OutputLevelToBrushConverter.Instance}}" TextWrapping="NoWrap" />
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <GridSplitter Grid.Column="1" Width="4" Background="Transparent" ResizeDirection="Columns" />
+
+            <DockPanel Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top" Text="Build Output" Classes="paneHeader" />
+                <ListBox x:Name="OutputListBox" ItemsSource="{Binding OutputLines}" FontFamily="Cascadia Code,Consolas,monospace" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Text}" Foreground="{Binding Level, Converter={x:Static conv:OutputLevelToBrushConverter.Instance}}" TextWrapping="NoWrap" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <GridSplitter Grid.Column="3" Width="4" Background="Transparent" ResizeDirection="Columns" IsVisible="{Binding OptionsPanel.IsExpanded}" />
+
+            <Grid Grid.Column="4">
+                <Button Content="⟨ Options ⟩" Click="OnToggleOptionsClick" IsVisible="{Binding !OptionsPanel.IsExpanded}" VerticalAlignment="Center">
+                    <Button.RenderTransform>
+                        <RotateTransform Angle="90" />
+                    </Button.RenderTransform>
+                </Button>
+
+                <Border Width="280" Classes="pane" BorderThickness="1,0,0,0" BorderBrush="Gray" IsVisible="{Binding OptionsPanel.IsExpanded}">
+                    <DockPanel>
+                        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="Options" Classes="paneHeader" />
+                            <Button Grid.Column="1" Content="⟨" Click="OnToggleOptionsClick" Margin="0,0,8,0" />
+                        </Grid>
+
+                        <StackPanel DockPanel.Dock="Bottom" Margin="8">
+                            <TextBlock Text="{Binding OptionsPanel.StatusText}" Margin="0,0,0,6" FontSize="11" Opacity="0.8" />
+                            <Button Content="Configure" Click="OnConfigureOptionsClick" HorizontalAlignment="Stretch" Classes="primary" />
+                        </StackPanel>
+
+                        <ScrollViewer>
+                            <ItemsControl ItemsSource="{Binding OptionsPanel.Options}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="8" Spacing="4">
+                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+                                            <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.7" TextWrapping="Wrap" />
+                                            <CheckBox Content="Enabled" IsChecked="{Binding IsChecked}" IsVisible="{Binding IsBool}" />
+                                            <TextBox Text="{Binding Value}" IsVisible="{Binding IsString}" />
+                                            <NumericUpDown Value="{Binding NumericValue}" IsVisible="{Binding IsInt}" />
+                                            <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsPath}">
+                                                <TextBox Grid.Column="0" Text="{Binding Value}" />
+                                                <Button Grid.Column="1" Content="..." Click="OnBrowsePathClick" Tag="{Binding}" Margin="4,0,0,0" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
         </Grid>
     </DockPanel>
 </Window>
