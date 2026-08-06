@@ -62,6 +62,10 @@ public sealed class BuildOrchestrator
             events?.Report(new OrchestratorEvent("Compiling build rules...", OrchestratorEventLevel.Info));
             compiledRules = await ruleCompiler.CompileRulesAsync(workingDir, ct);
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             events?.Report(new OrchestratorEvent($"Error compiling rules: {ex.Message}", OrchestratorEventLevel.Error));
@@ -133,6 +137,12 @@ public sealed class BuildOrchestrator
         var executor = new ParallelExecutor(request.Jobs, actionCache);
 
         var result = await executor.ExecuteAsync(graph, buildProgress, ct);
+
+        // ParallelExecutor cancels cooperatively - its loop just exits when ct is cancelled,
+        // so a cancelled build has zero *failed* actions and would otherwise fall through to
+        // the success branch below. Throw here so callers' existing OperationCanceledException
+        // handling reports "cancelled" instead of "succeeded".
+        ct.ThrowIfCancellationRequested();
 
         // ParallelExecutor's own skip counter can't see actions this method already flipped
         // from Pending to Skipped via the digest-based pre-pass above (its internal
