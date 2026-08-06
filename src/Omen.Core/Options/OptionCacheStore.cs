@@ -22,7 +22,7 @@ public sealed class OptionCacheStore(string path)
             var json = File.ReadAllText(path);
             return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             return new Dictionary<string, string>();
         }
@@ -30,10 +30,18 @@ public sealed class OptionCacheStore(string path)
 
     public void Save(IReadOnlyDictionary<string, string> values)
     {
-        var directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
+        try
+        {
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
 
-        File.WriteAllText(path, JsonSerializer.Serialize(values));
+            File.WriteAllText(path, JsonSerializer.Serialize(values));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A cache-save failure shouldn't crash a build that otherwise succeeded;
+            // silently not persisting is an acceptable degradation here.
+        }
     }
 }

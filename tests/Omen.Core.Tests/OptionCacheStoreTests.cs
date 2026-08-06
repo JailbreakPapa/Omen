@@ -62,4 +62,30 @@ public class OptionCacheStoreTests : IDisposable
 
         File.Exists(_path).Should().BeTrue();
     }
+
+    [Fact]
+    public void Load_PathIsDirectory_ReturnsEmptyDictionaryInsteadOfThrowing()
+    {
+        Directory.CreateDirectory(_testDir);
+        // Create a store with a path that is a directory, not a file
+        var store = new OptionCacheStore(_testDir);
+
+        // Should not throw; should return empty dict
+        var result = store.Load();
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Save_PathIsDirectory_DoesNotThrow()
+    {
+        Directory.CreateDirectory(_testDir);
+        // Create a store with a path that is a directory, not a file
+        var store = new OptionCacheStore(_testDir);
+
+        // Should not throw; should silently fail to persist
+        var action = () => store.Save(new Dictionary<string, string> { ["X"] = "1" });
+
+        action.Should().NotThrow();
+    }
 }
