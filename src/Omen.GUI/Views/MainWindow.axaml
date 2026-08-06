@@ -15,9 +15,9 @@
                 <MenuItem Header="E_xit" Click="OnExitClick" />
             </MenuItem>
             <MenuItem Header="_Build">
-                <MenuItem Header="_Build" Click="OnBuildClick" />
-                <MenuItem Header="_Rebuild" Click="OnRebuildClick" />
-                <MenuItem Header="_Clean" Click="OnCleanClick" />
+                <MenuItem Header="_Build" Click="OnBuildClick" IsEnabled="{Binding !IsBuilding}" />
+                <MenuItem Header="_Rebuild" Click="OnRebuildClick" IsEnabled="{Binding !IsBuilding}" />
+                <MenuItem Header="_Clean" Click="OnCleanClick" IsEnabled="{Binding !IsBuilding}" />
                 <Separator />
                 <MenuItem Header="C_ancel" Click="OnCancelClick" />
             </MenuItem>
