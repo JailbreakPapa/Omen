@@ -43,6 +43,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<ProjectTreeNode> ProjectTreeRoots { get; } = [];
 
+    public OptionsPanelViewModel OptionsPanel { get; } = new();
+
     private readonly GuiSettings _settings = GuiSettings.Load();
 
     public MainWindowViewModel()
@@ -79,6 +81,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         _settings.LastProjectPath = path;
         _settings.Save();
+
+        _ = ConfigureOptionsAsync();
     }
 
     public void CloseProject()
@@ -86,6 +90,30 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ProjectTreeRoots.Clear();
         ProjectPath = null;
         StatusText = "No project open";
+    }
+
+    public async Task ConfigureOptionsAsync()
+    {
+        if (ProjectPath == null) return;
+
+        var targetFile = Directory.GetFiles(ProjectPath, "*.target.cs", SearchOption.AllDirectories).FirstOrDefault();
+        if (targetFile == null)
+        {
+            OptionsPanel.StatusText = "No .target.cs file found in this project.";
+            return;
+        }
+
+        var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
+
+        try
+        {
+            await OptionsPanel.ConfigureAsync(targetFile, eventsProgress);
+        }
+        catch (Exception ex)
+        {
+            OptionsPanel.StatusText = "Configure failed";
+            AppendLine($"Unexpected error configuring options: {ex.Message}", OrchestratorEventLevel.Error);
+        }
     }
 
     public ObservableCollection<OutputLine> OutputLines { get; } = [];
