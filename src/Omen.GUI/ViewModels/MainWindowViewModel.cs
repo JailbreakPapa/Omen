@@ -96,17 +96,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         if (ProjectPath == null) return;
 
-        var targetFile = Directory.GetFiles(ProjectPath, "*.target.cs", SearchOption.AllDirectories).FirstOrDefault();
-        if (targetFile == null)
-        {
-            OptionsPanel.StatusText = "No .target.cs file found in this project.";
-            return;
-        }
-
-        var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
-
         try
         {
+            var targetFile = Directory.GetFiles(ProjectPath, "*.target.cs", SearchOption.AllDirectories).FirstOrDefault();
+            if (targetFile == null)
+            {
+                OptionsPanel.StatusText = "No .target.cs file found in this project.";
+                return;
+            }
+
+            var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
             await OptionsPanel.ConfigureAsync(targetFile, eventsProgress);
         }
         catch (Exception ex)
