@@ -83,11 +83,12 @@
             <GridSplitter Grid.Column="3" Width="4" Background="Transparent" ResizeDirection="Columns" IsVisible="{Binding OptionsPanel.IsExpanded}" />
 
             <Grid Grid.Column="4">
-                <Button Content="⟨ Options ⟩" Click="OnToggleOptionsClick" IsVisible="{Binding !OptionsPanel.IsExpanded}" VerticalAlignment="Center">
-                    <Button.RenderTransform>
+                <LayoutTransformControl IsVisible="{Binding !OptionsPanel.IsExpanded}" VerticalAlignment="Center">
+                    <LayoutTransformControl.LayoutTransform>
                         <RotateTransform Angle="90" />
-                    </Button.RenderTransform>
-                </Button>
+                    </LayoutTransformControl.LayoutTransform>
+                    <Button Content="⟨ Options ⟩" Click="OnToggleOptionsClick" />
+                </LayoutTransformControl>
 
                 <Border Width="280" Classes="pane" BorderThickness="1,0,0,0" BorderBrush="Gray" IsVisible="{Binding OptionsPanel.IsExpanded}">
                     <DockPanel>
@@ -98,7 +99,7 @@
 
                         <StackPanel DockPanel.Dock="Bottom" Margin="8">
                             <TextBlock Text="{Binding OptionsPanel.StatusText}" Margin="0,0,0,6" FontSize="11" Opacity="0.8" />
-                            <Button Content="Configure" Click="OnConfigureOptionsClick" HorizontalAlignment="Stretch" Classes="primary" />
+                            <Button Content="Configure" Click="OnConfigureOptionsClick" HorizontalAlignment="Stretch" Classes="primary" IsEnabled="{Binding !IsBuilding}" />
                         </StackPanel>
 
                         <ScrollViewer>
