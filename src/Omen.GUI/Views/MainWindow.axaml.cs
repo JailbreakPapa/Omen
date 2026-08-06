@@ -1,6 +1,7 @@
 // Omen Build System
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
+using System.Collections.Specialized;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -16,6 +17,21 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        // DataContext is assigned by the caller's object initializer after this constructor
+        // runs (see App.axaml.cs), so it isn't available yet here - defer the subscription
+        // until it actually arrives.
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is MainWindowViewModel vm)
+                ((INotifyCollectionChanged)vm.OutputLines).CollectionChanged += OnOutputLinesChanged;
+        };
+    }
+
+    private void OnOutputLinesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (ViewModel.OutputLines.Count == 0) return;
+        OutputListBox.ScrollIntoView(ViewModel.OutputLines[^1]);
     }
 
     private async void OnOpenProjectClick(object? sender, RoutedEventArgs e)

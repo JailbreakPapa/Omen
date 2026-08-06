@@ -62,7 +62,7 @@
                 </TreeView.ItemTemplate>
             </TreeView>
 
-            <ListBox Grid.Column="1" ItemsSource="{Binding OutputLines}" FontFamily="Cascadia Code,Consolas,monospace" FontSize="12">
+            <ListBox x:Name="OutputListBox" Grid.Column="1" ItemsSource="{Binding OutputLines}" FontFamily="Cascadia Code,Consolas,monospace" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Auto">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding Text}" Foreground="{Binding Level, Converter={x:Static conv:OutputLevelToBrushConverter.Instance}}" TextWrapping="NoWrap" />
