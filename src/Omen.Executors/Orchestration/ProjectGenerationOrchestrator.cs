@@ -5,6 +5,7 @@ using Omen.Core.Configuration;
 using Omen.Core.Generators;
 using Omen.Core.Graph;
 using Omen.Core.Implementations;
+using Omen.Core.Options;
 using Omen.Core.Rules;
 using Omen.Platforms;
 
@@ -53,6 +54,8 @@ public sealed class ProjectGenerationOrchestrator
             return false;
         }
 
+        var optionCacheStore = new OptionCacheStore(Path.Combine(workingDir, "Intermediate", "omen-cache.json"));
+
         var context = new BuildContext
         {
             Platform = TargetPlatform.Windows,
@@ -60,7 +63,8 @@ public sealed class ProjectGenerationOrchestrator
             Configuration = BuildConfiguration.Development,
             ProjectRoot = workingDir,
             IntermediateDirectory = Path.Combine(workingDir, "Intermediate"),
-            OutputDirectory = Path.Combine(workingDir, "Binaries")
+            OutputDirectory = Path.Combine(workingDir, "Binaries"),
+            CachedOptionValues = optionCacheStore.Load()
         };
 
         var targets = compiledRules.CreateTargetRules(context);

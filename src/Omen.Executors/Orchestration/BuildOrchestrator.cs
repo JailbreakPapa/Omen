@@ -5,6 +5,7 @@ using Omen.Core.Configuration;
 using Omen.Core.Graph;
 using Omen.Core.Implementations;
 using Omen.Core.Interfaces;
+using Omen.Core.Options;
 using Omen.Core.Rules;
 using Omen.Distributed.Cache;
 using Omen.Platforms;
@@ -43,6 +44,8 @@ public sealed class BuildOrchestrator
     {
         var workingDir = Path.GetDirectoryName(request.TargetFile) ?? Path.GetPathRoot(request.TargetFile) ?? request.TargetFile;
 
+        var optionCacheStore = new OptionCacheStore(Path.Combine(workingDir, "Intermediate", "omen-cache.json"));
+
         var context = new BuildContext
         {
             Platform = request.Platform,
@@ -51,7 +54,8 @@ public sealed class BuildOrchestrator
             ProjectRoot = workingDir,
             IntermediateDirectory = Path.Combine(workingDir, "Intermediate", $"{request.Platform}_{request.Configuration}"),
             OutputDirectory = Path.Combine(workingDir, "Binaries", $"{request.Platform}_{request.Configuration}"),
-            ParallelJobs = request.Jobs ?? Environment.ProcessorCount
+            ParallelJobs = request.Jobs ?? Environment.ProcessorCount,
+            CachedOptionValues = optionCacheStore.Load()
         };
 
         var ruleCompiler = new RuleCompiler(Path.Combine(workingDir, "Intermediate", "RuleCache"));

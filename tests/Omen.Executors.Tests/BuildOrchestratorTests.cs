@@ -223,8 +223,17 @@ public class BuildOrchestratorTests : IDisposable
         // Regression test for RuleCompiler's cache-hit path locking the cached rule DLL
         // (see RuleCompiler.LoadAssembly). The CLI never hit this because every command is
         // its own process, but the GUI builds and cleans within one long-lived process: a
-        // second build hits the RuleCache, and a Clean in that same session used to fail to
-        // delete Intermediate/RuleCache/<hash>.dll because the file was still memory-mapped.
+        // build whose RuleCache entry is new to *this* process's AssemblyLoadContext.Default
+        // used to leave Intermediate/RuleCache/<hash>.dll memory-mapped, so a Clean in that
+        // same session failed to delete it.
+        //
+        // Note this can't be reproduced by simply building the same unchanged rules twice in
+        // one process: AssemblyLoadContext.Default only locks a DLL the *first* time it loads
+        // that exact assembly identity, and a same-process rebuild reuses the identity already
+        // resident from the first build's in-memory compile - it never re-touches the file. To
+        // reproduce the real trigger (a cache entry this process has never loaded before, e.g.
+        // one left by an earlier CLI build), the cache file is swapped for a differently-named
+        // assembly between builds so the second build's cache hit is a genuinely fresh load.
         var sourceDir = Path.Combine(_projectRoot, "Source", "App", "Private");
         Directory.CreateDirectory(sourceDir);
         File.WriteAllText(Path.Combine(sourceDir, "Main.cpp"), "int main() { return 0; }\n");
@@ -261,11 +270,18 @@ public class BuildOrchestratorTests : IDisposable
 
         var orchestrator = new BuildOrchestrator();
 
-        // First build compiles the rules fresh; second build hits RuleCompiler's RuleCache.
-        (await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null))!
-            .Success.Should().BeTrue();
-        (await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null))!
-            .Success.Should().BeTrue();
+        var first = await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null);
+        first!.Success.Should().BeTrue();
+
+        var cacheDir = Path.Combine(_projectRoot, "Intermediate", "RuleCache");
+        var cachedDll = Directory.GetFiles(cacheDir, "*.dll").Should().ContainSingle().Subject;
+        File.WriteAllBytes(cachedDll, CompileTrivialAssembly());
+
+        // This build's rules aren't the ones actually on disk (the swapped-in assembly has no
+        // AppModule/AppTarget types), so it's expected to fail past the rule-compile step. What
+        // matters is that RuleCompiler.CompileRulesAsync took the cache-hit path for a DLL
+        // identity this process has never loaded before.
+        await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null);
 
         var cleanResult = await new CleanOrchestrator().CleanAsync(
             new CleanOrchestratorRequest { ProjectRoot = _projectRoot },
@@ -273,5 +289,57 @@ public class BuildOrchestratorTests : IDisposable
 
         cleanResult.DirectoriesFailed.Should().Be(0);
         Directory.Exists(Path.Combine(_projectRoot, "Intermediate")).Should().BeFalse();
+    }
+
+    private static byte[] CompileTrivialAssembly()
+    {
+        var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText("public class RuleCacheProbe {}");
+        var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create(
+            $"OmenRulesProbe_{Guid.NewGuid():N}",
+            [tree],
+            [Microsoft.CodeAnalysis.MetadataReference.CreateFromFile(typeof(object).Assembly.Location)],
+            new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary));
+
+        using var ms = new MemoryStream();
+        compilation.Emit(ms).Success.Should().BeTrue();
+        return ms.ToArray();
+    }
+
+    [Fact]
+    public async Task BuildAsync_WithCachedOptionOverride_MakesItAvailableToRuleFiles()
+    {
+        // Arrange: a target that declares an option and records its effective value where the
+        // test can observe it (BuildOptions.Declare's return value isn't otherwise surfaced by
+        // BuildResult, so the target writes it to a file as a simple, real side effect).
+        var recordedValuePath = Path.Combine(_projectRoot, "recorded-value.txt");
+        var targetFile = Path.Combine(_projectRoot, "Sample.target.cs");
+        File.WriteAllText(targetFile, $$"""
+            using Omen.Core.Configuration;
+            using Omen.Core.Options;
+            using Omen.Core.Rules;
+
+            public class SampleTarget : TargetRules
+            {
+                public SampleTarget(BuildContext context) : base(context)
+                {
+                    Type = TargetType.Executable;
+                    var enabled = BuildOptions.Declare(context, "ENABLE_FEATURE_X", "Enable feature X", false);
+                    System.IO.File.WriteAllText(@"{{recordedValuePath.Replace("\\", "\\\\")}}", enabled.ToString());
+                }
+            }
+            """);
+
+        new Omen.Core.Options.OptionCacheStore(Path.Combine(_projectRoot, "Intermediate", "omen-cache.json"))
+            .Save(new Dictionary<string, string> { ["ENABLE_FEATURE_X"] = "true" });
+
+        var orchestrator = new BuildOrchestrator();
+
+        // Act
+        await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null);
+
+        // Assert: the target's constructor ran with the cached override visible, not the
+        // compiled-in default.
+        File.Exists(recordedValuePath).Should().BeTrue();
+        File.ReadAllText(recordedValuePath).Should().Be("True");
     }
 }
