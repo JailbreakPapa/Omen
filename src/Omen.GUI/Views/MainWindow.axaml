@@ -34,15 +34,40 @@
 
         <Border DockPanel.Dock="Top" Padding="8" BorderThickness="0,0,0,1" BorderBrush="Gray">
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="Open" Click="OnOpenProjectClick" />
+                <Button Click="OnOpenProjectClick">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IconOpen}" Width="14" Height="14" />
+                        <TextBlock Text="Open" />
+                    </StackPanel>
+                </Button>
                 <TextBlock Text="Platform:" VerticalAlignment="Center" />
                 <ComboBox ItemsSource="{Binding AvailablePlatforms}" SelectedItem="{Binding SelectedPlatform}" MinWidth="100" />
                 <TextBlock Text="Config:" VerticalAlignment="Center" />
                 <ComboBox ItemsSource="{Binding Configurations}" SelectedItem="{Binding SelectedConfiguration}" MinWidth="100" />
-                <Button Content="Build" Click="OnBuildClick" IsEnabled="{Binding !IsBuilding}" />
-                <Button Content="Rebuild" Click="OnRebuildClick" IsEnabled="{Binding !IsBuilding}" />
-                <Button Content="Clean" Click="OnCleanClick" IsEnabled="{Binding !IsBuilding}" />
-                <Button Content="Cancel" Click="OnCancelClick" IsEnabled="{Binding IsBuilding}" />
+                <Button Click="OnBuildClick" IsEnabled="{Binding !IsBuilding}" Classes="primary">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IconBuild}" Width="14" Height="14" />
+                        <TextBlock Text="Build" />
+                    </StackPanel>
+                </Button>
+                <Button Click="OnRebuildClick" IsEnabled="{Binding !IsBuilding}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IconRebuild}" Width="14" Height="14" />
+                        <TextBlock Text="Rebuild" />
+                    </StackPanel>
+                </Button>
+                <Button Click="OnCleanClick" IsEnabled="{Binding !IsBuilding}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IconClean}" Width="14" Height="14" />
+                        <TextBlock Text="Clean" />
+                    </StackPanel>
+                </Button>
+                <Button Click="OnCancelClick" IsEnabled="{Binding IsBuilding}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IconCancel}" Width="14" Height="14" />
+                        <TextBlock Text="Cancel" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Border>
 
