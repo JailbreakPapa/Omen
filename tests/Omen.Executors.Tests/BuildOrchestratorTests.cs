@@ -216,4 +216,62 @@ public class BuildOrchestratorTests : IDisposable
         second!.Success.Should().BeTrue();
         second.SkippedActions.Should().Be(first.TotalActions);
     }
+
+    [Fact]
+    public async Task CleanAsync_AfterCacheHitBuild_DoesNotLockRuleCacheDll()
+    {
+        // Regression test for RuleCompiler's cache-hit path locking the cached rule DLL
+        // (see RuleCompiler.LoadAssembly). The CLI never hit this because every command is
+        // its own process, but the GUI builds and cleans within one long-lived process: a
+        // second build hits the RuleCache, and a Clean in that same session used to fail to
+        // delete Intermediate/RuleCache/<hash>.dll because the file was still memory-mapped.
+        var sourceDir = Path.Combine(_projectRoot, "Source", "App", "Private");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "Main.cpp"), "int main() { return 0; }\n");
+        File.WriteAllText(Path.Combine(_projectRoot, "Source", "App", "App.module.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppModule : ModuleRules
+            {
+                public AppModule(BuildContext context) : base(context)
+                {
+                    Type = ModuleType.Runtime;
+                    SourceDirectory = "Source/App";
+                }
+            }
+            """);
+        var targetFile = Path.Combine(_projectRoot, "App.target.cs");
+        File.WriteAllText(targetFile, """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppTarget : TargetRules
+            {
+                public AppTarget(BuildContext context) : base(context)
+                {
+                    Type = TargetType.Executable;
+                    LaunchModuleName = "AppModule";
+                    ExtraModules.Add("AppModule");
+                    UsePCHFiles = false;
+                    UseUnityBuild = false;
+                }
+            }
+            """);
+
+        var orchestrator = new BuildOrchestrator();
+
+        // First build compiles the rules fresh; second build hits RuleCompiler's RuleCache.
+        (await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null))!
+            .Success.Should().BeTrue();
+        (await orchestrator.BuildAsync(CreateRequest(targetFile), events: null, buildProgress: null))!
+            .Success.Should().BeTrue();
+
+        var cleanResult = await new CleanOrchestrator().CleanAsync(
+            new CleanOrchestratorRequest { ProjectRoot = _projectRoot },
+            events: null);
+
+        cleanResult.DirectoriesFailed.Should().Be(0);
+        Directory.Exists(Path.Combine(_projectRoot, "Intermediate")).Should().BeFalse();
+    }
 }
