@@ -826,7 +826,7 @@ public class DimensionLookupTests
     [Theory]
     [InlineData("TargetPlatform")]
     [InlineData("targetplatform")]
-    [InlineData("PLATFORM".Length == 8 ? "TargetPlatform" : "TargetPlatform")]
+    [InlineData("TARGETPLATFORM")]
     public void FindDimensionType_BuiltInDimension_IsCaseInsensitive(string name)
     {
         var result = DimensionLookup.FindDimensionType(typeof(DimensionLookupTests).Assembly, name);
