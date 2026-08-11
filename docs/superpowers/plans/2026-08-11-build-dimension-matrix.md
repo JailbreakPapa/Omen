@@ -1675,7 +1675,7 @@ git commit -m "feat: resolve-then-loop matrix support and module gating in Build
 
 **Interfaces:**
 - Consumes: `TargetMatrix`/`ResolvedTarget` (Task 1), `CompiledRules.FindTargetType()`/`GetSupportedTargets()` (Task 3), the module-gating logic pattern from Task 5 (`IsModuleIncluded`, duplicated here rather than shared — see note in Step 3).
-- Produces: a new `VisualStudioGenerator.GenerateAsync(IReadOnlyList<(TargetRules Target, IReadOnlyList<ModuleRules> Modules)> combinations)` overload alongside the existing single-combination `GenerateAsync(TargetRules target, IReadOnlyList<ModuleRules> modules)`, which stays untouched and is what a no-matrix target keeps using.
+- Produces: a new `VisualStudioGenerator.GenerateAsync(IReadOnlyList<(TargetRules Target, IReadOnlyList<ModuleRules> Modules, BuildContext Context)> combinations)` overload alongside the existing single-combination `GenerateAsync(TargetRules target, IReadOnlyList<ModuleRules> modules)`, which stays untouched and is what a no-matrix target keeps using. The tuple carries `BuildContext`, not just `Target`/`Modules` — `TargetRules`/`ModuleRules` expose no public Platform/Architecture/Configuration of their own (only `Context`, which is `protected`), and this overload's whole job is emitting one `<ProjectConfiguration>` per combination from exactly those values, so it cannot do that job without them.
 
 Read `src/Omen.Executors/Orchestration/ProjectGenerationOrchestrator.cs` and `src/Omen.Core/Generators/VisualStudioGenerator.cs` in full before editing. `VisualStudioGenerator.cs` is a large file (500+ lines) generating one `.vcxproj` per module plus a `.sln`; only its `<ItemGroup Label="ProjectConfigurations">` emission (currently hardcoded to `["Debug","Development","Shipping"] x ["x64","ARM64"]`, one per module's generated project file) needs to become combination-driven for a matrix-declaring target.
 
@@ -1804,9 +1804,15 @@ var cachedOptionValues = optionCacheStore.Load();
 
 List<(TargetRules Target, IReadOnlyList<ModuleRules> Modules, BuildContext Context)> combinations = [];
 
+// Every local below is named singleXxx/combinationXxx rather than reusing target/modules/
+// context - those names are declared once more, in the enclosing scope, right after this
+// if/else block (target = combinations[0].Target, etc., feeding the switch statement and
+// compile_commands.json step that follow, unchanged). C# treats that as a genuine name
+// collision (CS0136) even though the two declarations never execute at the same time, so
+// verbatim reuse of target/modules/context inside this block does not compile.
 if (matrix == null)
 {
-    var context = new BuildContext
+    var singleContext = new BuildContext
     {
         Platform = TargetPlatform.Windows,
         Architecture = TargetArchitecture.X64,
@@ -1816,14 +1822,14 @@ if (matrix == null)
         OutputDirectory = Path.Combine(workingDir, "Binaries"),
         CachedOptionValues = cachedOptionValues
     };
-    var targets = compiledRules.CreateTargetRules(context);
-    var modules = compiledRules.CreateModuleRules(context);
-    if (targets.Count == 0)
+    var singleTargets = compiledRules.CreateTargetRules(singleContext);
+    var singleModules = compiledRules.CreateModuleRules(singleContext);
+    if (singleTargets.Count == 0)
     {
         events?.Report(new OrchestratorEvent("No targets found.", OrchestratorEventLevel.Error));
         return false;
     }
-    combinations.Add((targets.First(), modules, context));
+    combinations.Add((singleTargets.First(), singleModules, singleContext));
 }
 else
 {
@@ -1840,7 +1846,7 @@ else
     {
         var platform = resolved.Get<TargetPlatform>();
         var configuration = resolved.Get<BuildConfiguration>();
-        var context = new BuildContext
+        var combinationContext = new BuildContext
         {
             Platform = platform,
             Architecture = resolved.Get<TargetArchitecture>(),
@@ -1850,12 +1856,12 @@ else
             OutputDirectory = Path.Combine(workingDir, "Binaries", $"{platform}_{configuration}"),
             CachedOptionValues = cachedOptionValues
         };
-        var target = compiledRules.CreateTargetRules(context).First();
-        var modules = compiledRules.CreateModuleRules(context)
+        var combinationTarget = compiledRules.CreateTargetRules(combinationContext).First();
+        var combinationModules = compiledRules.CreateModuleRules(combinationContext)
             .Where(m => compiledRules.GetSupportedTargets(m.GetType()) is not { } moduleMatrix
                         || moduleMatrix.Resolve().Any(c => c.Values.All(kv => resolved.Values.TryGetValue(kv.Key, out var v) && Equals(v, kv.Value))))
             .ToList();
-        combinations.Add((target, modules, context));
+        combinations.Add((combinationTarget, combinationModules, combinationContext));
     }
 }
 
@@ -1890,8 +1896,10 @@ var generator = new VisualStudioGenerator(projectRoot, version);
 if (combinations.Count == 1)
     await generator.GenerateAsync(combinations[0].Target, combinations[0].Modules);
 else
-    await generator.GenerateAsync(combinations.Select(c => (c.Target, c.Modules)).ToList());
+    await generator.GenerateAsync(combinations);
 ```
+
+(`combinations` is already `IReadOnlyList<(TargetRules Target, IReadOnlyList<ModuleRules> Modules, BuildContext Context)>` from Step 3 — no projection needed, and none should drop `Context`: the multi-combination overload (Step 5) needs each combination's `BuildContext` to know which `Platform`/`Configuration`/custom dimensions that specific `<ProjectConfiguration>` entry represents. `TargetRules`/`ModuleRules` do not expose Platform/Architecture/Configuration publicly — only `Context` (`protected`) carries them — so a tuple shape without `BuildContext` cannot do what this overload's job description requires.)
 
 `GenerateVSCodeAsync`/`GenerateCMakeAsync` keep their existing `(TargetRules target, IReadOnlyList<ModuleRules> modules)` signatures, called with `combinations[0].Target`/`combinations[0].Modules` at their call sites — VSCode/CMake generation for a multi-combination target uses only the first resolved combination for now (out of scope to extend every generator; the spec's "Project generation output" section specifically calls out VS's `<ProjectConfiguration>` model, not VSCode/CMake).
 
@@ -1904,19 +1912,23 @@ In `src/Omen.Core/Generators/VisualStudioGenerator.cs`, find the existing `publi
 ```csharp
 /// <summary>
 /// Multi-combination generation for a target with a declared SupportedTargets matrix -
-/// each tuple's Platform/Configuration becomes one &lt;ProjectConfiguration&gt; entry
-/// instead of today's hardcoded Debug/Development/Shipping x x64/ARM64 list. All tuples
-/// must share the same Target (only Modules legitimately varies per combination, via
-/// module gating) and the same set of module names across combinations that include them.
+/// each tuple's Context.Platform/Context.Configuration becomes one
+/// &lt;ProjectConfiguration&gt; entry instead of today's hardcoded Debug/Development/
+/// Shipping x x64/ARM64 list. All tuples must share the same Target (only Modules
+/// legitimately varies per combination, via module gating) and the same set of module
+/// names across combinations that include them.
 /// </summary>
-public async Task GenerateAsync(IReadOnlyList<(TargetRules Target, IReadOnlyList<ModuleRules> Modules)> combinations)
+public async Task GenerateAsync(IReadOnlyList<(TargetRules Target, IReadOnlyList<ModuleRules> Modules, BuildContext Context)> combinations)
 {
     // Implementation note for the task's implementer: read the existing single-combination
     // GenerateAsync/its per-module project-file-writing helper in full first. The
     // hardcoded `foreach (var config in new[] { "Debug", "Development", "Shipping" })
     // foreach (var platform in new[] { "x64", "ARM64" })` loop that emits
     // <ProjectConfiguration> entries (and the matching per-configuration
-    // <ItemDefinitionGroup Condition="...">) needs to iterate `combinations` instead -
+    // <ItemDefinitionGroup Condition="...">) needs to iterate `combinations` instead,
+    // reading each tuple's `Context.Platform`/`Context.Configuration` (mapping
+    // TargetArchitecture/TargetPlatform enum values to the same VS platform-name strings
+    // the existing hardcoded list already uses, e.g. TargetArchitecture.X64 -> "x64") -
     // one <ProjectConfiguration Include="{Configuration}|{Platform}"> and one
     // <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='{Configuration}|{Platform}'">
     // per tuple, using that tuple's own Modules for the ItemDefinitionGroup's per-module
