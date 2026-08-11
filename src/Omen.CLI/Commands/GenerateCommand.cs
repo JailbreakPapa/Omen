@@ -25,6 +25,10 @@ public static class GenerateCommand
     {
         var command = new Command("project", "Generate IDE project files");
 
+        // generate project intentionally has no --platform/--configuration/--dim: it always
+        // generates the whole resolved matrix into one multi-configuration project file (see
+        // ProjectGenerationOrchestrator) - the IDE, not this CLI command, is where a developer
+        // picks which configuration to build.
         var ideOption = new Option<string>(
             ["--ide", "-i"],
             () => "vs2022",
