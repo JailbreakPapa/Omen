@@ -40,10 +40,10 @@
                         <TextBlock Text="Open" />
                     </StackPanel>
                 </Button>
-                <TextBlock Text="Platform:" VerticalAlignment="Center" />
-                <ComboBox ItemsSource="{Binding AvailablePlatforms}" SelectedItem="{Binding SelectedPlatform}" MinWidth="100" />
-                <TextBlock Text="Config:" VerticalAlignment="Center" />
-                <ComboBox ItemsSource="{Binding Configurations}" SelectedItem="{Binding SelectedConfiguration}" MinWidth="100" />
+                <TextBlock Text="Platform:" VerticalAlignment="Center" IsVisible="{Binding !MatrixPanel.IsActive}" />
+                <ComboBox ItemsSource="{Binding AvailablePlatforms}" SelectedItem="{Binding SelectedPlatform}" MinWidth="100" IsVisible="{Binding !MatrixPanel.IsActive}" />
+                <TextBlock Text="Config:" VerticalAlignment="Center" IsVisible="{Binding !MatrixPanel.IsActive}" />
+                <ComboBox ItemsSource="{Binding Configurations}" SelectedItem="{Binding SelectedConfiguration}" MinWidth="100" IsVisible="{Binding !MatrixPanel.IsActive}" />
                 <Button Click="OnBuildClick" IsEnabled="{Binding !IsBuilding}" Classes="primary">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{StaticResource IconBuild}" Width="14" Height="14" />
@@ -81,7 +81,7 @@
             </Grid>
         </Border>
 
-        <Grid ColumnDefinitions="250,4,*,4,Auto">
+        <Grid ColumnDefinitions="250,4,*,4,Auto,4,Auto">
             <Border Grid.Column="0" Classes="pane" BorderThickness="0,0,1,0" BorderBrush="Gray">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Project" Classes="paneHeader" />
@@ -152,6 +152,32 @@
                     </DockPanel>
                 </Border>
             </Grid>
+
+            <GridSplitter Grid.Column="5" Width="4" Background="Transparent" ResizeDirection="Columns" IsVisible="{Binding MatrixPanel.IsActive}" />
+
+            <Border Grid.Column="6" Width="280" Classes="pane" BorderThickness="1,0,0,0" BorderBrush="Gray" IsVisible="{Binding MatrixPanel.IsActive}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Build Matrix" Classes="paneHeader" />
+                    <ScrollViewer>
+                        <ItemsControl ItemsSource="{Binding MatrixPanel.DimensionGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:DimensionGroupViewModel}">
+                                    <StackPanel Margin="8,4">
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                        <ItemsControl ItemsSource="{Binding Values}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:DimensionValueViewModel}">
+                                                    <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsChecked}" Margin="16,2,0,0" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
         </Grid>
     </DockPanel>
 </Window>
