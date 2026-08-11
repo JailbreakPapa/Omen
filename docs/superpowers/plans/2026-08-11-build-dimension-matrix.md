@@ -583,6 +583,7 @@ public class CompiledRulesSupportedTargetsTests : IDisposable
             {
                 public static TargetMatrix SupportedTargets => TargetMatrix.Empty
                     .For(TargetPlatform.Windows, TargetPlatform.Linux)
+                    .For(TargetArchitecture.X64)
                     .For(BuildConfiguration.Debug, BuildConfiguration.Release);
 
                 public WithMatrixTarget(BuildContext context) : base(context) { }
@@ -629,6 +630,7 @@ public class CompiledRulesSupportedTargetsTests : IDisposable
         // whose constructor would throw for an unconfigured context proves this.
         var targetFile = Path.Combine(_projectRoot, "Throwing.target.cs");
         File.WriteAllText(targetFile, """
+            using System;
             using Omen.Core.Configuration;
             using Omen.Core.Rules;
 
@@ -659,7 +661,10 @@ public class CompiledRulesSupportedTargetsTests : IDisposable
 
             public class WithMatrixModule : ModuleRules
             {
-                public static TargetMatrix SupportedTargets => TargetMatrix.Empty.For(TargetPlatform.Windows);
+                public static TargetMatrix SupportedTargets => TargetMatrix.Empty
+                    .For(TargetPlatform.Windows)
+                    .For(TargetArchitecture.X64)
+                    .For(BuildConfiguration.Debug);
 
                 public WithMatrixModule(BuildContext context) : base(context) { }
             }
@@ -671,7 +676,10 @@ public class CompiledRulesSupportedTargetsTests : IDisposable
         var matrix = compiledRules.GetSupportedTargets(moduleType);
 
         matrix.Should().NotBeNull();
-        matrix!.Resolve().Should().ContainSingle(r => r.Get<TargetPlatform>() == TargetPlatform.Windows);
+        // All three built-ins pinned, so Resolve() yields exactly one combination -
+        // isolates "does a module-level matrix resolve" from built-in auto-expansion math.
+        var resolved = matrix!.Resolve().Should().ContainSingle().Subject;
+        resolved.Get<TargetPlatform>().Should().Be(TargetPlatform.Windows);
     }
 
     private BuildContext CreateContext() => new()
