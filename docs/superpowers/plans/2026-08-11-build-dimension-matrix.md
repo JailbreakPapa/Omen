@@ -837,9 +837,9 @@ public class DimensionLookupTests
     [Fact]
     public void FindDimensionType_CustomDimensionInGivenAssembly_IsFound()
     {
-        var result = DimensionLookup.FindDimensionType(typeof(DimensionLookupTests).Assembly, nameof(TestRenderApi));
+        var result = DimensionLookup.FindDimensionType(typeof(DimensionLookupTests).Assembly, nameof(LookupOnlyDimension));
 
-        result.Should().Be(typeof(TestRenderApi));
+        result.Should().Be(typeof(LookupOnlyDimension));
     }
 
     [Fact]
@@ -882,11 +882,13 @@ public class DimensionLookupTests
     }
 
     [BuildDimension]
-    public enum TestRenderApi { DirectX12, Vulkan }
+    public enum LookupOnlyDimension { DirectX12, Vulkan }
 
     public enum UntaggedEnum { A, B }
 }
 ```
+
+`LookupOnlyDimension` is deliberately NOT named `TestRenderApi` — `TestMatrixTests.cs` (Task 1) and `BuildContextTests.cs` (Task 2) each already declare their own nested `[BuildDimension] enum TestRenderApi` for their own, unrelated tests. `DimensionLookup.FindDimensionType` matches by simple `Type.Name` across every type in the given assembly (here, the whole `Omen.Core.Tests` assembly, via `typeof(DimensionLookupTests).Assembly`) — three same-named nested enums across three files would collide, and `FirstOrDefault` would nondeterministically return whichever the runtime's `Assembly.GetTypes()` happens to list first, not necessarily this test's own one. A prior implementer correctly caught this collision and reported BLOCKED rather than guessing which of the three name-colliding enums a passing test run was silently depending on.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
