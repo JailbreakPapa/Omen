@@ -8,6 +8,11 @@ using Omen.Core.Rules;
 
 public class GemSampleTarget : TargetRules
 {
+    public static TargetMatrix SupportedTargets => TargetMatrix.Empty
+        .For(TargetPlatform.Windows)
+        .For(TargetArchitecture.X64)
+        .For(BuildConfiguration.Debug, BuildConfiguration.Development);
+
     public GemSampleTarget(BuildContext context) : base(context)
     {
         Type = TargetType.Executable;
@@ -19,9 +24,14 @@ public class GemSampleTarget : TargetRules
         UseUnityBuild = false;
 
         var verboseGreeting = BuildOptions.Declare(context, "VERBOSE_GREETING", "Print an extended greeting from the Greeter gem", false);
+        var loadWindow = BuildOptions.Declare(context, "LOAD_WINDOW", "Load the window module", true);
         if (verboseGreeting)
         {
             GlobalDefinitions.Add("VERBOSE_GREETING=1");
+        }
+        if(loadWindow)
+        {
+            GlobalDefinitions.Add("LOAD_WINDOW=1");
         }
     }
 }
