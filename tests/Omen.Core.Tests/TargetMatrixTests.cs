@@ -46,8 +46,12 @@ public class TargetMatrixTests
     [Fact]
     public void Resolve_CustomDimensionConstrained_AppearsInEveryResolvedTarget()
     {
+        // All three built-ins pinned to a single value each, isolating "does a constrained
+        // custom dimension appear correctly" from built-in auto-expansion math.
         var matrix = TargetMatrix.Empty
             .For(TargetPlatform.Windows)
+            .For(TargetArchitecture.X64)
+            .For(BuildConfiguration.Debug)
             .For(TestRenderApi.DirectX12, TestRenderApi.Vulkan);
 
         var resolved = matrix.Resolve();
@@ -120,7 +124,12 @@ public class TargetMatrixTests
     [Fact]
     public void ResolvedTarget_TryGet_UnresolvedDimension_ReturnsFalse()
     {
-        var resolved = TargetMatrix.Empty.For(TargetPlatform.Windows).Resolve().Single();
+        // All three built-ins pinned - .Single() is only valid once nothing auto-expands.
+        var resolved = TargetMatrix.Empty
+            .For(TargetPlatform.Windows)
+            .For(TargetArchitecture.X64)
+            .For(BuildConfiguration.Debug)
+            .Resolve().Single();
 
         resolved.TryGet<TestRenderApi>(out var value).Should().BeFalse();
         value.Should().Be(default(TestRenderApi));
@@ -129,7 +138,11 @@ public class TargetMatrixTests
     [Fact]
     public void ResolvedTarget_Get_UnresolvedDimension_Throws()
     {
-        var resolved = TargetMatrix.Empty.For(TargetPlatform.Windows).Resolve().Single();
+        var resolved = TargetMatrix.Empty
+            .For(TargetPlatform.Windows)
+            .For(TargetArchitecture.X64)
+            .For(BuildConfiguration.Debug)
+            .Resolve().Single();
 
         var act = () => resolved.Get<TestRenderApi>();
 

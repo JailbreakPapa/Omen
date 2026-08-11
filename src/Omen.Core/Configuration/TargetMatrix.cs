@@ -61,32 +61,10 @@ public sealed class TargetMatrix
     public IReadOnlyList<ResolvedTarget> Resolve()
     {
         var dimensions = new Dictionary<Type, Enum[]>(_dimensions);
-
-        // Determine if we should auto-expand unconstrained built-in dimensions.
-        // They expand unless Platform is constrained exclusively (without Architecture or Config).
-        bool hasConstrainedPlatform = dimensions.ContainsKey(typeof(TargetPlatform));
-        bool hasConstrainedArchitecture = dimensions.ContainsKey(typeof(TargetArchitecture));
-        bool hasConstrainedConfig = dimensions.ContainsKey(typeof(BuildConfiguration));
-
-        bool shouldExpandUnconstrained = !hasConstrainedPlatform ||
-                                         hasConstrainedArchitecture ||
-                                         hasConstrainedConfig;
-
         foreach (var builtIn in BuiltInDimensions)
         {
             if (!dimensions.ContainsKey(builtIn))
-            {
-                if (shouldExpandUnconstrained)
-                {
-                    dimensions[builtIn] = Enum.GetValues(builtIn).Cast<Enum>().ToArray();
-                }
-                else
-                {
-                    // Default to first enum value
-                    var firstValue = Enum.GetValues(builtIn).Cast<Enum>().First();
-                    dimensions[builtIn] = [firstValue];
-                }
-            }
+                dimensions[builtIn] = Enum.GetValues(builtIn).Cast<Enum>().ToArray();
         }
 
         IEnumerable<IReadOnlyDictionary<Type, Enum>> combinations = [new Dictionary<Type, Enum>()];
