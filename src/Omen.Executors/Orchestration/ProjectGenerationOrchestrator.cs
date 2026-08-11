@@ -54,42 +54,94 @@ public sealed class ProjectGenerationOrchestrator
             return false;
         }
 
-        var optionCacheStore = new OptionCacheStore(Path.Combine(workingDir, "Intermediate", "omen-cache.json"));
-
-        var context = new BuildContext
+        var targetType = compiledRules.FindTargetType();
+        if (targetType == null)
         {
-            Platform = TargetPlatform.Windows,
-            Architecture = TargetArchitecture.X64,
-            Configuration = BuildConfiguration.Development,
-            ProjectRoot = workingDir,
-            IntermediateDirectory = Path.Combine(workingDir, "Intermediate"),
-            OutputDirectory = Path.Combine(workingDir, "Binaries"),
-            CachedOptionValues = optionCacheStore.Load()
-        };
-
-        var targets = compiledRules.CreateTargetRules(context);
-        var modules = compiledRules.CreateModuleRules(context);
-
-        if (targets.Count == 0)
-        {
-            events?.Report(new OrchestratorEvent("No targets found.", OrchestratorEventLevel.Error));
+            events?.Report(new OrchestratorEvent("No target found.", OrchestratorEventLevel.Error));
             return false;
         }
+        var matrix = compiledRules.GetSupportedTargets(targetType);
 
-        var target = targets.First();
+        var optionCacheStore = new OptionCacheStore(Path.Combine(workingDir, "Intermediate", "omen-cache.json"));
+        var cachedOptionValues = optionCacheStore.Load();
+
+        List<(TargetRules Target, IReadOnlyList<ModuleRules> Modules, BuildContext Context)> combinations = [];
+
+        if (matrix == null)
+        {
+            // Named singleXxx rather than target/modules/context - those names are claimed
+            // below (combinations[0].Target/.Modules/.Context) for use by the switch statement
+            // and the compile_commands.json step, and C#'s block-scoping rules forbid reusing a
+            // local name inside a nested block when the enclosing block also declares it.
+            var singleContext = new BuildContext
+            {
+                Platform = TargetPlatform.Windows,
+                Architecture = TargetArchitecture.X64,
+                Configuration = BuildConfiguration.Development,
+                ProjectRoot = workingDir,
+                IntermediateDirectory = Path.Combine(workingDir, "Intermediate"),
+                OutputDirectory = Path.Combine(workingDir, "Binaries"),
+                CachedOptionValues = cachedOptionValues
+            };
+            var singleTargets = compiledRules.CreateTargetRules(singleContext);
+            var singleModules = compiledRules.CreateModuleRules(singleContext);
+            if (singleTargets.Count == 0)
+            {
+                events?.Report(new OrchestratorEvent("No targets found.", OrchestratorEventLevel.Error));
+                return false;
+            }
+            combinations.Add((singleTargets.First(), singleModules, singleContext));
+        }
+        else
+        {
+            var resolvedTargets = matrix.Resolve();
+            if (resolvedTargets.Count == 0)
+            {
+                events?.Report(new OrchestratorEvent(
+                    $"'{targetType.Name}'s SupportedTargets matrix resolved to zero combinations - check its Exclude rules.",
+                    OrchestratorEventLevel.Error));
+                return false;
+            }
+
+            foreach (var resolved in resolvedTargets)
+            {
+                var platform = resolved.Get<TargetPlatform>();
+                var configuration = resolved.Get<BuildConfiguration>();
+                var combinationContext = new BuildContext
+                {
+                    Platform = platform,
+                    Architecture = resolved.Get<TargetArchitecture>(),
+                    Configuration = configuration,
+                    ProjectRoot = workingDir,
+                    IntermediateDirectory = Path.Combine(workingDir, "Intermediate", $"{platform}_{configuration}"),
+                    OutputDirectory = Path.Combine(workingDir, "Binaries", $"{platform}_{configuration}"),
+                    CachedOptionValues = cachedOptionValues
+                };
+                var combinationTarget = compiledRules.CreateTargetRules(combinationContext).First();
+                var combinationModules = compiledRules.CreateModuleRules(combinationContext)
+                    .Where(m => compiledRules.GetSupportedTargets(m.GetType()) is not { } moduleMatrix
+                                || moduleMatrix.Resolve().Any(c => c.Values.All(kv => resolved.Values.TryGetValue(kv.Key, out var v) && Equals(v, kv.Value))))
+                    .ToList();
+                combinations.Add((combinationTarget, combinationModules, combinationContext));
+            }
+        }
+
+        var target = combinations[0].Target;
+        var modules = combinations[0].Modules;
+        var context = combinations[0].Context; // used below by the existing compile_commands.json step, unchanged
 
         switch (request.Ide)
         {
             case IdeKind.VS2019:
-                await GenerateVisualStudioAsync(workingDir, target, modules, VisualStudioGenerator.VisualStudioVersion.VS2019, events);
+                await GenerateVisualStudioAsync(workingDir, combinations, VisualStudioGenerator.VisualStudioVersion.VS2019, events);
                 break;
 
             case IdeKind.VS2022:
-                await GenerateVisualStudioAsync(workingDir, target, modules, VisualStudioGenerator.VisualStudioVersion.VS2022, events);
+                await GenerateVisualStudioAsync(workingDir, combinations, VisualStudioGenerator.VisualStudioVersion.VS2022, events);
                 break;
 
             case IdeKind.VS2026:
-                await GenerateVisualStudioAsync(workingDir, target, modules, VisualStudioGenerator.VisualStudioVersion.VS2026, events);
+                await GenerateVisualStudioAsync(workingDir, combinations, VisualStudioGenerator.VisualStudioVersion.VS2026, events);
                 break;
 
             case IdeKind.VSCode:
@@ -126,13 +178,18 @@ public sealed class ProjectGenerationOrchestrator
 
     private static async Task GenerateVisualStudioAsync(
         string projectRoot,
-        TargetRules target,
-        IReadOnlyList<ModuleRules> modules,
+        IReadOnlyList<(TargetRules Target, IReadOnlyList<ModuleRules> Modules, BuildContext Context)> combinations,
         VisualStudioGenerator.VisualStudioVersion version,
         IProgress<OrchestratorEvent>? events)
     {
+        var target = combinations[0].Target;
+        var modules = combinations[0].Modules;
+
         var generator = new VisualStudioGenerator(projectRoot, version);
-        await generator.GenerateAsync(target, modules);
+        if (combinations.Count == 1)
+            await generator.GenerateAsync(combinations[0].Target, combinations[0].Modules);
+        else
+            await generator.GenerateAsync(combinations);
 
         var solutionPath = Path.Combine(projectRoot, $"{target.Name}.sln");
         events?.Report(new OrchestratorEvent($"Generated Visual Studio solution: {solutionPath}", OrchestratorEventLevel.Success));

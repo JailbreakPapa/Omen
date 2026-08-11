@@ -75,14 +75,109 @@ public sealed class VisualStudioGenerator
         await GenerateSolutionAsync(solutionPath, solutionName, target, projects, modules, ct);
     }
 
+    /// <summary>
+    /// Multi-combination generation for a target with a declared SupportedTargets matrix -
+    /// each tuple's Context.Platform/Context.Configuration becomes one
+    /// &lt;ProjectConfiguration&gt; entry instead of today's hardcoded Debug/Development/
+    /// Shipping x x64/ARM64 list. All tuples must share the same Target (only Modules
+    /// legitimately varies per combination, via module gating) and the same set of module
+    /// names across combinations that include them.
+    /// </summary>
+    public async Task GenerateAsync(
+        IReadOnlyList<(TargetRules Target, IReadOnlyList<ModuleRules> Modules, BuildContext Context)> combinations,
+        CancellationToken ct = default)
+    {
+        var target = combinations[0].Target;
+        var solutionName = target.Name;
+        var solutionPath = Path.Combine(_projectRoot, $"{solutionName}.sln");
+        var projectsDir = Path.Combine(_projectRoot, "Intermediate", "ProjectFiles");
+
+        Directory.CreateDirectory(projectsDir);
+
+        // Module identity doesn't vary across combinations - only which modules are
+        // *included* does (module gating) - so the set of .vcxproj files to emit is the
+        // union of every combination's Modules.
+        var allModules = combinations
+            .SelectMany(c => c.Modules)
+            .GroupBy(m => m.Name)
+            .Select(g => g.First())
+            .ToList();
+
+        _moduleDict = allModules.ToDictionary(m => m.Name);
+
+        // Per-module (Configuration, Platform) pairs, restricted to the combinations that
+        // actually include that module - a module absent from a combination gets no
+        // <ProjectConfiguration>/<ItemDefinitionGroup> for that entry in its own project
+        // file, which MSBuild treats as "not built for that configuration".
+        var configPlatformsByModule = allModules.ToDictionary(
+            m => m.Name,
+            m => (IReadOnlyList<(string Configuration, string Platform)>)combinations
+                .Where(c => c.Modules.Any(cm => cm.Name == m.Name))
+                .Select(c => (Configuration: c.Context.Configuration.ToString(), Platform: MapArchitecturePlatform(c.Context.Architecture)))
+                .Distinct()
+                .ToList());
+
+        var allConfigPlatforms = configPlatformsByModule.Values
+            .SelectMany(cp => cp)
+            .Distinct()
+            .ToList();
+
+        var projects = new List<(string Name, string Path, Guid Guid, bool IsCSharp)>();
+
+        foreach (var module in allModules)
+        {
+            var moduleConfigPlatforms = configPlatformsByModule[module.Name];
+            var projectGuid = GenerateGuid(module.Name);
+
+            if (module.IsCSharpProject)
+            {
+                var projectPath = Path.Combine(projectsDir, module.Name, $"{module.Name}.csproj");
+                await GenerateCsprojAsync(module, projectPath, target, allModules, ct);
+                projects.Add((module.Name, projectPath, projectGuid, true));
+            }
+            else
+            {
+                var projectPath = Path.Combine(projectsDir, module.Name, $"{module.Name}.vcxproj");
+                await GenerateVcxprojAsync(module, projectPath, target, allModules, ct, moduleConfigPlatforms);
+                await GenerateVcxprojFiltersAsync(module, projectPath + ".filters", ct);
+                await GenerateVcxprojUserAsync(module, projectPath + ".user", ct, moduleConfigPlatforms);
+                projects.Add((module.Name, projectPath, projectGuid, false));
+            }
+        }
+
+        await GenerateSolutionAsync(solutionPath, solutionName, target, projects, allModules, ct, allConfigPlatforms, configPlatformsByModule);
+    }
+
+    /// <summary>
+    /// Today's hardcoded solution/project configuration list, used whenever a caller (the
+    /// single-combination GenerateAsync above, or the multi-combination one for any module
+    /// not otherwise gated) doesn't supply its own set.
+    /// </summary>
+    private static readonly IReadOnlyList<(string Configuration, string Platform)> DefaultConfigPlatforms =
+        (from config in new[] { "Debug", "Development", "Shipping" }
+         from platform in new[] { "x64", "ARM64" }
+         select (config, platform)).ToList();
+
+    private static string MapArchitecturePlatform(TargetArchitecture architecture) => architecture switch
+    {
+        TargetArchitecture.X64 => "x64",
+        TargetArchitecture.ARM64 => "ARM64",
+        TargetArchitecture.X86 => "Win32",
+        TargetArchitecture.ARMv7 => "ARM",
+        _ => architecture.ToString()
+    };
+
     private async Task GenerateSolutionAsync(
         string solutionPath,
         string solutionName,
         TargetRules target,
         List<(string Name, string Path, Guid Guid, bool IsCSharp)> projects,
         IReadOnlyList<ModuleRules> modules,
-        CancellationToken ct)
+        CancellationToken ct,
+        IReadOnlyList<(string Configuration, string Platform)>? allConfigPlatforms = null,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Configuration, string Platform)>>? perModuleConfigPlatforms = null)
     {
+        var effectiveAllConfigPlatforms = allConfigPlatforms ?? DefaultConfigPlatforms;
         var sb = new StringBuilder();
 
         // Solution header
@@ -160,10 +255,9 @@ public sealed class VisualStudioGenerator
 
         // Solution configuration platforms
         sb.AppendLine("\tGlobalSection(SolutionConfigurationPlatforms) = preSolution");
-        foreach (var config in new[] { "Debug", "Development", "Shipping" })
+        foreach (var (config, platform) in effectiveAllConfigPlatforms)
         {
-            sb.AppendLine($"\t\t{config}|x64 = {config}|x64");
-            sb.AppendLine($"\t\t{config}|ARM64 = {config}|ARM64");
+            sb.AppendLine($"\t\t{config}|{platform} = {config}|{platform}");
         }
         sb.AppendLine("\tEndGlobalSection");
 
@@ -178,19 +272,19 @@ public sealed class VisualStudioGenerator
             // written so they remain mapped/browsable. C# projects are outside this task's
             // NMake conversion and keep building normally.
             var isBuildable = isCSharp || IsMainModule(_moduleDict[name], target, modules);
+            var projectConfigPlatforms = perModuleConfigPlatforms != null && perModuleConfigPlatforms.TryGetValue(name, out var moduleConfigPlatforms)
+                ? moduleConfigPlatforms
+                : effectiveAllConfigPlatforms;
 
-            foreach (var config in new[] { "Debug", "Development", "Shipping" })
+            foreach (var (config, platform) in projectConfigPlatforms)
             {
-                foreach (var platform in new[] { "x64", "ARM64" })
-                {
-                    // C# projects use AnyCPU, need to map platforms
-                    var projectConfig = isCSharp ? MapToCSharpConfig(config) : config;
-                    var projectPlatform = isCSharp ? "Any CPU" : platform;
+                // C# projects use AnyCPU, need to map platforms
+                var projectConfig = isCSharp ? MapToCSharpConfig(config) : config;
+                var projectPlatform = isCSharp ? "Any CPU" : platform;
 
-                    sb.AppendLine($"\t\t{{{guid}}}.{config}|{platform}.ActiveCfg = {projectConfig}|{projectPlatform}");
-                    if (isBuildable)
-                        sb.AppendLine($"\t\t{{{guid}}}.{config}|{platform}.Build.0 = {projectConfig}|{projectPlatform}");
-                }
+                sb.AppendLine($"\t\t{{{guid}}}.{config}|{platform}.ActiveCfg = {projectConfig}|{projectPlatform}");
+                if (isBuildable)
+                    sb.AppendLine($"\t\t{{{guid}}}.{config}|{platform}.Build.0 = {projectConfig}|{projectPlatform}");
             }
         }
         sb.AppendLine("\tEndGlobalSection");
@@ -400,8 +494,11 @@ public sealed class VisualStudioGenerator
         string projectPath,
         TargetRules target,
         IReadOnlyList<ModuleRules> allModules,
-        CancellationToken ct)
+        CancellationToken ct,
+        IReadOnlyList<(string Configuration, string Platform)>? configPlatforms = null)
     {
+        var effectiveConfigPlatforms = configPlatforms ?? DefaultConfigPlatforms;
+
         Directory.CreateDirectory(Path.GetDirectoryName(projectPath)!);
 
         var projectGuid = GenerateGuid(module.Name);
@@ -469,15 +566,12 @@ public sealed class VisualStudioGenerator
 
         // Item group for configurations
         sb.AppendLine("  <ItemGroup Label=\"ProjectConfigurations\">");
-        foreach (var config in new[] { "Debug", "Development", "Shipping" })
+        foreach (var (config, platform) in effectiveConfigPlatforms)
         {
-            foreach (var platform in new[] { "x64", "ARM64" })
-            {
-                sb.AppendLine($"    <ProjectConfiguration Include=\"{config}|{platform}\">");
-                sb.AppendLine($"      <Configuration>{config}</Configuration>");
-                sb.AppendLine($"      <Platform>{platform}</Platform>");
-                sb.AppendLine("    </ProjectConfiguration>");
-            }
+            sb.AppendLine($"    <ProjectConfiguration Include=\"{config}|{platform}\">");
+            sb.AppendLine($"      <Configuration>{config}</Configuration>");
+            sb.AppendLine($"      <Platform>{platform}</Platform>");
+            sb.AppendLine("    </ProjectConfiguration>");
         }
         sb.AppendLine("  </ItemGroup>");
 
@@ -501,23 +595,20 @@ public sealed class VisualStudioGenerator
         sb.AppendLine("  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.Default.props\" />");
 
         // Configuration property groups
-        foreach (var config in new[] { "Debug", "Development", "Shipping" })
+        foreach (var (config, platform) in effectiveConfigPlatforms)
         {
-            foreach (var platform in new[] { "x64", "ARM64" })
-            {
-                var useDebugLibs = config == "Debug" ? "true" : "false";
+            var useDebugLibs = config == "Debug" ? "true" : "false";
 
-                sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\" Label=\"Configuration\">");
-                sb.AppendLine($"    <ConfigurationType>{(isMainModule ? "Makefile" : configType)}</ConfigurationType>");
-                sb.AppendLine($"    <UseDebugLibraries>{useDebugLibs}</UseDebugLibraries>");
-                sb.AppendLine($"    <PlatformToolset>{platformToolset}</PlatformToolset>");
-                sb.AppendLine("    <CharacterSet>Unicode</CharacterSet>");
-                if (config != "Debug")
-                {
-                    sb.AppendLine("    <WholeProgramOptimization>true</WholeProgramOptimization>");
-                }
-                sb.AppendLine("  </PropertyGroup>");
+            sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\" Label=\"Configuration\">");
+            sb.AppendLine($"    <ConfigurationType>{(isMainModule ? "Makefile" : configType)}</ConfigurationType>");
+            sb.AppendLine($"    <UseDebugLibraries>{useDebugLibs}</UseDebugLibraries>");
+            sb.AppendLine($"    <PlatformToolset>{platformToolset}</PlatformToolset>");
+            sb.AppendLine("    <CharacterSet>Unicode</CharacterSet>");
+            if (config != "Debug")
+            {
+                sb.AppendLine("    <WholeProgramOptimization>true</WholeProgramOptimization>");
             }
+            sb.AppendLine("  </PropertyGroup>");
         }
 
         sb.AppendLine("  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.props\" />");
@@ -534,14 +625,11 @@ public sealed class VisualStudioGenerator
         sb.AppendLine("  </ImportGroup>");
 
         // Property sheets
-        foreach (var config in new[] { "Debug", "Development", "Shipping" })
+        foreach (var (config, platform) in effectiveConfigPlatforms)
         {
-            foreach (var platform in new[] { "x64", "ARM64" })
-            {
-                sb.AppendLine($"  <ImportGroup Label=\"PropertySheets\" Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
-                sb.AppendLine("    <Import Project=\"$(UserRootDir)\\Microsoft.Cpp.$(Platform).user.props\" Condition=\"exists('$(UserRootDir)\\Microsoft.Cpp.$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />");
-                sb.AppendLine("  </ImportGroup>");
-            }
+            sb.AppendLine($"  <ImportGroup Label=\"PropertySheets\" Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
+            sb.AppendLine("    <Import Project=\"$(UserRootDir)\\Microsoft.Cpp.$(Platform).user.props\" Condition=\"exists('$(UserRootDir)\\Microsoft.Cpp.$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />");
+            sb.AppendLine("  </ImportGroup>");
         }
 
         sb.AppendLine("  <PropertyGroup Label=\"UserMacros\" />");
@@ -549,32 +637,26 @@ public sealed class VisualStudioGenerator
         // Qt settings
         if (module.IsQtProject)
         {
-            foreach (var config in new[] { "Debug", "Development", "Shipping" })
+            foreach (var (config, platform) in effectiveConfigPlatforms)
             {
-                foreach (var platform in new[] { "x64", "ARM64" })
-                {
-                    sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
-                    sb.AppendLine($"    <QtInstall>{GetQtInstallName(module)}</QtInstall>");
-                    sb.AppendLine($"    <QtModules>{string.Join(";", module.QtModules.Select(m => $"qt{m.ToLowerInvariant()}"))}</QtModules>");
-                    if (module.EnableMoc) sb.AppendLine("    <QtMocEnabled>true</QtMocEnabled>");
-                    if (module.EnableUic) sb.AppendLine("    <QtUicEnabled>true</QtUicEnabled>");
-                    if (module.EnableRcc) sb.AppendLine("    <QtRccEnabled>true</QtRccEnabled>");
-                    sb.AppendLine("  </PropertyGroup>");
-                }
+                sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
+                sb.AppendLine($"    <QtInstall>{GetQtInstallName(module)}</QtInstall>");
+                sb.AppendLine($"    <QtModules>{string.Join(";", module.QtModules.Select(m => $"qt{m.ToLowerInvariant()}"))}</QtModules>");
+                if (module.EnableMoc) sb.AppendLine("    <QtMocEnabled>true</QtMocEnabled>");
+                if (module.EnableUic) sb.AppendLine("    <QtUicEnabled>true</QtUicEnabled>");
+                if (module.EnableRcc) sb.AppendLine("    <QtRccEnabled>true</QtRccEnabled>");
+                sb.AppendLine("  </PropertyGroup>");
             }
         }
 
         // Output directories
-        foreach (var config in new[] { "Debug", "Development", "Shipping" })
+        foreach (var (config, platform) in effectiveConfigPlatforms)
         {
-            foreach (var platform in new[] { "x64", "ARM64" })
-            {
-                sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
-                sb.AppendLine($"    <OutDir>$(SolutionDir)Binaries\\Windows_{config}\\</OutDir>");
-                sb.AppendLine($"    <IntDir>$(SolutionDir)Intermediate\\$(ProjectName)\\$(Configuration)\\</IntDir>");
-                sb.AppendLine($"    <TargetName>{module.Name}</TargetName>");
-                sb.AppendLine("  </PropertyGroup>");
-            }
+            sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
+            sb.AppendLine($"    <OutDir>$(SolutionDir)Binaries\\Windows_{config}\\</OutDir>");
+            sb.AppendLine($"    <IntDir>$(SolutionDir)Intermediate\\$(ProjectName)\\$(Configuration)\\</IntDir>");
+            sb.AppendLine($"    <TargetName>{module.Name}</TargetName>");
+            sb.AppendLine("  </PropertyGroup>");
         }
 
         // Build all include paths including dependencies
@@ -607,9 +689,8 @@ public sealed class VisualStudioGenerator
         // it. It still gets NMakePreprocessorDefinitions/NMakeIncludeSearchPath so
         // IntelliSense keeps working. Dependency modules are unaffected and keep compiling
         // for real via MSBuild, as before.
-        foreach (var config in new[] { "Debug", "Development", "Shipping" })
+        foreach (var (config, platform) in effectiveConfigPlatforms)
         {
-            foreach (var platform in new[] { "x64", "ARM64" })
             {
                 var optimization = config == "Shipping" ? "MaxSpeed" : (config == "Development" ? "MinSpace" : "Disabled");
                 var runtimeLib = config == "Debug" ? "MultiThreadedDebugDLL" : "MultiThreadedDLL";
@@ -1194,29 +1275,27 @@ public sealed class VisualStudioGenerator
     private async Task GenerateVcxprojUserAsync(
         ModuleRules module,
         string userPath,
-        CancellationToken ct)
+        CancellationToken ct,
+        IReadOnlyList<(string Configuration, string Platform)>? configPlatforms = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
         sb.AppendLine("<Project ToolsVersion=\"Current\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
 
-        foreach (var config in new[] { "Debug", "Development", "Shipping" })
+        foreach (var (config, platform) in configPlatforms ?? DefaultConfigPlatforms)
         {
-            foreach (var platform in new[] { "x64", "ARM64" })
+            sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
+            sb.AppendLine($"    <LocalDebuggerWorkingDirectory>$(SolutionDir)</LocalDebuggerWorkingDirectory>");
+            sb.AppendLine("    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>");
+
+            // Add Qt DLL path to debugger environment
+            if (module.IsQtProject)
             {
-                sb.AppendLine($"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{platform}'\">");
-                sb.AppendLine($"    <LocalDebuggerWorkingDirectory>$(SolutionDir)</LocalDebuggerWorkingDirectory>");
-                sb.AppendLine("    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>");
-
-                // Add Qt DLL path to debugger environment
-                if (module.IsQtProject)
-                {
-                    var qtPath = module.QtPath ?? GetDefaultQtPath(module.QtVersion);
-                    sb.AppendLine($"    <LocalDebuggerEnvironment>PATH={Path.Combine(qtPath, "bin")};%PATH%</LocalDebuggerEnvironment>");
-                }
-
-                sb.AppendLine("  </PropertyGroup>");
+                var qtPath = module.QtPath ?? GetDefaultQtPath(module.QtVersion);
+                sb.AppendLine($"    <LocalDebuggerEnvironment>PATH={Path.Combine(qtPath, "bin")};%PATH%</LocalDebuggerEnvironment>");
             }
+
+            sb.AppendLine("  </PropertyGroup>");
         }
 
         sb.AppendLine("</Project>");

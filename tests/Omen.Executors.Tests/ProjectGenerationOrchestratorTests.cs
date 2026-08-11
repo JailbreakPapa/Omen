@@ -89,4 +89,100 @@ public class ProjectGenerationOrchestratorTests : IDisposable
         File.Exists(Path.Combine(_projectRoot, ".vscode", "launch.json")).Should().BeTrue();
         File.Exists(Path.Combine(_projectRoot, ".vscode", "c_cpp_properties.json")).Should().BeTrue();
     }
+
+    [Fact]
+    public async Task GenerateAsync_TargetWithoutSupportedTargets_UsesTodaysSingleConfigurationList()
+    {
+        var sourceDir = Path.Combine(_projectRoot, "Source", "App", "Private");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "Main.cpp"), "int main() { return 0; }\n");
+        File.WriteAllText(Path.Combine(_projectRoot, "Source", "App", "App.module.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppModule : ModuleRules
+            {
+                public AppModule(BuildContext context) : base(context)
+                {
+                    Type = ModuleType.Runtime;
+                    SourceDirectory = "Source/App";
+                }
+            }
+            """);
+        File.WriteAllText(Path.Combine(_projectRoot, "App.target.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppTarget : TargetRules
+            {
+                public AppTarget(BuildContext context) : base(context)
+                {
+                    Type = TargetType.Executable;
+                    LaunchModuleName = "AppModule";
+                    ExtraModules.Add("AppModule");
+                }
+            }
+            """);
+        var orchestrator = new ProjectGenerationOrchestrator();
+
+        var success = await orchestrator.GenerateAsync(
+            new ProjectGenerationOrchestratorRequest { ProjectRoot = _projectRoot, Ide = IdeKind.VS2022 },
+            events: null);
+
+        success.Should().BeTrue();
+        var vcxproj = File.ReadAllText(Directory.GetFiles(_projectRoot, "AppModule.vcxproj", SearchOption.AllDirectories).Single());
+        vcxproj.Should().Contain("Debug|x64");
+        vcxproj.Should().Contain("Shipping|ARM64");
+    }
+
+    [Fact]
+    public async Task GenerateAsync_TargetWithSupportedTargets_EmitsOneProjectConfigurationPerResolvedCombination()
+    {
+        var sourceDir = Path.Combine(_projectRoot, "Source", "App", "Private");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "Main.cpp"), "int main() { return 0; }\n");
+        File.WriteAllText(Path.Combine(_projectRoot, "Source", "App", "App.module.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppModule : ModuleRules
+            {
+                public AppModule(BuildContext context) : base(context)
+                {
+                    Type = ModuleType.Runtime;
+                    SourceDirectory = "Source/App";
+                }
+            }
+            """);
+        File.WriteAllText(Path.Combine(_projectRoot, "App.target.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppTarget : TargetRules
+            {
+                public static TargetMatrix SupportedTargets => TargetMatrix.Empty
+                    .For(TargetPlatform.Windows)
+                    .For(TargetArchitecture.X64, TargetArchitecture.ARM64)
+                    .For(BuildConfiguration.Debug);
+
+                public AppTarget(BuildContext context) : base(context)
+                {
+                    Type = TargetType.Executable;
+                    LaunchModuleName = "AppModule";
+                    ExtraModules.Add("AppModule");
+                }
+            }
+            """);
+        var orchestrator = new ProjectGenerationOrchestrator();
+
+        var success = await orchestrator.GenerateAsync(
+            new ProjectGenerationOrchestratorRequest { ProjectRoot = _projectRoot, Ide = IdeKind.VS2022 },
+            events: null);
+
+        success.Should().BeTrue();
+        var vcxproj = File.ReadAllText(Directory.GetFiles(_projectRoot, "AppModule.vcxproj", SearchOption.AllDirectories).Single());
+        vcxproj.Should().Contain("Debug|x64");
+        vcxproj.Should().Contain("Debug|ARM64");
+        vcxproj.Should().NotContain("Shipping"); // matrix declared only Debug - today's hardcoded list must not leak in.
+    }
 }
