@@ -37,10 +37,9 @@ public static class BuildCommand
             ["--platform", "-p"],
             "Target platform (Windows, Linux, FreeBSD, Android, iOS)");
         
-        var configOption = new Option<string>(
+        var configOption = new Option<string?>(
             ["--configuration", "-c"],
-            () => "Development",
-            "Build configuration (Debug, Development, Shipping)");
+            "Build configuration - omitted means unconstrained across a declared matrix, or Development for a target without one (Debug, Development, Release, Shipping)");
         
         var archOption = new Option<string?>(
             ["--arch", "-a"],
@@ -66,6 +65,11 @@ public static class BuildCommand
             "--dry-run",
             "Print derived command lines without executing the build");
 
+        var dimOption = new Option<string[]>(
+            "--dim",
+            () => [],
+            "Filter a custom dimension, e.g. --dim RenderApi=DirectX12 (repeatable)");
+
         command.AddArgument(targetArgument);
         command.AddOption(platformOption);
         command.AddOption(configOption);
@@ -75,6 +79,7 @@ public static class BuildCommand
         command.AddOption(distributeOption);
         command.AddOption(coordinatorOption);
         command.AddOption(dryRunOption);
+        command.AddOption(dimOption);
 
         command.SetHandler(async (context) =>
         {
@@ -87,9 +92,10 @@ public static class BuildCommand
             var distribute = context.ParseResult.GetValueForOption(distributeOption);
             var coordinator = context.ParseResult.GetValueForOption(coordinatorOption);
             var dryRun = context.ParseResult.GetValueForOption(dryRunOption);
+            var dim = context.ParseResult.GetValueForOption(dimOption) ?? [];
 
             context.ExitCode = await ExecuteBuildAsync(
-                target, platform, config, arch, jobs, clean, distribute, coordinator, dryRun);
+                target, platform, config, arch, jobs, clean, distribute, coordinator, dryRun, dim);
         });
         
         return command;
@@ -98,13 +104,14 @@ public static class BuildCommand
     private static async Task<int> ExecuteBuildAsync(
         string? target,
         string? platform,
-        string configuration,
+        string? configuration,
         string? arch,
         int? jobs,
         bool clean,
         bool distribute,
         string? coordinator,
-        bool dryRun)
+        bool dryRun,
+        string[] dim)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -118,8 +125,7 @@ public static class BuildCommand
             return 1;
         }
 
-        var targetPlatform = ParsePlatform(platform);
-        if (targetPlatform == null)
+        if (!TryParsePlatform(platform, out var targetPlatform))
         {
             AnsiConsole.MarkupLine($"[red]Error:[/] Invalid platform '{platform}'");
             return 1;
@@ -129,22 +135,55 @@ public static class BuildCommand
         var buildConfig = ParseConfiguration(configuration);
 
         AnsiConsole.MarkupLine($"[blue]Target:[/] {Path.GetFileName(targetFile)}");
-        AnsiConsole.MarkupLine($"[blue]Platform:[/] {targetPlatform}");
-        AnsiConsole.MarkupLine($"[blue]Architecture:[/] {targetArch}");
-        AnsiConsole.MarkupLine($"[blue]Configuration:[/] {buildConfig}");
+        AnsiConsole.MarkupLine($"[blue]Platform:[/] {(targetPlatform?.ToString() ?? "(matrix default)")}");
+        AnsiConsole.MarkupLine($"[blue]Architecture:[/] {(targetArch?.ToString() ?? "(matrix default)")}");
+        AnsiConsole.MarkupLine($"[blue]Configuration:[/] {(buildConfig?.ToString() ?? "(matrix default)")}");
         AnsiConsole.WriteLine();
 
         if (dryRun)
         {
-            return await ExecuteDryRunAsync(targetFile, targetPlatform.Value, targetArch, buildConfig, jobs);
+            return await ExecuteDryRunAsync(
+                targetFile,
+                targetPlatform ?? DefaultPlatformForHostOS(),
+                targetArch ?? DefaultArchitectureForHostOS(),
+                buildConfig ?? BuildConfiguration.Development,
+                jobs);
+        }
+
+        IReadOnlyDictionary<Type, IReadOnlyList<Enum>>? dimensionFilter = null;
+        if (dim.Length > 0)
+        {
+            var lookupCompiler = new RuleCompiler(Path.Combine(Path.GetDirectoryName(targetFile)!, "Intermediate", "RuleCache"));
+            var lookupRules = await lookupCompiler.CompileRulesAsync(Path.GetDirectoryName(targetFile)!);
+            var filter = new Dictionary<Type, List<Enum>>();
+            foreach (var entry in dim)
+            {
+                var parts = entry.Split('=', 2);
+                if (parts.Length != 2)
+                {
+                    AnsiConsole.MarkupLine($"[red]Error:[/] --dim expects Name=Value, got '{entry}'");
+                    return 1;
+                }
+                var dimensionType = DimensionLookup.FindDimensionType(lookupRules.Assembly, parts[0]);
+                if (dimensionType == null || !DimensionLookup.TryParseValue(dimensionType, parts[1], out var value))
+                {
+                    AnsiConsole.MarkupLine($"[red]Error:[/] Unknown dimension or value in '--dim {entry}'");
+                    return 1;
+                }
+                if (!filter.TryGetValue(dimensionType, out var list))
+                    filter[dimensionType] = list = [];
+                list.Add(value!);
+            }
+            dimensionFilter = filter.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<Enum>)kv.Value);
         }
 
         var request = new BuildOrchestratorRequest
         {
             TargetFile = targetFile,
-            Platform = targetPlatform.Value,
+            Platform = targetPlatform,
             Architecture = targetArch,
             Configuration = buildConfig,
+            DimensionFilter = dimensionFilter,
             Jobs = jobs
         };
         var orchestrator = new BuildOrchestrator();
@@ -321,45 +360,41 @@ public static class BuildCommand
         return Directory.GetFiles(searchDir, "*.target.cs", SearchOption.AllDirectories).FirstOrDefault();
     }
     
-    private static TargetPlatform? ParsePlatform(string? platform)
+    private static bool TryParsePlatform(string? platform, out TargetPlatform? result)
     {
-        if (string.IsNullOrEmpty(platform))
+        if (string.IsNullOrEmpty(platform)) { result = null; return true; }
+        if (Enum.TryParse<TargetPlatform>(platform, ignoreCase: true, out var parsed)) { result = parsed; return true; }
+        result = null;
+        return false;
+    }
+
+    private static TargetArchitecture? ParseArchitecture(string? arch)
+    {
+        if (string.IsNullOrEmpty(arch)) return null;
+        return Enum.TryParse<TargetArchitecture>(arch, ignoreCase: true, out var result) ? result : TargetArchitecture.X64;
+    }
+
+    private static BuildConfiguration? ParseConfiguration(string? config)
+    {
+        if (string.IsNullOrEmpty(config)) return null;
+        return Enum.TryParse<BuildConfiguration>(config, ignoreCase: true, out var result) ? result : BuildConfiguration.Development;
+    }
+
+    private static TargetPlatform DefaultPlatformForHostOS()
+    {
+        if (OperatingSystem.IsWindows()) return TargetPlatform.Windows;
+        if (OperatingSystem.IsLinux()) return TargetPlatform.Linux;
+        if (OperatingSystem.IsMacOS()) return TargetPlatform.iOS; // macOS uses iOS SDK
+        if (OperatingSystem.IsFreeBSD()) return TargetPlatform.FreeBSD;
+        return TargetPlatform.Windows;
+    }
+
+    private static TargetArchitecture DefaultArchitectureForHostOS() =>
+        RuntimeInformation.OSArchitecture switch
         {
-            // Default to current platform
-            if (OperatingSystem.IsWindows()) return TargetPlatform.Windows;
-            if (OperatingSystem.IsLinux()) return TargetPlatform.Linux;
-            if (OperatingSystem.IsMacOS()) return TargetPlatform.iOS; // macOS uses iOS SDK
-            if (OperatingSystem.IsFreeBSD()) return TargetPlatform.FreeBSD;
-            return TargetPlatform.Windows;
-        }
-        
-        return Enum.TryParse<TargetPlatform>(platform, ignoreCase: true, out var result) 
-            ? result 
-            : null;
-    }
-    
-    private static TargetArchitecture ParseArchitecture(string? arch)
-    {
-        if (string.IsNullOrEmpty(arch))
-        {
-            return RuntimeInformation.OSArchitecture switch
-            {
-                System.Runtime.InteropServices.Architecture.X64 => TargetArchitecture.X64,
-                System.Runtime.InteropServices.Architecture.X86 => TargetArchitecture.X86,
-                System.Runtime.InteropServices.Architecture.Arm64 => TargetArchitecture.ARM64,
-                _ => TargetArchitecture.X64
-            };
-        }
-        
-        return Enum.TryParse<TargetArchitecture>(arch, ignoreCase: true, out var result)
-            ? result
-            : TargetArchitecture.X64;
-    }
-    
-    private static BuildConfiguration ParseConfiguration(string config)
-    {
-        return Enum.TryParse<BuildConfiguration>(config, ignoreCase: true, out var result)
-            ? result
-            : BuildConfiguration.Development;
-    }
+            System.Runtime.InteropServices.Architecture.X64 => TargetArchitecture.X64,
+            System.Runtime.InteropServices.Architecture.X86 => TargetArchitecture.X86,
+            System.Runtime.InteropServices.Architecture.Arm64 => TargetArchitecture.ARM64,
+            _ => TargetArchitecture.X64
+        };
 }
