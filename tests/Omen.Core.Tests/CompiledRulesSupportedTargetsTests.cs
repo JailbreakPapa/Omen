@@ -130,6 +130,41 @@ public class CompiledRulesSupportedTargetsTests : IDisposable
         resolved.Get<TargetPlatform>().Should().Be(TargetPlatform.Windows);
     }
 
+    [Fact]
+    public async Task GetSupportedTargets_GetterThrows_PropagatesOriginalException()
+    {
+        // Reflection's PropertyInfo.GetValue wraps getter exceptions in a
+        // TargetInvocationException whose own .Message is a useless generic string. Callers
+        // (and ultimately the CLI's top-level error handler) need the real exception - e.g.
+        // TargetMatrix.For<T>()'s specific "not a [BuildDimension] enum" message - not the
+        // wrapper's.
+        var targetFile = Path.Combine(_projectRoot, "Throws.target.cs");
+        File.WriteAllText(targetFile, """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public enum UntaggedEnum { A }
+
+            public class ThrowsTarget : TargetRules
+            {
+                public static TargetMatrix SupportedTargets => TargetMatrix.Empty
+                    .For(UntaggedEnum.A);
+
+                public ThrowsTarget(BuildContext context) : base(context) { }
+            }
+            """);
+        var compiler = new RuleCompiler(Path.Combine(_projectRoot, "Intermediate", "RuleCache"));
+        var compiledRules = await compiler.CompileRulesAsync(_projectRoot);
+
+        var targetType = compiledRules.FindTargetType();
+        targetType.Should().NotBeNull();
+
+        var act = () => compiledRules.GetSupportedTargets(targetType!);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*not a [BuildDimension] enum*");
+    }
+
     private BuildContext CreateContext() => new()
     {
         Platform = TargetPlatform.Windows,

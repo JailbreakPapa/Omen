@@ -310,7 +310,14 @@ public sealed class CompiledRules
         var property = ruleType.GetProperty("SupportedTargets", BindingFlags.Public | BindingFlags.Static);
         if (property == null || property.PropertyType != typeof(TargetMatrix))
             return null;
-        return (TargetMatrix?)property.GetValue(null);
+        try
+        {
+            return (TargetMatrix?)property.GetValue(null);
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException != null)
+        {
+            throw ex.InnerException;
+        }
     }
 
     /// <summary>
