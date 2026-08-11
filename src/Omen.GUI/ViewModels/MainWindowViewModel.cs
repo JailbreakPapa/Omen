@@ -60,6 +60,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public OptionsPanelViewModel OptionsPanel { get; } = new();
 
+    public MatrixPanelViewModel MatrixPanel { get; } = new();
+
     private readonly GuiSettings _settings = GuiSettings.Load();
 
     public MainWindowViewModel()
@@ -98,6 +100,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _settings.Save();
 
         _ = ConfigureOptionsAsync();
+        _ = ConfigureMatrixAsync();
     }
 
     public void CloseProject()
@@ -130,6 +133,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    public async Task ConfigureMatrixAsync()
+    {
+        if (ProjectPath == null) return;
+
+        try
+        {
+            var targetFile = Directory.GetFiles(ProjectPath, "*.target.cs", SearchOption.AllDirectories).FirstOrDefault();
+            if (targetFile == null) return;
+
+            await MatrixPanel.ResolveAsync(targetFile);
+        }
+        catch (Exception ex)
+        {
+            AppendLine($"Unexpected error resolving build matrix: {ex.Message}", OrchestratorEventLevel.Error);
+        }
+    }
+
     public ObservableCollection<OutputLine> OutputLines { get; } = [];
 
     private CancellationTokenSource? _buildCts;
@@ -140,7 +160,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     // Build/Rebuild/Clean for the split second before the next phase starts and flips it back.
     public async Task BuildAsync(bool manageBusyState = true)
     {
-        if (ProjectPath == null || SelectedPlatform == null) return;
+        if (ProjectPath == null) return;
+        if (!MatrixPanel.IsActive && SelectedPlatform == null) return;
 
         OutputLines.Clear();
         if (manageBusyState) IsBuilding = true;
@@ -162,13 +183,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             var eventsProgress = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
             var buildProgress = new Progress<Omen.Core.Interfaces.BuildProgress>(p => ProgressValue = p.PercentComplete);
 
-            var request = new BuildOrchestratorRequest
-            {
-                TargetFile = targetFile,
-                Platform = SelectedPlatform.Value,
-                Architecture = TargetArchitecture.X64,
-                Configuration = SelectedConfiguration
-            };
+            var request = MatrixPanel.IsActive
+                ? BuildRequestFromMatrix(targetFile)
+                : new BuildOrchestratorRequest
+                {
+                    TargetFile = targetFile,
+                    Platform = SelectedPlatform.Value,
+                    Architecture = TargetArchitecture.X64,
+                    Configuration = SelectedConfiguration
+                };
 
             var result = await orchestrator.BuildAsync(request, eventsProgress, buildProgress, _buildCts.Token);
             CurrentBuildState = result?.Success == true ? BuildState.Success : BuildState.Failed;
@@ -191,6 +214,19 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             if (manageBusyState) IsBuilding = false;
             _buildCts = null;
         }
+    }
+
+    private BuildOrchestratorRequest BuildRequestFromMatrix(string targetFile)
+    {
+        var (platform, architecture, configuration, dimensionFilter) = MatrixPanel.BuildFilter();
+        return new BuildOrchestratorRequest
+        {
+            TargetFile = targetFile,
+            Platform = platform,
+            Architecture = architecture,
+            Configuration = configuration,
+            DimensionFilter = dimensionFilter
+        };
     }
 
     public async Task RebuildAsync()
