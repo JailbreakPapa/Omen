@@ -14,6 +14,14 @@ public sealed class ResolvedTarget
 
     internal ResolvedTarget(IReadOnlyDictionary<Type, Enum> values) => _values = values;
 
+    /// <summary>
+    /// Constructs a ResolvedTarget directly from a set of dimension values, for the one
+    /// legitimate case outside Omen.Core: a caller (e.g. BuildOrchestrator's no-matrix
+    /// fallback) synthesizing a single combination itself rather than getting one back from
+    /// TargetMatrix.Resolve(). Everywhere else, Resolve() is how a ResolvedTarget is made.
+    /// </summary>
+    public static ResolvedTarget Create(IReadOnlyDictionary<Type, Enum> values) => new(values);
+
     /// <summary>Every dimension value this combination carries, keyed by dimension type.</summary>
     public IReadOnlyDictionary<Type, Enum> Values => _values;
 
