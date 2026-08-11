@@ -6,6 +6,7 @@ namespace Omen.Core.Configuration;
 /// <summary>
 /// Target platform for compilation.
 /// </summary>
+[BuildDimension]
 public enum TargetPlatform
 {
     Unknown,
@@ -34,6 +35,7 @@ public enum NDAPlatforms
 /// <summary>
 /// Target architecture for compilation.
 /// </summary>
+[BuildDimension]
 public enum TargetArchitecture
 {
     Unknown,
@@ -46,6 +48,7 @@ public enum TargetArchitecture
 /// <summary>
 /// Build configuration type.
 /// </summary>
+[BuildDimension]
 public enum BuildConfiguration
 {
     Debug,
