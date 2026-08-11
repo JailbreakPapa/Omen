@@ -36,6 +36,14 @@ public sealed class GemFlavor
 /// stays authoritative for identity and dependencies (it's read by O3DE tooling outside
 /// the build); this only declares which flavors the gem builds and how they alias to the
 /// symbolic names O3DE targets reference (Clients/Servers/Unified/Tools/Builders).
+///
+/// A subclass may optionally declare `public static TargetMatrix SupportedTargets => ...`
+/// to opt into building/generating across multiple Platform/Architecture/Configuration (and
+/// any custom [BuildDimension]) combinations in one invocation - see TargetMatrix. Read via
+/// reflection (RuleCompiler.CompiledRules.GetSupportedTargets) before any BuildContext
+/// exists, since "which combinations exist" has to be known before one can be constructed. A
+/// gem that omits it builds/generates exactly the single combination the caller resolves,
+/// unchanged from today.
 /// </summary>
 public abstract class GemRules
 {

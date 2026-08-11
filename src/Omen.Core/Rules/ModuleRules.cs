@@ -8,6 +8,14 @@ namespace Omen.Core.Rules;
 /// <summary>
 /// Base class for module definitions. Inherit from this class in your .module.cs files.
 /// Inspired by Unreal Engine's ModuleRules pattern.
+///
+/// A subclass may optionally declare `public static TargetMatrix SupportedTargets => ...`,
+/// but unlike TargetRules/GemRules this is never resolved into a matrix of its own - it's a
+/// per-combination membership gate. For each ResolvedTarget the owning target resolves to,
+/// BuildOrchestrator checks whether this module's SupportedTargets (if declared) contains
+/// that combination; if not, the module is silently excluded from that combination's action
+/// graph only (present in others where it's included). A module with no SupportedTargets
+/// participates in every combination, unchanged from today.
 /// </summary>
 public abstract class ModuleRules
 {

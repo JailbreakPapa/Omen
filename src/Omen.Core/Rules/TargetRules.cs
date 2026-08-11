@@ -8,6 +8,14 @@ namespace Omen.Core.Rules;
 /// <summary>
 /// Base class for target definitions. Inherit from this class in your .target.cs files.
 /// Inspired by Unreal Engine's TargetRules pattern.
+///
+/// A subclass may optionally declare `public static TargetMatrix SupportedTargets => ...`
+/// to opt into building/generating across multiple Platform/Architecture/Configuration (and
+/// any custom [BuildDimension]) combinations in one invocation - see TargetMatrix. Read via
+/// reflection (RuleCompiler.CompiledRules.GetSupportedTargets) before any BuildContext
+/// exists, since "which combinations exist" has to be known before one can be constructed. A
+/// target that omits it builds/generates exactly the single combination the caller resolves,
+/// unchanged from today.
 /// </summary>
 public abstract class TargetRules
 {

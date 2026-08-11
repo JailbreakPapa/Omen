@@ -279,6 +279,41 @@ public sealed class CompiledRules
     }
 
     /// <summary>
+    /// The compiled rules assembly, exposed for callers that need to reason about its types
+    /// without an instance - e.g. CompiledRules.FindTargetType() below, and the CLI's --dim
+    /// dimension-name lookup (DimensionLookup.FindDimensionType), which has no other way to
+    /// reach it. Public, not internal: Omen.Executors and Omen.CLI are separate assemblies
+    /// from Omen.Core with no InternalsVisibleTo configured between them.
+    /// </summary>
+    public Assembly Assembly => _assembly;
+
+    /// <summary>
+    /// Finds the first non-abstract TargetRules subclass in the compiled assembly, purely via
+    /// reflection over the Type - no BuildContext, no instance construction. This is what makes
+    /// reading SupportedTargets possible before any context exists to build one.
+    /// </summary>
+    public Type? FindTargetType()
+    {
+        var targetType = typeof(TargetRules);
+        return _assembly.GetTypes().FirstOrDefault(t => !t.IsAbstract && targetType.IsAssignableFrom(t));
+    }
+
+    /// <summary>
+    /// Reads a rule type's optional `static TargetMatrix SupportedTargets` property without
+    /// constructing an instance. Works for TargetRules, GemRules, and ModuleRules subclasses
+    /// alike (any type with a static property of that exact name and type). Returns null if the
+    /// type doesn't declare one - callers treat null as "no matrix, use today's single-context
+    /// behavior."
+    /// </summary>
+    public TargetMatrix? GetSupportedTargets(Type ruleType)
+    {
+        var property = ruleType.GetProperty("SupportedTargets", BindingFlags.Public | BindingFlags.Static);
+        if (property == null || property.PropertyType != typeof(TargetMatrix))
+            return null;
+        return (TargetMatrix?)property.GetValue(null);
+    }
+
+    /// <summary>
     /// Gets a specific target by name.
     /// </summary>
     public TargetRules? GetTarget(string name, BuildContext context)
