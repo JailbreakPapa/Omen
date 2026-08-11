@@ -166,9 +166,16 @@ negotiation between a target's matrix and a module's matrix is needed:
 `SupportedTargets` is only ever evaluated as a yes/no membership test
 against one already-resolved `ResolvedTarget` at a time.
 
-If a module gated out this way is one a target's `LaunchModuleName` (i.e.
-required, not optional) names for a given resolved combination, that is an
-error for that combination — see Error handling.
+Gating is always silent, never an error — including when the gated-out
+module is the one a target's `LaunchModuleName` names. A target whose
+`LaunchModuleName` (or every module it references) is gated out for a given
+combination degrades to the same "no modules to build" warning-then-
+zero-action-success path that already exists today for a target with no
+modules at all, rather than a new error class. This matters because most
+real dependencies are referenced unconditionally (`ExtraModules.Add(...)`
+with no platform check) — a module reference isn't a promise that the
+module builds everywhere, so gating it out can never be treated as the
+caller having done something wrong.
 
 ### Orchestrators: resolve, then loop the existing single-context pipeline
 
@@ -322,12 +329,11 @@ for it. One `ResolvedTarget` maps to one `<ProjectConfiguration>` entry.
   discovery-time error naming the target (this is a target-authoring
   mistake, distinct from the caller-filter-narrowed-to-zero case above,
   which is a caller mistake) — not a silent zero-action success.
-- A target's `LaunchModuleName` (or any non-conditionally-included
-  `ExtraModules` entry) names a module whose `SupportedTargets` excludes
-  the current resolved combination → an error for that specific combination
-  only (other combinations where the module *is* included proceed
-  normally), since the target declared it needs that module unconditionally
-  but the module says it can't run there.
+- A module gated out of a combination is never an error, including when
+  it's the module `LaunchModuleName` names — see Architecture. A
+  combination left with zero included modules this way degrades to the
+  existing "no modules to build" warning + zero-action success path, not a
+  new error.
 
 ## Testing
 
