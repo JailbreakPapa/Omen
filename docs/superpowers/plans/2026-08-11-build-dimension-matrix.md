@@ -967,13 +967,16 @@ git commit -m "feat: add DimensionLookup for CLI/GUI dimension-name resolution"
 
 **Files:**
 - Modify: `src/Omen.Executors/Orchestration/BuildOrchestrator.cs`
+- Modify: `src/Omen.Core/Configuration/ResolvedTarget.cs` (small, additive — see Step 3)
 - Test: `tests/Omen.Executors.Tests/BuildOrchestratorTests.cs`
 
 **Interfaces:**
 - Consumes: `TargetMatrix`/`ResolvedTarget` (Task 1), `BuildContext.GetDimension<T>()`/`AdditionalDimensions` (Task 2), `CompiledRules.FindTargetType()`/`GetSupportedTargets()` (Task 3).
-- Produces: `BuildOrchestratorRequest.Platform`/`.Architecture`/`.Configuration` become nullable (`TargetPlatform?`/`TargetArchitecture?`/`BuildConfiguration?`); new `BuildOrchestratorRequest.DimensionFilter { get; init; }` of type `IReadOnlyDictionary<Type, IReadOnlyList<Enum>>?` (null = no custom-dimension filter). `BuildOrchestrator.BuildAsync`'s signature and return type (`Task<BuildResult?>`) are unchanged — a multi-combination build still returns one aggregated `BuildResult` (`Success` = every combination succeeded; numeric fields summed; `ActionResults`/`OutputFiles` concatenated). Task 7 (CLI) and Task 9 (GUI) both construct requests against this shape.
+- Produces: `BuildOrchestratorRequest.Platform`/`.Architecture`/`.Configuration` become nullable (`TargetPlatform?`/`TargetArchitecture?`/`BuildConfiguration?`); new `BuildOrchestratorRequest.DimensionFilter { get; init; }` of type `IReadOnlyDictionary<Type, IReadOnlyList<Enum>>?` (null = no custom-dimension filter). `BuildOrchestrator.BuildAsync`'s signature and return type (`Task<BuildResult?>`) are unchanged — a multi-combination build still returns one aggregated `BuildResult` (`Success` = every combination succeeded; numeric fields summed; `ActionResults`/`OutputFiles` concatenated). `ResolvedTarget.Create(IReadOnlyDictionary<Type, Enum> values)` (new public static factory — see Step 3) is what any assembly outside `Omen.Core` must use to construct a `ResolvedTarget` from scratch, since its constructor is `internal`. Task 6 (`ProjectGenerationOrchestrator`) needs this same factory and the same `Values.TryGetValue` fix described in Step 5 below for its own, separately-written module-gating check.
 
 Read `src/Omen.Executors/Orchestration/BuildOrchestrator.cs` in full before editing — this task restructures its body into a resolve step plus a per-combination method, reusing the existing single-context logic almost verbatim rather than rewriting it.
+
+**Note on `ResolvedTarget`'s `internal` constructor:** Task 1 deliberately made `ResolvedTarget`'s constructor `internal` so that in normal usage only `TargetMatrix.Resolve()` (same assembly, `Omen.Core`) produces one — a `ResolvedTarget` is meant to represent a point `Resolve()` actually computed, not an arbitrary hand-assembled value. `BuildOrchestrator`'s no-matrix fallback (Step 5) is a legitimate exception: it needs to synthesize one `ResolvedTarget` representing the caller's single resolved combination when no matrix was declared at all, from `Omen.Executors` — a different assembly, with no `InternalsVisibleTo` from `Omen.Core` (confirmed absent repo-wide during Task 3). Step 3 adds a public static factory for exactly this one legitimate cross-assembly case, without opening up direct construction generally.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1308,6 +1311,20 @@ public sealed class BuildOrchestratorRequest
 
 (`CreateRequest` in the test file's helper already assigns concrete, non-null values to `Platform`/`Architecture`/`Configuration` — this compiles unchanged since assigning a value to a nullable property is always valid.)
 
+Also in this step, add a public static factory to `src/Omen.Core/Configuration/ResolvedTarget.cs` (its constructor is `internal`, and `BuildOrchestrator` lives in a different assembly — see the note above Step 1):
+
+```csharp
+    /// <summary>
+    /// Constructs a ResolvedTarget directly from a set of dimension values, for the one
+    /// legitimate case outside Omen.Core: a caller (e.g. BuildOrchestrator's no-matrix
+    /// fallback) synthesizing a single combination itself rather than getting one back from
+    /// TargetMatrix.Resolve(). Everywhere else, Resolve() is how a ResolvedTarget is made.
+    /// </summary>
+    public static ResolvedTarget Create(IReadOnlyDictionary<Type, Enum> values) => new(values);
+```
+
+Add this as a new public method on the class, near the constructor (e.g. directly below it).
+
 - [ ] **Step 4: Extract the existing single-context body into a private method**
 
 Rename the current body of `BuildAsync` (everything from `var digestCalculator = new Sha256DigestCalculator();` through the `return result;` at the end, per the file as it stands after the Options plan's fixes) into a new private method with this shape, unchanged in substance:
@@ -1375,7 +1392,7 @@ public async Task<BuildResult?> BuildAsync(
         var platform = request.Platform ?? DefaultPlatformForHostOS();
         var architecture = request.Architecture ?? DefaultArchitectureForHostOS();
         var configuration = request.Configuration ?? BuildConfiguration.Development;
-        resolvedTargets = [new ResolvedTarget(new Dictionary<Type, Enum>
+        resolvedTargets = [ResolvedTarget.Create(new Dictionary<Type, Enum>
         {
             [typeof(TargetPlatform)] = platform,
             [typeof(TargetArchitecture)] = architecture,
@@ -1494,7 +1511,7 @@ private static bool IsModuleIncluded(CompiledRules compiledRules, ModuleRules mo
     if (moduleMatrix == null) return true; // no gate declared - participates in everything, as today.
 
     return moduleMatrix.Resolve().Any(candidate =>
-        candidate.Values.All(kv => resolved.TryGet(kv.Key, out var value) && Equals(value, kv.Value)));
+        candidate.Values.All(kv => resolved.Values.TryGetValue(kv.Key, out var value) && Equals(value, kv.Value)));
 }
 
 private static bool MatchesFilter(ResolvedTarget resolved, BuildOrchestratorRequest request)
@@ -1756,7 +1773,7 @@ else
         var target = compiledRules.CreateTargetRules(context).First();
         var modules = compiledRules.CreateModuleRules(context)
             .Where(m => compiledRules.GetSupportedTargets(m.GetType()) is not { } moduleMatrix
-                        || moduleMatrix.Resolve().Any(c => c.Values.All(kv => resolved.TryGet(kv.Key, out var v) && Equals(v, kv.Value))))
+                        || moduleMatrix.Resolve().Any(c => c.Values.All(kv => resolved.Values.TryGetValue(kv.Key, out var v) && Equals(v, kv.Value))))
             .ToList();
         combinations.Add((target, modules, context));
     }
