@@ -67,6 +67,27 @@ public sealed class BuildContext
     public IReadOnlyDictionary<string, string> CachedOptionValues { get; init; } = new Dictionary<string, string>();
 
     /// <summary>
+    /// Values for any dimension beyond the built-in Platform/Architecture/Configuration -
+    /// populated by BuildOrchestrator/ProjectGenerationOrchestrator when constructing a
+    /// BuildContext from a ResolvedTarget that carries a custom dimension. Read via
+    /// GetDimension&lt;T&gt;(), never directly, so built-in and custom dimensions share one API.
+    /// </summary>
+    public IReadOnlyDictionary<Type, Enum> AdditionalDimensions { get; init; } = new Dictionary<Type, Enum>();
+
+    /// <summary>
+    /// Reads this context's value for any [BuildDimension] enum - Platform/Architecture/
+    /// Configuration via their own properties, anything else via AdditionalDimensions.
+    /// </summary>
+    public T GetDimension<T>() where T : struct, Enum
+    {
+        if (typeof(T) == typeof(TargetPlatform)) return (T)(object)Platform;
+        if (typeof(T) == typeof(TargetArchitecture)) return (T)(object)Architecture;
+        if (typeof(T) == typeof(BuildConfiguration)) return (T)(object)Configuration;
+        if (AdditionalDimensions.TryGetValue(typeof(T), out var value)) return (T)value;
+        throw new InvalidOperationException($"BuildContext has no value for dimension '{typeof(T).Name}'.");
+    }
+
+    /// <summary>
     /// Gets a string identifier for this build context.
     /// </summary>
     public string GetContextId() => $"{Platform}-{Architecture}-{Configuration}";

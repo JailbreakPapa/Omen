@@ -99,4 +99,67 @@ public class BuildContextTests
         OutputDirectory = "/test/project/bin",
         IntermediateDirectory = "/test/project/obj"
     };
+
+    [Fact]
+    public void GetDimension_BuiltInPlatform_ReturnsPlatformProperty()
+    {
+        var context = CreateTestContext();
+
+        context.GetDimension<TargetPlatform>().Should().Be(context.Platform);
+    }
+
+    [Fact]
+    public void GetDimension_BuiltInArchitecture_ReturnsArchitectureProperty()
+    {
+        var context = CreateTestContext();
+
+        context.GetDimension<TargetArchitecture>().Should().Be(context.Architecture);
+    }
+
+    [Fact]
+    public void GetDimension_BuiltInConfiguration_ReturnsConfigurationProperty()
+    {
+        var context = CreateTestContext();
+
+        context.GetDimension<BuildConfiguration>().Should().Be(context.Configuration);
+    }
+
+    [Fact]
+    public void GetDimension_CustomDimensionPresent_ReturnsItFromAdditionalDimensions()
+    {
+        var context = new BuildContext
+        {
+            Platform = TargetPlatform.Windows,
+            Architecture = TargetArchitecture.X64,
+            Configuration = BuildConfiguration.Debug,
+            ProjectRoot = "/test",
+            OutputDirectory = "/test/bin",
+            IntermediateDirectory = "/test/obj",
+            AdditionalDimensions = new Dictionary<Type, Enum> { [typeof(TestRenderApi)] = TestRenderApi.Vulkan }
+        };
+
+        context.GetDimension<TestRenderApi>().Should().Be(TestRenderApi.Vulkan);
+    }
+
+    [Fact]
+    public void GetDimension_DimensionNotPresent_Throws()
+    {
+        var context = CreateTestContext();
+
+        var act = () => context.GetDimension<TestRenderApi>();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void AdditionalDimensions_DefaultsToEmpty()
+    {
+        var context = CreateTestContext();
+
+        context.AdditionalDimensions.Should().NotBeNull();
+        context.AdditionalDimensions.Should().BeEmpty();
+    }
+
+    [BuildDimension]
+    public enum TestRenderApi { DirectX12, Vulkan }
 }
