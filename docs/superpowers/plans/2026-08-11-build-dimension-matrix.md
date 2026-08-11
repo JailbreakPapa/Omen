@@ -1053,8 +1053,12 @@ public async Task BuildAsync_TargetWithSupportedTargets_BuildsEveryResolvedCombi
     var orchestrator = new BuildOrchestrator();
     var events = new List<OrchestratorEvent>();
 
+    // Not CreateRequest(...) - its hardcoded Configuration = BuildConfiguration.Development
+    // would filter out both of this matrix's declared combinations (Debug, Release), since
+    // MatchesFilter treats a non-null request.Configuration as an exact-match filter and
+    // neither combination is Development.
     var result = await orchestrator.BuildAsync(
-        CreateRequest(Path.Combine(_projectRoot, "App.target.cs")),
+        new BuildOrchestratorRequest { TargetFile = Path.Combine(_projectRoot, "App.target.cs") },
         new Progress<OrchestratorEvent>(events.Add),
         buildProgress: null);
 
@@ -1070,6 +1074,25 @@ public async Task BuildAsync_TargetWithSupportedTargets_BuildsEveryResolvedCombi
 [Fact]
 public async Task BuildAsync_FilterNarrowsToSubsetOfDeclaredMatrix()
 {
+    // A real (but empty - no .cpp/.c files) module directory, so the build actually reaches
+    // the "0 actions, up to date" path per resolved combination instead of short-circuiting
+    // on the earlier "No modules to build" warning that fires when a target has zero modules
+    // at all - this test is about filtering, not about the zero-modules case.
+    var filteredSourceDir = Path.Combine(_projectRoot, "Source", "Filtered");
+    Directory.CreateDirectory(filteredSourceDir);
+    File.WriteAllText(Path.Combine(_projectRoot, "Source", "Filtered.module.cs"), """
+        using Omen.Core.Configuration;
+        using Omen.Core.Rules;
+
+        public class FilteredModule : ModuleRules
+        {
+            public FilteredModule(BuildContext context) : base(context)
+            {
+                Type = ModuleType.Runtime;
+                SourceDirectory = "Source/Filtered";
+            }
+        }
+        """);
     File.WriteAllText(Path.Combine(_projectRoot, "Filtered.target.cs"), """
         using Omen.Core.Configuration;
         using Omen.Core.Rules;
@@ -1084,6 +1107,7 @@ public async Task BuildAsync_FilterNarrowsToSubsetOfDeclaredMatrix()
             public FilteredTarget(BuildContext context) : base(context)
             {
                 Type = TargetType.Executable;
+                ExtraModules.Add("FilteredModule");
             }
         }
         """);
@@ -1098,9 +1122,10 @@ public async Task BuildAsync_FilterNarrowsToSubsetOfDeclaredMatrix()
     var events = new List<OrchestratorEvent>();
     var result = await orchestrator.BuildAsync(request, new Progress<OrchestratorEvent>(events.Add), buildProgress: null);
 
-    // No source files exist, so every resolved combination hits the zero-action success
-    // path - filtering down to exactly one combination means exactly one "Nothing to
-    // build" event instead of two.
+    // The module directory exists but has no source files, so every resolved combination
+    // hits the zero-*action* success path (not the zero-*modules* warning path) - filtering
+    // down to exactly one combination means exactly one "Nothing to build" event instead of
+    // two.
     result.Should().NotBeNull();
     result!.Success.Should().BeTrue();
     events.Count(e => e.Message.Contains("up to date") || e.Message.Contains("Nothing to build")).Should().Be(1);
@@ -1196,7 +1221,11 @@ public async Task BuildAsync_ModuleSupportedTargetsExcludesCombination_ModuleAbs
 
             public GatedTarget(BuildContext context) : base(context)
             {
-                Type = TargetType.Executable;
+                // StaticLibrary, not Executable: archiving needs no entry point, and
+                // WinOnly.cpp below deliberately has no main() (it only needs to exist and
+                // compile - this test verifies module gating, not that the target links into
+                // a runnable program).
+                Type = TargetType.StaticLibrary;
                 ExtraModules.Add("WinOnlyModule");
                 UsePCHFiles = false;
                 UseUnityBuild = false;
@@ -1206,8 +1235,10 @@ public async Task BuildAsync_ModuleSupportedTargetsExcludesCombination_ModuleAbs
     var orchestrator = new BuildOrchestrator();
     var events = new List<OrchestratorEvent>();
 
+    // Not CreateRequest(...) - its hardcoded Configuration = BuildConfiguration.Development
+    // would filter out this matrix's only declared configuration (Debug).
     var result = await orchestrator.BuildAsync(
-        CreateRequest(Path.Combine(_projectRoot, "Gated.target.cs")),
+        new BuildOrchestratorRequest { TargetFile = Path.Combine(_projectRoot, "Gated.target.cs") },
         new Progress<OrchestratorEvent>(events.Add),
         buildProgress: null);
 
@@ -1271,8 +1302,10 @@ public async Task BuildAsync_OneCombinationFails_OthersStillRunAndAggregateRefle
     var orchestrator = new BuildOrchestrator();
     var events = new List<OrchestratorEvent>();
 
+    // Not CreateRequest(...) - its hardcoded Configuration = BuildConfiguration.Development
+    // would filter out both of this matrix's declared combinations (Debug, Release).
     var result = await orchestrator.BuildAsync(
-        CreateRequest(Path.Combine(_projectRoot, "App.target.cs")),
+        new BuildOrchestratorRequest { TargetFile = Path.Combine(_projectRoot, "App.target.cs") },
         new Progress<OrchestratorEvent>(events.Add),
         buildProgress: null);
 
@@ -1334,6 +1367,7 @@ private async Task<BuildResult?> BuildOneCombinationAsync(
     BuildContext context,
     TargetRules targetRules,
     IReadOnlyList<ModuleRules> modules,
+    IToolchain toolchain,
     int? jobs,
     IProgress<OrchestratorEvent>? events,
     IProgress<BuildProgress>? buildProgress,
@@ -1342,7 +1376,10 @@ private async Task<BuildResult?> BuildOneCombinationAsync(
     // ... exact existing body: layering validation is done by the caller before this is
     // invoked (see Step 5) since it needs the pre-gating module list; this method starts
     // from "var digestCalculator = new Sha256DigestCalculator();" and is otherwise
-    // byte-for-byte what BuildAsync's body already does today.
+    // byte-for-byte what BuildAsync's body already does today. That existing body already
+    // references a `toolchain` local (it feeds ActionGraphBuilder's constructor) - the
+    // caller now resolves toolchain per-combination (Step 5) and must pass it in here as a
+    // parameter, since it's no longer in the same enclosing scope after extraction.
 }
 ```
 
@@ -1418,6 +1455,20 @@ public async Task<BuildResult?> BuildAsync(
         }
     }
 
+    // A dimension only needs to appear in the directory name if it actually varies across
+    // the resolved set - Architecture included. Excluding Architecture unconditionally (an
+    // earlier draft of this code did) breaks the "own IntermediateDirectory/OutputDirectory
+    // so per-combination outputs never collide" requirement the moment a matrix declares more
+    // than one Architecture value: two combinations differing only by Architecture would
+    // otherwise compute the identical {Platform}_{Configuration} directory name and overwrite
+    // each other's output. For a target without a matrix (resolvedTargets.Count == 1), no
+    // dimension varies by definition, so this computes empty and the directory name stays
+    // exactly today's {Platform}_{Configuration} - unchanged.
+    var varyingDimensions = resolvedTargets[0].Values.Keys
+        .Where(t => t != typeof(TargetPlatform) && t != typeof(BuildConfiguration))
+        .Where(t => resolvedTargets.Select(r => r.Values[t]).Distinct().Count() > 1)
+        .ToHashSet();
+
     var results = new List<BuildResult>();
     foreach (var resolved in resolvedTargets)
     {
@@ -1427,7 +1478,7 @@ public async Task<BuildResult?> BuildAsync(
         var platform = resolved.Get<TargetPlatform>();
         var configuration = resolved.Get<BuildConfiguration>();
         var suffix = string.Join("_", resolved.Values
-            .Where(kv => kv.Key != typeof(TargetPlatform) && kv.Key != typeof(BuildConfiguration))
+            .Where(kv => varyingDimensions.Contains(kv.Key))
             .OrderBy(kv => kv.Key.Name)
             .Select(kv => kv.Value.ToString()));
         var dirName = suffix.Length > 0 ? $"{platform}_{configuration}_{suffix}" : $"{platform}_{configuration}";
@@ -1447,15 +1498,35 @@ public async Task<BuildResult?> BuildAsync(
             CachedOptionValues = cachedOptionValues
         };
 
+        // An unavailable SDK/toolchain for ONE combination in a multi-combination build must
+        // not abort the others - the same "one combination's problem doesn't stop the rest"
+        // principle already applies to an actual build failure (see the
+        // BuildAsync_OneCombinationFails_OthersStillRunAndAggregateReflectsBoth test below).
+        // A dev machine typically has only one or two platform toolchains installed even when
+        // a target's declared matrix spans more; skip that combination with a warning and keep
+        // going, rather than making the whole multi-platform build fail because of a platform
+        // nobody asked to build for right now. For a target WITHOUT a declared matrix
+        // (resolvedTargets.Count == 1), this is unchanged from today: a missing SDK/toolchain
+        // for the one combination being built is a hard error.
         var sdk = PlatformFactory.GetSDK(context.Platform);
         if (sdk == null)
         {
+            if (resolvedTargets.Count > 1)
+            {
+                events?.Report(new OrchestratorEvent($"Skipping {resolved}: no SDK found for platform {context.Platform}.", OrchestratorEventLevel.Warning));
+                continue;
+            }
             events?.Report(new OrchestratorEvent($"No SDK found for platform {context.Platform}", OrchestratorEventLevel.Error));
             return null;
         }
         var toolchain = PlatformFactory.CreateToolchain(context.Platform, context.Architecture);
         if (toolchain == null)
         {
+            if (resolvedTargets.Count > 1)
+            {
+                events?.Report(new OrchestratorEvent($"Skipping {resolved}: could not create toolchain for {context.Platform}/{context.Architecture}.", OrchestratorEventLevel.Warning));
+                continue;
+            }
             events?.Report(new OrchestratorEvent($"Could not create toolchain for {context.Platform}/{context.Architecture}", OrchestratorEventLevel.Error));
             return null;
         }
@@ -1496,10 +1567,19 @@ public async Task<BuildResult?> BuildAsync(
             continue;
         }
 
-        var combinationResult = await BuildOneCombinationAsync(context, targetRules, includedModules, request.Jobs, events, buildProgress, ct);
+        var combinationResult = await BuildOneCombinationAsync(context, targetRules, includedModules, toolchain, request.Jobs, events, buildProgress, ct);
         if (combinationResult == null)
             return null;
         results.Add(combinationResult);
+    }
+
+    if (results.Count == 0)
+    {
+        // Every resolved combination was skipped (unavailable SDK/toolchain on this
+        // machine) - nothing was actually buildable, which is a real error, not a vacuous
+        // success over zero results.
+        events?.Report(new OrchestratorEvent("No resolved combination had an available SDK/toolchain on this machine.", OrchestratorEventLevel.Error));
+        return null;
     }
 
     return AggregateResults(results);
