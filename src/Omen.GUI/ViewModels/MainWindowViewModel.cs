@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Omen.Core.Configuration;
+using Omen.Core.Rules;
 using Omen.Executors.Orchestration;
 using Omen.GUI.Models;
 using Omen.GUI.Services;
@@ -223,21 +224,20 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Finds the project's target file. "A project" means a directory containing at least one
-    /// *.target.cs; this lookup was previously duplicated at three call sites.
+    /// Uses the build system's source roots and exclusions without scanning build output on
+    /// the dispatcher. Whole-tree GetFiles blocked startup on large engine checkouts.
     /// </summary>
-    private string? FindTargetFile()
+    private async Task<string?> FindTargetFileAsync()
     {
         if (string.IsNullOrEmpty(ProjectPath))
             return null;
 
         try
         {
-            return Directory
-                .GetFiles(ProjectPath, "*.target.cs", SearchOption.AllDirectories)
-                .FirstOrDefault();
+            var discovery = await _targetDiscovery.DiscoverRuleFilesAsync(ProjectPath);
+            return discovery.TargetFiles.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
         }
-        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        catch (Exception ex)
         {
             AppendLine($"Could not scan '{ProjectPath}' for a .target.cs file: {ex.Message}",
                 OrchestratorEventLevel.Error);
@@ -245,13 +245,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private readonly RuleCompiler _targetDiscovery = new();
+
     public async Task ConfigureOptionsAsync()
     {
         if (ProjectPath == null) return;
 
         try
         {
-            var targetFile = FindTargetFile();
+            var targetFile = await FindTargetFileAsync();
             if (targetFile == null)
             {
                 OptionsPanel.StatusText = "No .target.cs file found in this project.";
@@ -274,7 +276,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            var targetFile = FindTargetFile();
+            var targetFile = await FindTargetFileAsync();
             if (targetFile == null) return;
 
             await MatrixPanel.ResolveAsync(targetFile);
@@ -495,6 +497,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     // Build/Rebuild/Clean for the split second before the next phase starts and flips it back.
     public async Task BuildAsync(bool manageBusyState = true)
     {
+        if (manageBusyState && IsBuilding) return;
         if (string.IsNullOrEmpty(ProjectPath))
         {
             AppendLine("No project is open. Use the project chip to open one.", OrchestratorEventLevel.Warning);
@@ -507,10 +510,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        var targetFile = FindTargetFile();
+        if (manageBusyState) IsBuilding = true;
+        var targetFile = await FindTargetFileAsync();
         if (targetFile is null)
         {
             AppendLine("No .target.cs file found in this project.", OrchestratorEventLevel.Error);
+            if (manageBusyState) IsBuilding = false;
             return;
         }
 
@@ -643,7 +648,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public async Task GenerateProjectFilesAsync(IdeKind ide)
     {
-        if (string.IsNullOrEmpty(ProjectPath))
+        var projectRoot = ProjectPath;
+        if (string.IsNullOrEmpty(projectRoot))
         {
             AppendLine("No project is open. Use the project chip to open one.", OrchestratorEventLevel.Warning);
             return;
@@ -660,13 +666,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            var success = await orchestrator.GenerateAsync(
-                new ProjectGenerationOrchestratorRequest { ProjectRoot = ProjectPath, Ide = ide },
-                eventsProgress);
+            var success = await Task.Run(() => orchestrator.GenerateAsync(
+                new ProjectGenerationOrchestratorRequest { ProjectRoot = projectRoot, Ide = ide },
+                eventsProgress));
 
             CurrentBuildState = success ? BuildState.Success : BuildState.Failed;
             StatusText = success
-                ? $"Project: {Path.GetFileName(ProjectPath.TrimEnd(Path.DirectorySeparatorChar))}"
+                ? $"Project: {Path.GetFileName(projectRoot.TrimEnd(Path.DirectorySeparatorChar))}"
                 : "Project file generation failed";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

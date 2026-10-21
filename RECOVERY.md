@@ -17,8 +17,10 @@ WPF desktop GUI, build-server tray, tests, examples, and recovered documentation
   Claude and Codex records. Original comments were retained where available.
 - The installed October 7 Omen package and portable symbols supplied an independent source
   inventory, checksums, public API, implementation fallback, and documentation comments.
-  **106 of its 122 non-generated source documents match their original SHA-256 checksums
-  byte-for-byte**, including Luna's separate `UnityC` object naming fix. Fifteen unavailable
+  At the initial restoration, **106 of its 122 non-generated source documents matched their original
+  SHA-256 checksums byte-for-byte**, including Luna's separate `UnityC` object naming fix.
+  The subsequent VS2026 SDK discovery repair intentionally changes one of those documents;
+  105 remain byte-identical in the current tree. Fifteen unavailable
   source documents were reconstructed from the installed assemblies, sometimes split into
   separate files per type. `Home.razor` uses recovered source whose checksum differs from
   the installed package. This is a tested restoration, not a claim of a byte-identical
@@ -35,8 +37,8 @@ test logs, package output, and recovery scripts are in `F:\Omen-recovery-2026102
 ## Validation
 
 - `dotnet build Omen.sln -c Release`: succeeds, including CLI, dashboard, GUI, and tray.
-- Core: 385 tests pass. Executors/build server: 127 tests pass. GUI models/services: 21 tests
-  pass, including a new nested-target/project-root regression. Total: **533 tests pass**.
+- Core: 389 tests pass. Executors/build server: 127 tests pass. GUI models/services: 21 tests
+  pass, including a new nested-target/project-root regression. Total: **537 tests pass**.
 - A real isolated Windows/MSVC project compiles two C and two C++ sources into separate
   `SmokeModule.UnityC0.obj` and `SmokeModule.Unity0.obj`, links, and exits successfully.
   A second build skips all three actions without compiling or linking again.
@@ -56,6 +58,24 @@ The installed global `omen` tool was left intact. LunaEngine source and its ongo
 not reset, cleaned, or replaced. The actual LunaEngine build was not rerun as part of this
 recovery because a separate LunaTests build was active; compiler/linker validation used an
 isolated project. No cause of the original deletion has been established.
+
+## Later functionality repaired
+
+The first restored GUI omitted VS2026 and Rider from its visible Project menu. The installed
+package's VS2026 generator also emitted only a traditional `.sln`. A follow-up implements
+VS2026 `.slnx` generation alongside the compatibility `.sln`, restores both visible menu
+commands, fixes menu-header spacing, and detects VS2026 before older side-by-side installations.
+Target discovery now runs asynchronously through the core project discovery API, respecting
+source roots and exclusions, instead of recursively scanning the entire engine tree on the UI
+thread. IDE generation also runs off the UI thread.
+
+`generate project --ide vs2026` was exercised on a real C/C++ fixture and a five-project mixed
+C++/C# fixture with two targets and six solution configurations. Microsoft's installed solution
+parser verified that SLNX configuration mappings, build inclusion and folder placement match
+the compatibility solution. VS2026 MSBuild accepted `ValidateSolutionConfiguration`. The native
+fixture compiled, linked, and exited 0 with the updated SDK discovery.
+
+See [recovery/FEATURE_AUDIT.md](recovery/FEATURE_AUDIT.md) for evidence and remaining limits.
 
 ## Build and retain
 

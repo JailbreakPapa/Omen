@@ -22,7 +22,7 @@ public static class GenerateCommand
 
 	private static Command CreateProjectFilesCommand()
 	{
-		Command command = new Command("project", "Generate IDE project files");
+		Command command = new Command("project", "Generate IDE project files (vs2026 writes .slnx and a compatibility .sln)");
 		Option<string> ideOption = new Option<string>(new string[2] { "--ide", "-i" }, () => "vs2022", "IDE to generate for (vs2019, vs2022, vs2026, vscode, rider, cmake)");
 		command.AddOption(ideOption);
 		command.SetHandler(async (InvocationContext context) =>

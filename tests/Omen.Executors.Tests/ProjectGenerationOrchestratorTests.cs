@@ -446,6 +446,11 @@ public class ProjectGenerationOrchestratorTests : IDisposable
             events: null);
 
         success.Should().BeTrue();
+        var slnx = System.Xml.Linq.XDocument.Load(Directory.GetFiles(_projectRoot, "*.slnx").Single());
+        slnx.Descendants("Project").Should().HaveCount(2);
+        var slnxTool = slnx.Descendants("Project").Single(p => ((string)p.Attribute("Path")!).EndsWith("/Tool.vcxproj"));
+        slnxTool.Elements("Build").Single(b => (string?)b.Attribute("Solution") == "Shipping|ARM64")
+            .Attribute("Project")!.Value.Should().Be("false");
         string Project(string name) =>
             File.ReadAllText(Path.Combine(_projectRoot, "Intermediate", "ProjectFiles", name, $"{name}.vcxproj"));
 

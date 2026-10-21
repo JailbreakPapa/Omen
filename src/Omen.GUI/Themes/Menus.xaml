@@ -62,7 +62,7 @@
          Style, so both roles stay covered by the one implicit MenuItem style. -->
     <ControlTemplate x:Key="Template.MenuItem.TopLevelHeader" TargetType="MenuItem">
         <Border x:Name="Bg" Background="Transparent" CornerRadius="4" SnapsToDevicePixels="True">
-            <Grid>
+            <Grid Margin="{TemplateBinding Padding}">
                 <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
                                    VerticalAlignment="Center" HorizontalAlignment="Center" />
                 <Popup x:Name="PART_Popup"

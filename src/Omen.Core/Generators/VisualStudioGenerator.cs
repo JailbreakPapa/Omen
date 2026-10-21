@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Omen.Core.Build;
 using Omen.Core.Configuration;
 using Omen.Core.Qt;
@@ -518,6 +519,89 @@ public sealed class VisualStudioGenerator
 		sb.AppendLine("\tEndGlobalSection");
 		sb.AppendLine("EndGlobal");
 		await GeneratedFile.WriteAllTextAsync(solutionPath, sb.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
+		if (_version == VisualStudioVersion.VS2026)
+		{
+			await GenerateSlnxAsync(Path.ChangeExtension(solutionPath, ".slnx"), target, projects, modules,
+				effectiveAllConfigPlatforms, perModuleConfigPlatforms, moduleOwningTarget,
+				folderGuidByPath.Keys, projectParentFolder, ruleFiles, launchProjects, ct);
+		}
+	}
+
+	/// <summary>
+	/// VS2026's XML solution, alongside the compatibility .sln. Reuses the solution's resolved
+	/// folders and launch-project set so F5 continues to build only the selected Omen target.
+	/// </summary>
+	private async Task GenerateSlnxAsync(string solutionPath, TargetRules target,
+		List<(string Name, string Path, Guid Guid, bool IsCSharp)> projects,
+		IReadOnlyList<ModuleRules> modules,
+		IReadOnlyList<(string Configuration, string Platform)> configurations,
+		IReadOnlyDictionary<string, IReadOnlyList<(string Configuration, string Platform)>>? perModuleConfigurations,
+		IReadOnlyDictionary<string, TargetRules>? moduleOwningTarget,
+		IEnumerable<string> folderPaths, IReadOnlyDictionary<string, string> projectParents,
+		IReadOnlyList<string> ruleFiles, HashSet<string> launchProjects, CancellationToken ct)
+	{
+		var solution = new XElement("Solution");
+		var buildTypes = configurations.Select(c => c.Configuration).Distinct().ToList();
+		var platforms = configurations.Select(c => c.Platform).Distinct().ToList();
+		solution.Add(new XElement("Configurations",
+			buildTypes.Select(c => new XElement("BuildType", new XAttribute("Name", c))),
+			platforms.Select(p => new XElement("Platform", new XAttribute("Name", p)))));
+
+		var folders = new Dictionary<string, XElement>(StringComparer.OrdinalIgnoreCase);
+		foreach (var path in folderPaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+		{
+			var folder = new XElement("Folder", new XAttribute("Name", "/" + path.Replace('\\', '/') + "/"));
+			folders.Add(path, folder);
+			solution.Add(folder);
+		}
+		if (ruleFiles.Count > 0)
+		{
+			if (!folders.TryGetValue("Build Rules", out var rulesFolder))
+			{
+				rulesFolder = new XElement("Folder", new XAttribute("Name", "/Build Rules/"));
+				solution.Add(rulesFolder);
+			}
+			rulesFolder.Add(ruleFiles.Select(p => new XElement("File", new XAttribute("Path", Relative(p)))));
+		}
+
+		var paths = projects.ToDictionary(p => p.Name, p => Relative(p.Path), StringComparer.Ordinal);
+		foreach (var project in projects)
+		{
+			var element = new XElement("Project", new XAttribute("Path", paths[project.Name]));
+			var module = _moduleDict[project.Name];
+			if (!launchProjects.Contains(project.Name))
+			{
+				element.Add(module.AllDependencies.Distinct()
+					.Where(d => paths.ContainsKey(d) && !launchProjects.Contains(d))
+					.Select(d => new XElement("BuildDependency", new XAttribute("Project", paths[d]))));
+			}
+			var owner = moduleOwningTarget != null && moduleOwningTarget.TryGetValue(project.Name, out var owningTarget)
+				? owningTarget : target;
+			bool buildable = project.IsCSharp || IsMainModule(module, owner, modules);
+			var supported = perModuleConfigurations != null && perModuleConfigurations.TryGetValue(project.Name, out var rows)
+				? rows : configurations;
+			// SLNX configurations are a Cartesian product. Explicitly exclude undeclared pairs
+			// and map them to a real project row, including sparse per-target build matrices.
+			foreach (var buildType in buildTypes)
+			foreach (var platform in platforms)
+			{
+				var pair = (Configuration: buildType, Platform: platform);
+				bool enabled = supported.Contains(pair);
+				var mapped = enabled ? pair : supported.FirstOrDefault(c => c.Platform == platform, supported[0]);
+				string selector = buildType + "|" + platform;
+				element.Add(new XElement("BuildType", new XAttribute("Solution", selector),
+					new XAttribute("Project", project.IsCSharp ? MapToCSharpConfig(mapped.Configuration) : mapped.Configuration)));
+				element.Add(new XElement("Platform", new XAttribute("Solution", selector),
+					new XAttribute("Project", project.IsCSharp ? "Any CPU" : mapped.Platform)));
+				element.Add(new XElement("Build", new XAttribute("Solution", selector),
+					new XAttribute("Project", buildable && enabled ? "true" : "false")));
+			}
+			if (projectParents.TryGetValue(project.Name, out var parent)) folders[parent].Add(element);
+			else solution.Add(element);
+		}
+		await GeneratedFile.WriteAllTextAsync(solutionPath, solution.ToString() + Environment.NewLine, ct);
+
+		string Relative(string path) => Path.GetRelativePath(_projectRoot, path).Replace('\\', '/');
 	}
 
 	private static string MapToCSharpConfig(string config)

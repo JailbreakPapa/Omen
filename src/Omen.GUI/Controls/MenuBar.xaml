@@ -61,10 +61,12 @@
                               IsEnabled="{Binding IsCancellable}" />
                 </MenuItem>
                 <MenuItem Header="_Project">
+                    <MenuItem Header="Generate Visual Studio 2026 (.slnx)" Click="OnGenerateVs2026Click" />
                     <MenuItem Header="Generate Visual Studio 2022" Click="OnGenerateVs2022Click" />
                     <MenuItem Header="Generate Visual Studio 2019" Click="OnGenerateVs2019Click" />
                     <Separator />
                     <MenuItem Header="Generate Visual Studio Code" Click="OnGenerateVsCodeClick" />
+                    <MenuItem Header="Generate Rider" Click="OnGenerateRiderClick" />
                     <MenuItem Header="Generate CMake" Click="OnGenerateCMakeClick" />
                 </MenuItem>
                 <MenuItem Header="_Tools">

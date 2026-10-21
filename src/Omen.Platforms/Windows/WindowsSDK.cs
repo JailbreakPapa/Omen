@@ -15,33 +15,33 @@ public sealed class WindowsSDK : IPlatformSDK
 {
     public TargetPlatform Platform => TargetPlatform.Windows;
     public string Name => "Windows SDK + Visual Studio";
-    
+
     public bool IsAvailable => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-    
+
     public IReadOnlyList<TargetArchitecture> SupportedArchitectures =>
         [TargetArchitecture.X64, TargetArchitecture.X86, TargetArchitecture.ARM64];
-    
+
     public SDKInfo? Detect()
     {
         if (!IsAvailable) return null;
-        
+
         // Try to find Visual Studio installation
         var vsInstallPath = FindVisualStudioInstallation();
         if (vsInstallPath == null) return null;
-        
+
         // Find VC tools version
         var vcToolsVersionPath = Path.Combine(vsInstallPath, "VC", "Auxiliary", "Build", "Microsoft.VCToolsVersion.default.txt");
         if (!File.Exists(vcToolsVersionPath)) return null;
-        
+
         var vcToolsVersion = File.ReadAllText(vcToolsVersionPath).Trim();
         var vcToolsPath = Path.Combine(vsInstallPath, "VC", "Tools", "MSVC", vcToolsVersion);
-        
+
         if (!Directory.Exists(vcToolsPath)) return null;
-        
+
         // Find Windows SDK
         var (windowsSdkDir, windowsSdkVersion) = FindWindowsSDK();
         if (windowsSdkDir == null) return null;
-        
+
         return new SDKInfo
         {
             Version = vcToolsVersion,
@@ -59,37 +59,18 @@ public sealed class WindowsSDK : IPlatformSDK
             }
         };
     }
-    
+
     public IToolchain CreateToolchain(TargetArchitecture architecture, SDKInfo sdkInfo)
     {
         return new MsvcToolchain(sdkInfo, architecture);
     }
-    
+
     private static string? FindVisualStudioInstallation()
     {
-        // Common installation paths
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-        
-        var vsVersions = new[] { "2022", "2019" };
-        var vsEditions = new[] { "Enterprise", "Professional", "Community", "BuildTools" };
-        
-        foreach (var version in vsVersions)
-        {
-            foreach (var edition in vsEditions)
-            {
-                var path = Path.Combine(programFiles, "Microsoft Visual Studio", version, edition);
-                if (Directory.Exists(path) && File.Exists(Path.Combine(path, "VC", "Auxiliary", "Build", "vcvarsall.bat")))
-                    return path;
-                
-                // Also check x86 program files
-                path = Path.Combine(programFilesX86, "Microsoft Visual Studio", version, edition);
-                if (Directory.Exists(path) && File.Exists(Path.Combine(path, "VC", "Auxiliary", "Build", "vcvarsall.bat")))
-                    return path;
-            }
-        }
-        
-        // Try vswhere
+
+        // Ask the installer first so a side-by-side VS2022 cannot hide VS2026.
         var vswherePath = Path.Combine(programFilesX86, "Microsoft Visual Studio", "Installer", "vswhere.exe");
         if (File.Exists(vswherePath))
         {
@@ -98,12 +79,12 @@ public sealed class WindowsSDK : IPlatformSDK
                 var startInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = vswherePath,
-                    Arguments = "-latest -property installationPath",
+                    Arguments = "-latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath",
                     RedirectStandardOutput = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
-                
+
                 using var process = System.Diagnostics.Process.Start(startInfo);
                 if (process != null)
                 {
@@ -118,10 +99,29 @@ public sealed class WindowsSDK : IPlatformSDK
                 // Ignore vswhere errors
             }
         }
-        
+
+        // Fallback for installations not registered with the Visual Studio Installer.
+        var vsVersions = new[] { "18", "2026", "2022", "2019" };
+        var vsEditions = new[] { "Enterprise", "Professional", "Community", "BuildTools" };
+
+        foreach (var version in vsVersions)
+        {
+            foreach (var edition in vsEditions)
+            {
+                var path = Path.Combine(programFiles, "Microsoft Visual Studio", version, edition);
+                if (Directory.Exists(path) && File.Exists(Path.Combine(path, "VC", "Auxiliary", "Build", "vcvarsall.bat")))
+                    return path;
+
+                // Also check x86 program files
+                path = Path.Combine(programFilesX86, "Microsoft Visual Studio", version, edition);
+                if (Directory.Exists(path) && File.Exists(Path.Combine(path, "VC", "Auxiliary", "Build", "vcvarsall.bat")))
+                    return path;
+            }
+        }
+
         return null;
     }
-    
+
     private static (string? Path, string? Version) FindWindowsSDK()
     {
         try
@@ -142,7 +142,7 @@ public sealed class WindowsSDK : IPlatformSDK
                             .Where(v => v != null && v.StartsWith("10."))
                             .OrderByDescending(v => v)
                             .FirstOrDefault();
-                        
+
                         if (versions != null)
                             return (kitsRoot, versions);
                     }
@@ -153,11 +153,11 @@ public sealed class WindowsSDK : IPlatformSDK
         {
             // Registry access failed
         }
-        
+
         // Fallback: check common paths
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
         var sdkPath = Path.Combine(programFiles, "Windows Kits", "10");
-        
+
         if (Directory.Exists(sdkPath))
         {
             var includeDir = Path.Combine(sdkPath, "Include");
@@ -168,18 +168,20 @@ public sealed class WindowsSDK : IPlatformSDK
                     .Where(v => v != null && v.StartsWith("10."))
                     .OrderByDescending(v => v)
                     .FirstOrDefault();
-                
+
                 if (version != null)
                     return (sdkPath, version);
             }
         }
-        
+
         return (null, null);
     }
-    
+
     private static string GetVisualStudioVersion(string installPath)
     {
-        if (installPath.Contains("2022")) return "17.0";
+        var parts = installPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (parts.Contains("18") || parts.Contains("2026")) return "18.0";
+        if (parts.Contains("2022")) return "17.0";
         if (installPath.Contains("2019")) return "16.0";
         if (installPath.Contains("2017")) return "15.0";
         return "Unknown";
