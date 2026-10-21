@@ -1,0 +1,37 @@
+<UserControl x:Class="Omen.GUI.Controls.ToolWindowRail"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Omen.GUI.Controls"
+             Width="40">
+    <Border Background="{StaticResource Brush.SurfaceRaised}"
+            BorderBrush="{StaticResource Brush.Border}"
+            BorderThickness="{Binding RailBorderThickness, RelativeSource={RelativeSource AncestorType=controls:ToolWindowRail}}">
+        <ItemsControl ItemsSource="{Binding Items, RelativeSource={RelativeSource AncestorType=controls:ToolWindowRail}}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type controls:ToolWindowRailItem}">
+                    <Button Style="{StaticResource Style.Button.Icon}" Width="40" Height="40"
+                            Click="OnRailItemClick" Tag="{Binding}" ToolTip="{Binding Label}">
+                        <Grid>
+                            <Border HorizontalAlignment="Left" Width="2" Margin="-6,6,0,6"
+                                    Background="{StaticResource Brush.Accent}"
+                                    Visibility="{Binding IsActive,
+                                                 Converter={StaticResource Conv.BoolToVisibility}}" />
+                            <Path Data="{Binding Icon}" Stretch="Uniform" Width="16" Height="16">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Setter Property="Fill" Value="{StaticResource Brush.TextSecondary}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource Brush.Accent}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
+                        </Grid>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Border>
+</UserControl>

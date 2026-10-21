@@ -16,7 +16,8 @@ public enum TargetPlatform
     Android,
     iOS,
     Prospero,
-    Xbox
+    Xbox,
+    Mac
 }
 /// <summary>
 /// NDA Restricted target platforms for compilation.

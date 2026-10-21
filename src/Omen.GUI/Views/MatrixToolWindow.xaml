@@ -1,0 +1,27 @@
+<UserControl x:Class="Omen.GUI.Views.MatrixToolWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Omen.GUI.ViewModels"
+             Background="{StaticResource Brush.Surface}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ItemsControl ItemsSource="{Binding DimensionGroups}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:DimensionGroupViewModel}">
+                    <StackPanel Margin="8,6">
+                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Margin="0,0,0,2" />
+                        <ItemsControl ItemsSource="{Binding Values}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:DimensionValueViewModel}">
+                                    <CheckBox Content="{Binding DisplayName}"
+                                              IsChecked="{Binding IsChecked}"
+                                              Margin="12,2,0,0" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+</UserControl>
+

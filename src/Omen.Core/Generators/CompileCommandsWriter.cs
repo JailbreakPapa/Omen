@@ -1,6 +1,6 @@
-// Omen Build System
-// Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
-
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text.Json;
 using Omen.Core.Graph;
 
@@ -13,33 +13,34 @@ namespace Omen.Core.Generators;
 /// </summary>
 public static class CompileCommandsWriter
 {
-    private sealed class Entry
-    {
-        public required string Directory { get; init; }
-        public required string Command { get; init; }
-        public required string File { get; init; }
-    }
+	private sealed class Entry
+	{
+		public required string Directory { get; init; }
 
-    public static void Write(ActionGraph graph, string outputPath)
-    {
-        var entries = graph.Actions
-            .Where(a => a.Type == ActionType.Compile && a.Inputs.Count > 0)
-            .Select(a => new Entry
-            {
-                Directory = a.WorkingDirectory,
-                Command = a.CommandLine,
-                File = a.Inputs[0].Path
-            })
-            .ToList();
+		public required string Command { get; init; }
 
-        var directory = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
+		public required string File { get; init; }
+	}
 
-        File.WriteAllText(outputPath, JsonSerializer.Serialize(entries, new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        }));
-    }
+	public static void Write(ActionGraph graph, string outputPath)
+	{
+		List<Entry> entries = (from a in graph.Actions
+			where a.Type == ActionType.Compile && a.Inputs.Count > 0
+			select new Entry
+			{
+				Directory = a.WorkingDirectory,
+				Command = a.CommandLine,
+				File = a.Inputs[0].Path
+			}).ToList();
+		string directory = Path.GetDirectoryName(outputPath);
+		if (!string.IsNullOrEmpty(directory))
+		{
+			Directory.CreateDirectory(directory);
+		}
+		GeneratedFile.WriteAllText(outputPath, JsonSerializer.Serialize(entries, new JsonSerializerOptions
+		{
+			WriteIndented = true,
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+		}));
+	}
 }

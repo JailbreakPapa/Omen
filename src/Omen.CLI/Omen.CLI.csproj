@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -9,6 +9,9 @@
     <RootNamespace>Omen.CLI</RootNamespace>
     <AssemblyName>omen</AssemblyName>
     <Description>Omen Build System - Command Line Interface</Description>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>omen</ToolCommandName>
+    <PackageId>Omen.CLI</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,3 +30,4 @@
   </ItemGroup>
 
 </Project>
+

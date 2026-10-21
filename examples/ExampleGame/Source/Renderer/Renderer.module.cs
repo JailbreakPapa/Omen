@@ -1,4 +1,4 @@
-﻿// Renderer Module - Graphics and rendering
+// Renderer Module - Graphics and rendering
 
 using Omen.Core.Configuration;
 using Omen.Core.Rules;

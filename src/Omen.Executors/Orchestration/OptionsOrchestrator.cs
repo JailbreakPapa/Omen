@@ -1,80 +1,131 @@
-// Omen Build System
-// Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
-
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Omen.Core.Configuration;
 using Omen.Core.Options;
 using Omen.Core.Rules;
 
 namespace Omen.Executors.Orchestration;
 
-public sealed class OptionsOrchestratorRequest
-{
-    public required string TargetFile { get; init; }
-}
-
 /// <summary>
 /// Discovers a project's declared build options without building anything - the Omen
 /// equivalent of a CMake Configure pass. Reuses BuildOrchestrator's resolve-and-instantiate
-/// sequence (target file -> rule compilation -> BuildContext -> CreateTargetRules/
+/// sequence (target file -&gt; rule compilation -&gt; BuildContext -&gt; CreateTargetRules/
 /// CreateModuleRules) and stops there: instantiating rules is what runs BuildOptions.Declare
 /// calls and populates BuildContext.DeclaredOptions, which is the entire discovery mechanism.
 /// </summary>
 public sealed class OptionsOrchestrator
 {
-    public async Task<IReadOnlyList<BuildOptionDeclaration>?> DiscoverAsync(
-        OptionsOrchestratorRequest request,
-        IProgress<OrchestratorEvent>? events,
-        CancellationToken ct = default)
-    {
-        var workingDir = ResolveWorkingDir(request.TargetFile);
-        var cacheStore = new OptionCacheStore(CachePath(workingDir));
+	public async Task<IReadOnlyList<BuildOptionDeclaration>?> DiscoverAsync(OptionsOrchestratorRequest request, IProgress<OrchestratorEvent>? events, CancellationToken ct = default(CancellationToken))
+	{
+		string workingDir = ResolveWorkingDir(request.TargetFile);
+		OptionCacheStore cacheStore = new OptionCacheStore(CachePath(workingDir));
+		BuildContext context = new BuildContext
+		{
+			Platform = TargetPlatform.Windows,
+			Architecture = TargetArchitecture.X64,
+			Configuration = BuildConfiguration.Development,
+			ProjectRoot = workingDir,
+			IntermediateDirectory = Path.Combine(workingDir, "Intermediate"),
+			OutputDirectory = Path.Combine(workingDir, "Binaries"),
+			CachedOptionValues = cacheStore.Load()
+		};
+		RuleCompiler ruleCompiler = new RuleCompiler(RuleCompiler.CacheDirectoryFor(workingDir));
+		CompiledRules compiledRules;
+		try
+		{
+			events?.Report(new OrchestratorEvent("Compiling build rules...", OrchestratorEventLevel.Info));
+			compiledRules = await ruleCompiler.CompileRulesAsync(workingDir, ct);
+		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
+		catch (Exception ex2)
+		{
+			events?.Report(new OrchestratorEvent("Error compiling rules: " + ex2.Message, OrchestratorEventLevel.Error));
+			return null;
+		}
+		compiledRules.CreateTargetRules(context);
+		compiledRules.CreateModuleRules(context);
+		ManualOptionsStore manualOptionsStore = new ManualOptionsStore(ManualOptionsPath(workingDir));
+		HashSet<string> declaredNames = context.DeclaredOptions.Select((BuildOptionDeclaration d) => d.Name).ToHashSet();
+		IEnumerable<BuildOptionDeclaration> manualEntries = from d in manualOptionsStore.All
+			where !declaredNames.Contains(d.Name)
+			select new BuildOptionDeclaration
+			{
+				Name = d.Name,
+				Description = d.Description,
+				Type = d.Type,
+				DefaultValue = d.DefaultValue,
+				EffectiveValue = (context.CachedOptionValues.TryGetValue(d.Name, out string value) ? value : d.EffectiveValue),
+				IsAdvanced = d.IsAdvanced,
+				AllowedValues = d.AllowedValues,
+				IsManual = true
+			};
+		List<BuildOptionDeclaration> merged = context.DeclaredOptions.Concat(manualEntries).ToList();
+		events?.Report(new OrchestratorEvent($"Found {merged.Count} option(s)", OrchestratorEventLevel.Info));
+		return merged;
+	}
 
-        var context = new BuildContext
-        {
-            Platform = TargetPlatform.Windows,
-            Architecture = TargetArchitecture.X64,
-            Configuration = BuildConfiguration.Development,
-            ProjectRoot = workingDir,
-            IntermediateDirectory = Path.Combine(workingDir, "Intermediate"),
-            OutputDirectory = Path.Combine(workingDir, "Binaries"),
-            CachedOptionValues = cacheStore.Load()
-        };
+	/// <summary>
+	/// Persists option values, merged over whatever is already cached. Merging rather than
+	/// replacing matters as soon as two things write the cache: the GUI saves the options its
+	/// panel currently shows, and an option the panel is not showing (a third-party one while
+	/// the checkbox is off, or the checkbox itself) must not be dropped by that save.
+	/// </summary>
+	public void SaveOptions(string targetFile, IReadOnlyDictionary<string, string> values)
+	{
+		OptionCacheStore store = new OptionCacheStore(CachePath(ResolveWorkingDir(targetFile)));
+		Dictionary<string, string> merged = new Dictionary<string, string>(store.Load(), StringComparer.Ordinal);
+		foreach (var (name, value) in values)
+		{
+			merged[name] = value;
+		}
+		store.Save(merged);
+	}
 
-        var ruleCompiler = new RuleCompiler(Path.Combine(workingDir, "Intermediate", "RuleCache"));
+	/// <summary>Drops saved values, so those options fall back to their declared defaults.</summary>
+	public void ResetOptions(string targetFile, IEnumerable<string> names)
+	{
+		OptionCacheStore store = new OptionCacheStore(CachePath(ResolveWorkingDir(targetFile)));
+		Dictionary<string, string> remaining = new Dictionary<string, string>(store.Load(), StringComparer.Ordinal);
+		foreach (string name in names)
+		{
+			remaining.Remove(name);
+		}
+		store.Save(remaining);
+	}
 
-        CompiledRules compiledRules;
-        try
-        {
-            events?.Report(new OrchestratorEvent("Compiling build rules...", OrchestratorEventLevel.Info));
-            compiledRules = await ruleCompiler.CompileRulesAsync(workingDir, ct);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            events?.Report(new OrchestratorEvent($"Error compiling rules: {ex.Message}", OrchestratorEventLevel.Error));
-            return null;
-        }
+	public void AddManualOption(string targetFile, BuildOptionDeclaration declaration)
+	{
+		ManualOptionsStore manualOptionsStore = new ManualOptionsStore(ManualOptionsPath(ResolveWorkingDir(targetFile)));
+		manualOptionsStore.Add(declaration);
+		manualOptionsStore.Save();
+	}
 
-        compiledRules.CreateTargetRules(context);
-        compiledRules.CreateModuleRules(context);
+	public void RemoveManualOption(string targetFile, string name)
+	{
+		ManualOptionsStore manualOptionsStore = new ManualOptionsStore(ManualOptionsPath(ResolveWorkingDir(targetFile)));
+		manualOptionsStore.Remove(name);
+		manualOptionsStore.Save();
+	}
 
-        events?.Report(new OrchestratorEvent($"Found {context.DeclaredOptions.Count} option(s)", OrchestratorEventLevel.Info));
+	private static string ResolveWorkingDir(string targetFile)
+	{
+		return RuleCompiler.ResolveProjectRoot(targetFile);
+	}
 
-        return context.DeclaredOptions;
-    }
+	private static string CachePath(string workingDir)
+	{
+		return Path.Combine(workingDir, "Intermediate", "omen-cache.json");
+	}
 
-    public void SaveOptions(string targetFile, IReadOnlyDictionary<string, string> values)
-    {
-        var workingDir = ResolveWorkingDir(targetFile);
-        new OptionCacheStore(CachePath(workingDir)).Save(values);
-    }
-
-    private static string ResolveWorkingDir(string targetFile) =>
-        Path.GetDirectoryName(targetFile) ?? Path.GetPathRoot(targetFile) ?? targetFile;
-
-    private static string CachePath(string workingDir) =>
-        Path.Combine(workingDir, "Intermediate", "omen-cache.json");
+	private static string ManualOptionsPath(string workingDir)
+	{
+		return Path.Combine(workingDir, "Intermediate", "omen-manual-options.json");
+	}
 }

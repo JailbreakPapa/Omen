@@ -42,7 +42,7 @@ public class BuildOrchestratorTests : IDisposable
         // Act
         var result = await orchestrator.BuildAsync(
             CreateRequest(targetFile),
-            new Progress<OrchestratorEvent>(events.Add),
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add),
             buildProgress: null);
 
         // Assert
@@ -71,7 +71,7 @@ public class BuildOrchestratorTests : IDisposable
         // BuildOrchestrator resolves the target file from the request directly (unlike the
         // CLI's ResolveTargetFile search), so point it at a target.cs path that doesn't exist -
         // RuleCompiler.CompileRulesAsync only requires at least one *.module.cs OR *.target.cs
-        // OR *.gem.cs to exist somewhere under the project root, which the module above satisfies.
+        // OR *.plugin.cs to exist somewhere under the project root, which the module above satisfies.
         var missingTargetFile = Path.Combine(_projectRoot, "Missing.target.cs");
         var orchestrator = new BuildOrchestrator();
         var events = new List<OrchestratorEvent>();
@@ -79,7 +79,7 @@ public class BuildOrchestratorTests : IDisposable
         // Act
         var result = await orchestrator.BuildAsync(
             CreateRequest(missingTargetFile),
-            new Progress<OrchestratorEvent>(events.Add),
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add),
             buildProgress: null);
 
         // Assert
@@ -110,7 +110,7 @@ public class BuildOrchestratorTests : IDisposable
         // Act
         var result = await orchestrator.BuildAsync(
             CreateRequest(targetFile),
-            new Progress<OrchestratorEvent>(events.Add),
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add),
             buildProgress: null);
 
         // Assert
@@ -147,7 +147,7 @@ public class BuildOrchestratorTests : IDisposable
 
         var result = await orchestrator.BuildAsync(
             CreateRequest(targetFile),
-            new Progress<OrchestratorEvent>(events.Add),
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add),
             buildProgress: null);
 
         // No modules exist under MyProject/Source, so this still returns the zero-action
@@ -491,7 +491,7 @@ public class BuildOrchestratorTests : IDisposable
         // neither combination is Development.
         var result = await orchestrator.BuildAsync(
             new BuildOrchestratorRequest { TargetFile = Path.Combine(_projectRoot, "App.target.cs") },
-            new Progress<OrchestratorEvent>(events.Add),
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add),
             buildProgress: null);
 
         result.Should().NotBeNull();
@@ -552,7 +552,7 @@ public class BuildOrchestratorTests : IDisposable
             Configuration = BuildConfiguration.Debug
         };
         var events = new List<OrchestratorEvent>();
-        var result = await orchestrator.BuildAsync(request, new Progress<OrchestratorEvent>(events.Add), buildProgress: null);
+        var result = await orchestrator.BuildAsync(request, new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add), buildProgress: null);
 
         // The module directory exists but has no source files, so every resolved combination
         // hits the zero-*action* success path (not the zero-*modules* warning path) - filtering
@@ -585,7 +585,7 @@ public class BuildOrchestratorTests : IDisposable
         };
         var events = new List<OrchestratorEvent>();
 
-        var result = await orchestrator.BuildAsync(request, new Progress<OrchestratorEvent>(events.Add), buildProgress: null);
+        var result = await orchestrator.BuildAsync(request, new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add), buildProgress: null);
 
         result.Should().BeNull();
         events.Should().Contain(e => e.Level == OrchestratorEventLevel.Error && e.Message.Contains("matched"));
@@ -612,7 +612,7 @@ public class BuildOrchestratorTests : IDisposable
 
         var result = await orchestrator.BuildAsync(
             CreateRequest(Path.Combine(_projectRoot, "Impossible.target.cs")),
-            new Progress<OrchestratorEvent>(events.Add),
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add),
             buildProgress: null);
 
         result.Should().BeNull();
@@ -671,7 +671,7 @@ public class BuildOrchestratorTests : IDisposable
         // would filter out this matrix's only declared configuration (Debug).
         var result = await orchestrator.BuildAsync(
             new BuildOrchestratorRequest { TargetFile = Path.Combine(_projectRoot, "Gated.target.cs") },
-            new Progress<OrchestratorEvent>(events.Add),
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add),
             buildProgress: null);
 
         result.Should().NotBeNull();
@@ -680,7 +680,7 @@ public class BuildOrchestratorTests : IDisposable
         // its only module was gated out. Object files land under a directory named for the
         // module's Name (ModuleRules.Name defaults to GetType().Name, with no "Module" suffix
         // stripping anywhere in the codebase) - i.e. "WinOnlyModule", not "WinOnly".
-        File.Exists(Path.Combine(_projectRoot, "Intermediate", "Windows_Debug", "WinOnlyModule", "WinOnly.obj")).Should().BeTrue();
+        Directory.EnumerateFiles(Path.Combine(_projectRoot, "Intermediate", "Windows_Debug", "WinOnlyModule"), "WinOnly.obj", SearchOption.AllDirectories).Should().ContainSingle();
         Directory.Exists(Path.Combine(_projectRoot, "Intermediate", "Linux_Debug", "WinOnlyModule")).Should().BeFalse();
     }
 
@@ -740,7 +740,7 @@ public class BuildOrchestratorTests : IDisposable
         // would filter out both of this matrix's declared combinations (Debug, Release).
         var result = await orchestrator.BuildAsync(
             new BuildOrchestratorRequest { TargetFile = Path.Combine(_projectRoot, "App.target.cs") },
-            new Progress<OrchestratorEvent>(events.Add),
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add),
             buildProgress: null);
 
         // The aggregate reflects the failure, but both combinations actually ran: Release's
@@ -750,5 +750,211 @@ public class BuildOrchestratorTests : IDisposable
         result!.Success.Should().BeFalse();
         result.FailedActions.Should().BeGreaterThan(0);
         File.Exists(Path.Combine(_projectRoot, "Binaries", "Windows_Release", "App.exe")).Should().BeTrue();
+    }
+
+    private void WriteWidgetPlugin()
+    {
+        var pluginDir = Path.Combine(_projectRoot, "Plugins", "Widget");
+        Directory.CreateDirectory(pluginDir);
+        File.WriteAllText(Path.Combine(pluginDir, "plugin.json"), """
+            { "plugin_name": "Widget", "version": "0.1.0", "dependencies": [] }
+            """);
+        File.WriteAllText(Path.Combine(pluginDir, "Widget.plugin.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class WidgetPlugin : PluginRules
+            {
+                public WidgetPlugin(BuildContext context) : base(context)
+                {
+                    LoadManifest("Plugins/Widget");
+                    DefineFlavor(PluginFlavorKind.Runtime);
+                    CreateAlias("Clients", PluginFlavorKind.Runtime);
+                    CreateAlias("Unified", PluginFlavorKind.Runtime);
+                }
+            }
+            """);
+    }
+
+    [Fact]
+    public async Task BuildAsync_NoEnabledPluginsAnywhere_IncludesEveryPluginFlavor_Unchanged()
+    {
+        // Backward compatibility: a project with no OmenProjectRules.EnabledPlugins and a request
+        // with no override must behave exactly as before PluginEnablement existed - every compiled
+        // plugin stays active.
+        WriteWidgetPlugin();
+        File.WriteAllText(Path.Combine(_projectRoot, "App.target.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppTarget : TargetRules
+            {
+                public AppTarget(BuildContext context) : base(context)
+                {
+                    Type = TargetType.Executable;
+                }
+            }
+            """);
+        var orchestrator = new BuildOrchestrator();
+        var events = new List<OrchestratorEvent>();
+
+        var result = await orchestrator.BuildAsync(
+            CreateRequest(Path.Combine(_projectRoot, "App.target.cs")),
+            new SynchronousProgress<OrchestratorEvent>(events.Add),
+            buildProgress: null);
+
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        events.Should().Contain(e => e.Message.Contains("Found 1 target(s), 1 module(s)"));
+    }
+
+    [Fact]
+    public async Task BuildAsync_EnabledPluginsRequestOverride_FiltersOutDisabledPluginFlavor()
+    {
+        // An explicit (even empty) EnabledPlugins override on the request is the opt-in: it filters
+        // plugin-flavor modules down to what's actually enabled, without touching hand-written
+        // modules (there are none in this fixture, but the "no modules to build" warning path -
+        // not a hard failure - proves the module was filtered rather than the build erroring).
+        WriteWidgetPlugin();
+        File.WriteAllText(Path.Combine(_projectRoot, "App.target.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppTarget : TargetRules
+            {
+                public AppTarget(BuildContext context) : base(context)
+                {
+                    Type = TargetType.Executable;
+                }
+            }
+            """);
+        var orchestrator = new BuildOrchestrator();
+        var events = new List<OrchestratorEvent>();
+
+        var result = await orchestrator.BuildAsync(
+            new BuildOrchestratorRequest
+            {
+                TargetFile = Path.Combine(_projectRoot, "App.target.cs"),
+                Platform = TargetPlatform.Windows,
+                Architecture = TargetArchitecture.X64,
+                Configuration = BuildConfiguration.Development,
+                EnabledPlugins = []
+            },
+            new SynchronousProgress<OrchestratorEvent>(events.Add),
+            buildProgress: null);
+
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        events.Should().Contain(e => e.Message.Contains("Found 1 target(s), 0 module(s)"));
+        events.Should().Contain(e => e.Level == OrchestratorEventLevel.Warning && e.Message.Contains("No modules to build"));
+    }
+
+    [Fact]
+    public async Task BuildAsync_EnabledPluginsRequestOverride_KeepsPluginEnabledForVariant()
+    {
+        WriteWidgetPlugin();
+        File.WriteAllText(Path.Combine(_projectRoot, "App.target.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class AppTarget : TargetRules
+            {
+                public AppTarget(BuildContext context) : base(context)
+                {
+                    Type = TargetType.Executable;
+                }
+            }
+            """);
+        var orchestrator = new BuildOrchestrator();
+        var events = new List<OrchestratorEvent>();
+
+        var result = await orchestrator.BuildAsync(
+            new BuildOrchestratorRequest
+            {
+                TargetFile = Path.Combine(_projectRoot, "App.target.cs"),
+                Platform = TargetPlatform.Windows,
+                Architecture = TargetArchitecture.X64,
+                Configuration = BuildConfiguration.Development,
+                EnabledPlugins = ["Widget"],
+                Variant = PluginVariant.Clients
+            },
+            new SynchronousProgress<OrchestratorEvent>(events.Add),
+            buildProgress: null);
+
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        events.Should().Contain(e => e.Message.Contains("Found 1 target(s), 1 module(s)"));
+    }
+
+    /// <summary>A target plus one module with no sources: a valid zero-action build, which is
+    /// enough to exercise the pre/post build-step path without needing a real compiler run.</summary>
+    private string WriteTargetWithBuildSteps(string preCommand, string postCommand)
+    {
+        var moduleDir = Path.Combine(_projectRoot, "Source", "Empty");
+        Directory.CreateDirectory(moduleDir);
+        File.WriteAllText(Path.Combine(moduleDir, "Empty.module.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class EmptyModule : ModuleRules
+            {
+                public EmptyModule(BuildContext context) : base(context)
+                {
+                    SourceDirectory = "Source/Empty";
+                }
+            }
+            """);
+        var targetFile = Path.Combine(_projectRoot, "Stepped.target.cs");
+        File.WriteAllText(targetFile, $$"""
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+
+            public class SteppedTarget : TargetRules
+            {
+                public SteppedTarget(BuildContext context) : base(context)
+                {
+                    Type = TargetType.Executable;
+                    PreBuildSteps.Add(new BuildStep { Description = "pre", Command = @"{{preCommand}}" });
+                    PostBuildSteps.Add(new BuildStep { Description = "post", Command = @"{{postCommand}}" });
+                }
+            }
+            """);
+        return targetFile;
+    }
+
+    [Fact]
+    public async Task BuildAsync_PreAndPostBuildSteps_RunInTheProjectRoot()
+    {
+        var targetFile = WriteTargetWithBuildSteps("echo ran > pre-ran.txt", "echo ran > post-ran.txt");
+        var orchestrator = new BuildOrchestrator();
+        var events = new List<OrchestratorEvent>();
+
+        var result = await orchestrator.BuildAsync(
+            CreateRequest(targetFile),
+            new SynchronousProgress<OrchestratorEvent>(events.Add),
+            buildProgress: null);
+
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        File.Exists(Path.Combine(_projectRoot, "pre-ran.txt")).Should().BeTrue("pre-build steps must run");
+        File.Exists(Path.Combine(_projectRoot, "post-ran.txt")).Should().BeTrue("post-build steps must run");
+    }
+
+    [Fact]
+    public async Task BuildAsync_FailingPreBuildStep_FailsTheBuildBeforeAnythingElse()
+    {
+        var targetFile = WriteTargetWithBuildSteps("exit /b 3", "echo ran > post-ran.txt");
+        var orchestrator = new BuildOrchestrator();
+        var events = new List<OrchestratorEvent>();
+
+        var result = await orchestrator.BuildAsync(
+            CreateRequest(targetFile),
+            new SynchronousProgress<OrchestratorEvent>(events.Add),
+            buildProgress: null);
+
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        File.Exists(Path.Combine(_projectRoot, "post-ran.txt")).Should().BeFalse("post-build steps must not run after a failed pre-build step");
+        events.Should().Contain(e => e.Level == OrchestratorEventLevel.Error && e.Message.Contains("pre-build step 'pre'"));
     }
 }

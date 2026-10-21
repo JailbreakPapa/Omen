@@ -1,4 +1,4 @@
-// Omen Build System
+﻿// Omen Build System
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
 using Omen.Core.Configuration;
@@ -38,7 +38,7 @@ public static class LayeringValidator
             if (module.Type != ModuleType.ThirdParty)
                 continue;
 
-            foreach (var depName in module.PublicDependencies.Concat(module.PrivateDependencies))
+            foreach (var depName in module.AllDependencies)
             {
                 if (byName.TryGetValue(depName, out var dep) && dep.Type != ModuleType.ThirdParty)
                 {
@@ -61,7 +61,7 @@ public static class LayeringValidator
         if (!visited.Add(current.Name))
             return false;
 
-        foreach (var depName in current.PublicDependencies.Concat(current.PrivateDependencies))
+        foreach (var depName in current.AllDependencies)
         {
             path.Add(depName);
 

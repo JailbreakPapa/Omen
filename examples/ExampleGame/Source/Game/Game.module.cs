@@ -1,4 +1,4 @@
-﻿// Game Module - Game-specific code
+// Game Module - Game-specific code
 
 using Omen.Core.Configuration;
 using Omen.Core.Rules;

@@ -218,7 +218,7 @@ public sealed class PCHManager
     private string GetPCHOutputPath(ModuleRules module, BuildContext context, string intermediateDirectory)
     {
         var extension = context.Platform == TargetPlatform.Windows ? ".pch" : ".pch.gch";
-        return Path.Combine(intermediateDirectory, "PCH", $"{module.Name}{extension}");
+        return Path.Combine(intermediateDirectory, "PCH", $"{Omen.Core.Build.ModulePathName.Sanitize(module.Name)}{extension}");
     }
     
     private ContentDigest ComputeHeaderDigest(PCHConfiguration config)

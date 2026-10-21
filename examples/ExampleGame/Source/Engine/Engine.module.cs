@@ -1,4 +1,4 @@
-﻿// Engine Module - Core engine functionality
+// Engine Module - Core engine functionality
 
 using Omen.Core.Configuration;
 using Omen.Core.Rules;
@@ -28,3 +28,4 @@ public class EngineModule : ModuleRules
         CppStandard = CppStandard.Cpp20;
     }
 }
+

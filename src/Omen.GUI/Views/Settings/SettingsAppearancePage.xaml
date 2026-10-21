@@ -1,0 +1,60 @@
+<UserControl x:Class="Omen.GUI.Views.Settings.SettingsAppearancePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:controls="clr-namespace:Omen.GUI.Controls">
+    <StackPanel MaxWidth="480" HorizontalAlignment="Left">
+        <TextBlock Text="Appearance" FontSize="14" FontWeight="SemiBold"
+                   Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,14" />
+
+        <!-- Row: Theme -->
+        <Grid Margin="0,0,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Theme" FontSize="12.5"
+                       Foreground="{DynamicResource Brush.TextSecondary}" VerticalAlignment="Center" />
+            <ComboBox x:Name="ThemeCombo" Grid.Column="1" Width="150"
+                      SelectedItem="{Binding Theme}"
+                      SelectionChanged="OnThemeSelectionChanged">
+                <sys:String>Dark</sys:String>
+                <sys:String>Light</sys:String>
+            </ComboBox>
+        </Grid>
+        <TextBlock Text="The light palette is derived, not yet design-approved, and pending review."
+                   FontSize="11" Foreground="{DynamicResource Brush.TextDim}"
+                   TextWrapping="Wrap" Margin="0,0,0,14" />
+
+        <!-- Row: UI density -->
+        <Grid Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="UI density" FontSize="12.5"
+                       Foreground="{DynamicResource Brush.TextSecondary}" VerticalAlignment="Center" />
+            <ComboBox x:Name="DensityCombo" Grid.Column="1" Width="150"
+                      SelectedItem="{Binding UiDensity}"
+                      SelectionChanged="OnDensitySelectionChanged">
+                <sys:String>Compact</sys:String>
+                <sys:String>Standard</sys:String>
+                <sys:String>Roomy</sys:String>
+            </ComboBox>
+        </Grid>
+
+        <!-- Row: Console font size -->
+        <Grid Margin="0,0,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Console font size" FontSize="12.5"
+                       Foreground="{DynamicResource Brush.TextSecondary}" VerticalAlignment="Center" />
+            <controls:NumericTextBox Grid.Column="1" Width="80" Value="{Binding ConsoleFontSize}" />
+        </Grid>
+        <TextBlock Text="Theme and density preview live as you change them; Cancel does not revert the preview."
+                   FontSize="11" Foreground="{DynamicResource Brush.TextDim}"
+                   TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

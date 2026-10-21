@@ -1,0 +1,7 @@
+{
+    "plugin_name": "Greeter",
+    "version": "1.0.0",
+    "display_name": "Greeter",
+    "summary": "Sample plugin for the Omen build system - a tiny greeting library exercising Static and Runtime flavors.",
+    "dependencies": []
+}

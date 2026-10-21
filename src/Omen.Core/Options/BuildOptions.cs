@@ -10,7 +10,8 @@ public enum BuildOptionType
     Bool,
     String,
     Int,
-    Path
+    Path,
+    Enum
 }
 
 /// <summary>
@@ -26,36 +27,68 @@ public sealed class BuildOptionDeclaration
     public required BuildOptionType Type { get; init; }
     public required string DefaultValue { get; init; }
     public required string EffectiveValue { get; init; }
+    public bool IsAdvanced { get; init; }
+    public IReadOnlyList<string>? AllowedValues { get; init; }
+
+    /// <summary>
+    /// True for an entry OptionsOrchestrator.DiscoverAsync merged in from ManualOptionsStore
+    /// (added via the GUI's Add Entry button) rather than a real BuildOptions.Declare call -
+    /// the GUI uses this to only show its Remove button on entries it can actually remove.
+    /// </summary>
+    public bool IsManual { get; init; }
 }
 
 /// <summary>
 /// Declares a user-configurable build option from a rules file, in the spirit of CMake's
 /// option()/set(... CACHE). A static entry point (rather than a method on ModuleRules/
-/// TargetRules/GemRules) since those are three separate, unrelated base-class hierarchies -
+/// TargetRules/PluginRules) since those are three separate, unrelated base-class hierarchies -
 /// this works identically from any of them, or from a plain rules file with no base class
 /// dependency on this concept at all.
 /// </summary>
 public static class BuildOptions
 {
-    public static bool Declare(BuildContext context, string name, string description, bool defaultValue)
+    public static bool Declare(BuildContext context, string name, string description, bool defaultValue, bool advanced = false)
     {
-        var effective = ResolveAndRecord(context, name, description, BuildOptionType.Bool, defaultValue ? "true" : "false");
+        var effective = ResolveAndRecord(context, name, description, BuildOptionType.Bool, defaultValue ? "true" : "false", advanced);
         return effective.Equals("true", StringComparison.OrdinalIgnoreCase);
     }
 
-    public static string Declare(BuildContext context, string name, string description, string defaultValue) =>
-        ResolveAndRecord(context, name, description, BuildOptionType.String, defaultValue);
+    public static string Declare(BuildContext context, string name, string description, string defaultValue, bool advanced = false) =>
+        ResolveAndRecord(context, name, description, BuildOptionType.String, defaultValue, advanced);
 
-    public static int Declare(BuildContext context, string name, string description, int defaultValue)
+    public static int Declare(BuildContext context, string name, string description, int defaultValue, bool advanced = false)
     {
-        var effective = ResolveAndRecord(context, name, description, BuildOptionType.Int, defaultValue.ToString());
+        var effective = ResolveAndRecord(context, name, description, BuildOptionType.Int, defaultValue.ToString(), advanced);
         return int.TryParse(effective, out var parsed) ? parsed : defaultValue;
     }
 
-    public static string DeclarePath(BuildContext context, string name, string description, string defaultValue) =>
-        ResolveAndRecord(context, name, description, BuildOptionType.Path, defaultValue);
+    public static string DeclarePath(BuildContext context, string name, string description, string defaultValue, bool advanced = false) =>
+        ResolveAndRecord(context, name, description, BuildOptionType.Path, defaultValue, advanced);
 
-    private static string ResolveAndRecord(BuildContext context, string name, string description, BuildOptionType type, string defaultValue)
+    public static string DeclareEnum(BuildContext context, string name, string description, string[] allowedValues, string defaultValue, bool advanced = false)
+    {
+        var existing = context.DeclaredOptions.FirstOrDefault(o => o.Name == name);
+        if (existing != null)
+            return existing.EffectiveValue;
+
+        var cached = context.CachedOptionValues.TryGetValue(name, out var cachedValue) ? cachedValue : null;
+        var effectiveValue = cached != null && allowedValues.Contains(cached) ? cached : defaultValue;
+
+        context.DeclaredOptions.Add(new BuildOptionDeclaration
+        {
+            Name = name,
+            Description = description,
+            Type = BuildOptionType.Enum,
+            DefaultValue = defaultValue,
+            EffectiveValue = effectiveValue,
+            IsAdvanced = advanced,
+            AllowedValues = allowedValues
+        });
+
+        return effectiveValue;
+    }
+
+    private static string ResolveAndRecord(BuildContext context, string name, string description, BuildOptionType type, string defaultValue, bool advanced)
     {
         var existing = context.DeclaredOptions.FirstOrDefault(o => o.Name == name);
         if (existing != null)
@@ -69,7 +102,8 @@ public static class BuildOptions
             Description = description,
             Type = type,
             DefaultValue = defaultValue,
-            EffectiveValue = effectiveValue
+            EffectiveValue = effectiveValue,
+            IsAdvanced = advanced
         });
 
         return effectiveValue;

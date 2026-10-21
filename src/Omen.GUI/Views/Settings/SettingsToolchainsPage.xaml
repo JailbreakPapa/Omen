@@ -1,0 +1,48 @@
+<UserControl x:Class="Omen.GUI.Views.Settings.SettingsToolchainsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="Toolchains"
+                   FontSize="13"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource Brush.TextPrimary}"
+                   Margin="0,0,0,12" />
+
+        <ItemsControl x:Name="ToolchainsList"
+                      ItemsSource="{Binding Toolchains}"
+                      MaxWidth="520"
+                      HorizontalAlignment="Left">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Padding="0,8,0,8"
+                            BorderBrush="{DynamicResource Brush.RowDivider}"
+                            BorderThickness="0,0,0,1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Name}"
+                                       FontSize="12.5"
+                                       Foreground="{DynamicResource Brush.TextSecondary}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Status}"
+                                       FontFamily="{DynamicResource Font.Mono}"
+                                       FontSize="12.5"
+                                       Foreground="{Binding State, Converter={StaticResource Conv.ToolchainStateToBrush}}"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="No platform SDKs detected."
+                   FontSize="12.5"
+                   Foreground="{DynamicResource Brush.TextDim}"
+                   Margin="0,8,0,0"
+                   Visibility="{Binding HasItems, ElementName=ToolchainsList, Converter={StaticResource Conv.BoolToVisibility}, ConverterParameter=Invert}" />
+    </StackPanel>
+</UserControl>

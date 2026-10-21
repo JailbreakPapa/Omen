@@ -1,4 +1,4 @@
-﻿// Example C# Module for Omen Build System
+// Example C# Module for Omen Build System
 // This demonstrates how to define a C# project module
 
 using Omen.Core.Configuration;

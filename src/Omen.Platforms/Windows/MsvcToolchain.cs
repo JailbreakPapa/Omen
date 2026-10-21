@@ -24,6 +24,7 @@ public sealed partial class MsvcToolchain : ToolchainBase
     public override string CompilerPath { get; }
     public override string LinkerPath { get; }
     public override string ArchiverPath { get; }
+    public override string? ResourceCompilerPath { get; }
     
     public override string ObjectFileExtension => ".obj";
     public override string StaticLibraryExtension => ".lib";
@@ -54,6 +55,9 @@ public sealed partial class MsvcToolchain : ToolchainBase
         CompilerPath = Path.Combine(binPath, "cl.exe");
         LinkerPath = Path.Combine(binPath, "link.exe");
         ArchiverPath = Path.Combine(binPath, "lib.exe");
+        var rc = Path.Combine(sdkInfo.AdditionalPaths.GetValueOrDefault("WindowsSdkDir", ""), "bin",
+            sdkInfo.AdditionalPaths.GetValueOrDefault("WindowsSdkVersion", ""), hostArch, "rc.exe");
+        ResourceCompilerPath = File.Exists(rc) ? rc : null;
         
         _environment = BuildEnvironment(sdkInfo, architecture);
     }
@@ -134,6 +138,15 @@ public sealed partial class MsvcToolchain : ToolchainBase
         {
             args.Add("/Zi");
             args.Add($"/Fd\"{Path.ChangeExtension(request.OutputFile, ".pdb")}\"");
+            // A shared dependency module (e.g. DolphinScene, depended on by several
+            // independent targets) has its Intermediate/ path be the same regardless of
+            // which target's own `omen build` invocation is compiling it - so two targets
+            // built concurrently (Visual Studio's own default for independent projects in a
+            // solution) can have two separate cl.exe processes writing the same .pdb at
+            // once. /FS routes PDB writes through mspdbsrv.exe so concurrent cl.exe
+            // processes serialize safely instead of racing (cl.exe's own C1041 error names
+            // this exact flag as the fix).
+            args.Add("/FS");
         }
         
         // Warning level
@@ -167,7 +180,11 @@ public sealed partial class MsvcToolchain : ToolchainBase
         // Definitions
         foreach (var def in request.Definitions)
         {
-            args.Add($"/D{def}");
+            // The arguments are joined into one command line (below), which cl parses itself: a
+            // quote inside a definition (LY_CMAKE_TARGET="Name") must arrive as \" or it is eaten
+            // and the macro expands to a bare identifier.
+            var escaped = def.Replace("\"", "\\\"");
+            args.Add("/D" + escaped);
         }
         
         // PCH

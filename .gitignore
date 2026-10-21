@@ -20,6 +20,7 @@ Thumbs.db
 
 # Superpowers subagent-driven-development scratch workspace
 .superpowers/
+.worktrees/
 
 # NuGet
 *.nupkg

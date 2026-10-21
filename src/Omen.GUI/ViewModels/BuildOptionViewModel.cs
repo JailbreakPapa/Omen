@@ -16,16 +16,32 @@ public sealed partial class BuildOptionViewModel : ObservableObject
     public required string Name { get; init; }
     public required string Description { get; init; }
     public required BuildOptionType Type { get; init; }
+    public required bool IsAdvanced { get; init; }
+    public required bool IsManual { get; init; }
+
+    /// <summary>
+    /// The option name's prefix before its first underscore (or the full name if there is
+    /// no underscore) - used by OptionsPanelViewModel.GroupByPrefix, matching cmake-gui's
+    /// grouping convention.
+    /// </summary>
+    public string GroupName => Name.Contains('_') ? Name[..Name.IndexOf('_')] : Name;
+
+    public required string OriginalValue { get; init; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsChecked))]
     [NotifyPropertyChangedFor(nameof(NumericValue))]
+    [NotifyPropertyChangedFor(nameof(IsChanged))]
     private string _value = "";
+
+    public bool IsChanged => Value != OriginalValue;
 
     public bool IsBool => Type == BuildOptionType.Bool;
     public bool IsString => Type == BuildOptionType.String;
     public bool IsInt => Type == BuildOptionType.Int;
     public bool IsPath => Type == BuildOptionType.Path;
+    public bool IsEnum => Type == BuildOptionType.Enum;
+    public IReadOnlyList<string> AllowedValues { get; init; } = [];
 
     public bool? IsChecked
     {
@@ -39,3 +55,4 @@ public sealed partial class BuildOptionViewModel : ObservableObject
         set => Value = ((long)(value ?? 0)).ToString();
     }
 }
+

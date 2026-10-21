@@ -1,4 +1,4 @@
-﻿// Core Module - Foundational types and utilities
+// Core Module - Foundational types and utilities
 
 using Omen.Core.Configuration;
 using Omen.Core.Rules;

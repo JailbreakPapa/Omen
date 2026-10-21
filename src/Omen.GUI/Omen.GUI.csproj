@@ -2,23 +2,36 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <LangVersion>12.0</LangVersion>
+    <!-- Overrides Directory.Build.props' net8.0 - WPF requires a Windows-targeted TFM. -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
     <RootNamespace>Omen.GUI</RootNamespace>
     <AssemblyName>Omen.GUI</AssemblyName>
     <Description>Omen Build System - Desktop GUI</Description>
-    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationIcon>Assets\omen.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" />
-    <PackageReference Include="Avalonia.Desktop" />
-    <PackageReference Include="Avalonia.Themes.Fluent" />
-    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <!-- WPF's implicit-usings list (Microsoft.NET.Sdk + UseWPF) omits System.IO, unlike the
+         plain SDK the rest of the solution uses. The framework-agnostic ViewModels/Models/Services
+         carried over from Avalonia rely on it being implicit; restore it here rather than adding
+         explicit usings to those files. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" />
-    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" />
+    <PackageReference Include="Dirkster.AvalonDock" />
+    <PackageReference Include="SharpVectors.Wpf" />
+    <PackageReference Include="AvalonEdit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Fonts\*.ttf" />
+    <None Include="Fonts\OFL-*.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Resource Include="Assets\*.png" />
+    <Resource Include="Assets\Icons\*.svg" />
+    <None Include="Assets\Icons\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,3 +41,4 @@
   </ItemGroup>
 
 </Project>
+

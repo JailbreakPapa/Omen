@@ -1,4 +1,4 @@
-﻿// Example Qt Module for Omen Build System
+// Example Qt Module for Omen Build System
 // This demonstrates how to define a Qt C++ project module
 
 using Omen.Core.Configuration;

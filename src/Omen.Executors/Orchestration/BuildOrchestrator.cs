@@ -1,4 +1,4 @@
-// Omen Build System
+﻿// Omen Build System
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
 using Omen.Core.Configuration;
@@ -8,6 +8,7 @@ using Omen.Core.Interfaces;
 using Omen.Core.Options;
 using Omen.Core.Rules;
 using Omen.Distributed.Cache;
+using Omen.Executors.Server;
 using Omen.Platforms;
 
 namespace Omen.Executors.Orchestration;
@@ -28,6 +29,37 @@ public sealed class BuildOrchestratorRequest
     /// unconstrained. Null means no custom-dimension filter at all.</summary>
     public IReadOnlyDictionary<Type, IReadOnlyList<Enum>>? DimensionFilter { get; init; }
     public int? Jobs { get; init; }
+
+    /// <summary>GUI override for unity builds. Null leaves the target's own rules in charge.</summary>
+    public bool? UseUnityBuild { get; init; }
+
+    /// <summary>GUI override for precompiled headers. Null leaves the target's own rules in charge.</summary>
+    public bool? UsePrecompiledHeaders { get; init; }
+
+    /// <summary>
+    /// Override for link-time optimization. Null leaves the target's own
+    /// <see cref="TargetRules.EnableLTO"/> in charge, same as the unity/PCH overrides above.
+    /// </summary>
+    public bool? EnableLinkTimeOptimization { get; init; }
+
+    /// <summary>OmenNet coordinator address. Null disables distributed builds for this request.</summary>
+    public string? CoordinatorAddress { get; init; }
+
+    /// <summary>
+    /// GUI/CLI override for which plugins are enabled (see <see cref="OmenProjectRules.EnabledPlugins"/>
+    /// and <see cref="PluginEnablement"/>). Null defers to the compiled project's own
+    /// OmenProjectRules.EnabledPlugins; if that is also null, every plugin stays active - unchanged
+    /// from before plugin enablement existed. Set this to filter a one-off build without editing the
+    /// project definition, the same way UseUnityBuild/UsePrecompiledHeaders override their
+    /// project-declared defaults above.
+    /// </summary>
+    public IReadOnlyList<string>? EnabledPlugins { get; init; }
+
+    /// <summary>
+    /// GUI/CLI override for <see cref="OmenProjectRules.Variant"/>. Only consulted when an
+    /// enabled-plugins list (from this request or the project) is actually in effect.
+    /// </summary>
+    public PluginVariant? Variant { get; init; }
 }
 
 /// <summary>
@@ -40,22 +72,118 @@ public sealed class BuildOrchestratorRequest
 /// </summary>
 public sealed class BuildOrchestrator
 {
+    private readonly BuildServices _services;
+
+    public BuildOrchestrator(BuildServices? services = null) => _services = services ?? new BuildServices();
+
+    /// <summary>
+    /// Holds the intermediate directory for one build. The handle is exclusive and deleted on close,
+    /// so a killed build releases it with its process and no stale lock file is left behind.
+    /// </summary>
+    private FileStream? TryAcquireBuildLock(BuildContext context)
+    {
+        // A build server owns this configuration's intermediate directories for its whole life; an in-process
+        // build waits for it to exit (or goes through it: omen build without --no-server).
+        if (!_services.CallerHoldsIntermediateLock && ServerHolds(context.ProjectRoot, context.Configuration.ToString()))
+            return null;
+        var dir = Path.Combine(context.IntermediateDirectory, ".buildtool");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            return new FileStream(Path.Combine(dir, "build.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>No in-process build holds this directory's build.lock (they hold it exclusively).</summary>
+    private static bool BuildLockFree(BuildContext context)
+    {
+        var path = Path.Combine(context.IntermediateDirectory, ".buildtool", "build.lock");
+        if (!File.Exists(path))
+            return true;
+        try
+        {
+            using var probe = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            return true;
+        }
+        catch (FileNotFoundException)
+        {
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    private static string ServerLockPath(string projectRoot, string configuration) =>
+        Path.Combine(projectRoot, "Intermediate", $".omen-server-{configuration}.lock");
+
+    /// <summary>One build server per project root and configuration: held for the server's lifetime.</summary>
+    internal static FileStream? TryAcquireServerLock(string projectRoot, string configuration)
+    {
+        Directory.CreateDirectory(Path.Combine(projectRoot, "Intermediate"));
+        try
+        {
+            return new FileStream(ServerLockPath(projectRoot, configuration), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+    }
+
+    private static bool ServerHolds(string projectRoot, string configuration)
+    {
+        var path = ServerLockPath(projectRoot, configuration);
+        if (!File.Exists(path))
+            return false;
+        try
+        {
+            using var probe = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            return false;
+        }
+        catch (FileNotFoundException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return true;
+        }
+    }
+
     public async Task<BuildResult?> BuildAsync(
         BuildOrchestratorRequest request,
         IProgress<OrchestratorEvent>? events,
         IProgress<BuildProgress>? buildProgress,
         CancellationToken ct = default)
     {
-        var workingDir = Path.GetDirectoryName(request.TargetFile) ?? Path.GetPathRoot(request.TargetFile) ?? request.TargetFile;
+        var workingDir = RuleCompiler.ResolveProjectRoot(request.TargetFile);
         var optionCacheStore = new OptionCacheStore(Path.Combine(workingDir, "Intermediate", "omen-cache.json"));
         var cachedOptionValues = optionCacheStore.Load();
 
-        var ruleCompiler = new RuleCompiler(Path.Combine(workingDir, "Intermediate", "RuleCache"));
+        // Phase timings, reported as they complete - "which part" is the first question every
+        // time a build feels slow, and at engine scale the parts are seconds each.
+        var phaseClock = System.Diagnostics.Stopwatch.StartNew();
+        void Phase(string name)
+        {
+            events?.Report(new OrchestratorEvent($"  {name}: {phaseClock.Elapsed.TotalSeconds:F1}s", OrchestratorEventLevel.Info));
+            phaseClock.Restart();
+        }
+
+        var ruleCompiler = new RuleCompiler(RuleCompiler.CacheDirectoryFor(workingDir));
         CompiledRules compiledRules;
         try
         {
             events?.Report(new OrchestratorEvent("Compiling build rules...", OrchestratorEventLevel.Info));
-            compiledRules = await ruleCompiler.CompileRulesAsync(workingDir, ct);
+            compiledRules = _services.Warm is { } warm
+                ? await warm.GetCompiledRulesAsync(workingDir, () => ruleCompiler.CompileRulesAsync(workingDir, ct))
+                : await ruleCompiler.CompileRulesAsync(workingDir, ct);
+            Phase("Rule compilation");
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -64,12 +192,39 @@ public sealed class BuildOrchestrator
             return null;
         }
 
-        var targetType = compiledRules.FindTargetType();
-        if (targetType == null)
+        // Which target, specifically. The request names a target FILE; the compiled assembly may
+        // hold dozens of TargetRules types from all over the tree, and building "whichever one
+        // reflection returned first" is not a build anybody asked for.
+        var targetCandidates = compiledRules.FindTargetTypes(request.TargetFile);
+        if (targetCandidates.Count == 0)
         {
-            events?.Report(new OrchestratorEvent("No target found.", OrchestratorEventLevel.Error));
+            var elsewhere = compiledRules.FindTargetTypes();
+            events?.Report(new OrchestratorEvent(
+                elsewhere.Count == 0
+                    ? "No target found."
+                    : $"'{Path.GetFileName(request.TargetFile)}' declares no TargetRules subclass. " +
+                      $"Targets found elsewhere in this project: {string.Join(", ", elsewhere.Select(t => t.Name))}.",
+                OrchestratorEventLevel.Error));
             return null;
         }
+
+        if (targetCandidates.Count > 1)
+        {
+            events?.Report(new OrchestratorEvent(
+                $"'{Path.GetFileName(request.TargetFile)}' declares {targetCandidates.Count} targets " +
+                $"({string.Join(", ", targetCandidates.Select(t => t.Name))}) - split them into one file each.",
+                OrchestratorEventLevel.Error));
+            return null;
+        }
+
+        var targetType = targetCandidates[0];
+
+        // Null here means "no filter at all" - every plugin stays active, unchanged from before
+        // PluginEnablement existed. Only an explicit list (from this request or the compiled
+        // project's own OmenProjectRules.EnabledPlugins) turns filtering on; an empty list is a
+        // valid, deliberate "enable nothing", not the same as null.
+        var enabledPlugins = request.EnabledPlugins ?? compiledRules.Project?.EnabledPlugins;
+        var variant = request.Variant ?? compiledRules.Project?.Variant ?? PluginVariant.Unified;
 
         var matrix = compiledRules.GetSupportedTargets(targetType);
         IReadOnlyList<ResolvedTarget> resolvedTargets;
@@ -146,9 +301,62 @@ public sealed class BuildOrchestrator
                 ProjectRoot = workingDir,
                 IntermediateDirectory = Path.Combine(workingDir, "Intermediate", dirName),
                 OutputDirectory = Path.Combine(workingDir, "Binaries", dirName),
-                ParallelJobs = request.Jobs ?? Environment.ProcessorCount,
+                // Request first, then the project's own declared default (its options feed
+                // these), then the built-in default.
+                ParallelJobs = request.Jobs ?? compiledRules.Project?.MaxParallelActions ?? Environment.ProcessorCount,
+                UseUnityBuild = request.UseUnityBuild ?? compiledRules.Project?.UnityBuild ?? true,
+                UsePCH = request.UsePrecompiledHeaders ?? compiledRules.Project?.PrecompiledHeaders ?? true,
+                UseDistributedBuild = !string.IsNullOrWhiteSpace(request.CoordinatorAddress),
+                CoordinatorAddress = request.CoordinatorAddress,
                 CachedOptionValues = cachedOptionValues
             };
+
+            // The event log is what Omen.GUI's Build Progress window tails. Open it before the
+            // lock wait so "waiting for another build" is the first thing a watcher sees.
+            using var eventLog = BuildEventLog.TryCreate(
+                context.IntermediateDirectory, Environment.ProcessId, DateTimeOffset.Now,
+                message => events?.Report(new OrchestratorEvent(message, OrchestratorEventLevel.Warning)));
+            eventLog?.BuildStarted(request.TargetFile, platform.ToString(), context.Architecture.ToString(), configuration.ToString(), context.ParallelJobs);
+            var combinationEvents = eventLog?.WrapEvents(events) ?? events;
+            var combinationProgress = eventLog?.WrapProgress(buildProgress) ?? buildProgress;
+            // Two builds sharing one intermediate directory corrupt each other's outputs (observed: a
+            // half-written .obj linked by both, and codegen inputs locked mid-write). Hold the
+            // directory for this build's lifetime. A second build WAITS rather than failing:
+            // Visual Studio's "Build Solution" starts every launch project's `omen build` in
+            // parallel, and failing all but one would fail the solution build every time. This
+            // lock is what lets the generated solution drop the synthetic dependency chain that
+            // used to serialize those projects - and made F5 on one tool build every other.
+            FileStream? buildLock = null;
+            if (_services.CallerHoldsIntermediateLock)
+            {
+                // A build server's builds share the directory with each other (its scheduler keeps them off each
+                // other's files), so they only look - in shared mode, never blocking one another - for an
+                // in-process build that took the lock before the server started.
+                if (!BuildLockFree(context))
+                {
+                    combinationEvents?.Report(new OrchestratorEvent(
+                        $"An in-process Omen build holds '{context.IntermediateDirectory}' - waiting for it to finish.",
+                        OrchestratorEventLevel.Info));
+                    while (!BuildLockFree(context))
+                        await Task.Delay(TimeSpan.FromSeconds(2), ct);
+                }
+            }
+            else
+            {
+                buildLock = TryAcquireBuildLock(context);
+                if (buildLock == null)
+                {
+                    combinationEvents?.Report(new OrchestratorEvent(
+                        $"Another Omen build holds '{context.IntermediateDirectory}' - waiting for it to finish (two builds into one intermediate directory corrupt each other's outputs).",
+                        OrchestratorEventLevel.Info));
+                    while (buildLock == null)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(2), ct);
+                        buildLock = TryAcquireBuildLock(context);
+                    }
+                }
+            }
+            using var _ = buildLock;
 
             // An unavailable SDK/toolchain for ONE combination in a multi-combination build must
             // not abort the others - the same "one combination's problem doesn't stop the rest"
@@ -165,10 +373,10 @@ public sealed class BuildOrchestrator
             {
                 if (resolvedTargets.Count > 1)
                 {
-                    events?.Report(new OrchestratorEvent($"Skipping {resolved}: no SDK found for platform {context.Platform}.", OrchestratorEventLevel.Warning));
+                    combinationEvents?.Report(new OrchestratorEvent($"Skipping {resolved}: no SDK found for platform {context.Platform}.", OrchestratorEventLevel.Warning));
                     continue;
                 }
-                events?.Report(new OrchestratorEvent($"No SDK found for platform {context.Platform}", OrchestratorEventLevel.Error));
+                combinationEvents?.Report(new OrchestratorEvent($"No SDK found for platform {context.Platform}", OrchestratorEventLevel.Error));
                 return null;
             }
             var toolchain = PlatformFactory.CreateToolchain(context.Platform, context.Architecture);
@@ -176,29 +384,140 @@ public sealed class BuildOrchestrator
             {
                 if (resolvedTargets.Count > 1)
                 {
-                    events?.Report(new OrchestratorEvent($"Skipping {resolved}: could not create toolchain for {context.Platform}/{context.Architecture}.", OrchestratorEventLevel.Warning));
+                    combinationEvents?.Report(new OrchestratorEvent($"Skipping {resolved}: could not create toolchain for {context.Platform}/{context.Architecture}.", OrchestratorEventLevel.Warning));
                     continue;
                 }
-                events?.Report(new OrchestratorEvent($"Could not create toolchain for {context.Platform}/{context.Architecture}", OrchestratorEventLevel.Error));
+                combinationEvents?.Report(new OrchestratorEvent($"Could not create toolchain for {context.Platform}/{context.Architecture}", OrchestratorEventLevel.Error));
                 return null;
             }
 
-            var targets = compiledRules.CreateTargetRules(context);
-            var targetRules = targets.FirstOrDefault();
-            if (targetRules == null)
+            // PAL traits for this platform, so RequiredTraits gates actually decide something.
+            // Set before any rule is instantiated: CreateModuleRules/CreatePluginRules consult
+            // TraitGating while expanding, so a table arriving later would change nothing.
+            if (compiledRules.Project != null &&
+                compiledRules.Project.PlatformTraits.TryGetValue(context.Platform, out var platformTraits))
             {
-                events?.Report(new OrchestratorEvent("No target found.", OrchestratorEventLevel.Error));
+                context.PlatformTraits = platformTraits;
+            }
+
+            // Engine-wide compiler/linker configuration - O3DE's
+            // cmake/Platform/Common/<Family>/Configurations_*.cmake, which applies to every
+            // target in the build and lives in no target's own rules. Resolved for this
+            // toolchain's compiler family and this combination's configuration.
+            GlobalToolchainOptions.ApplyTo(context, compiledRules.Project, toolchain.CompilerFamily);
+
+            // A build server keeps this per target/combination; everything in the key is what the
+            // instantiation below reads.
+            var closureKey = $"{workingDir}|{targetType.FullName}|{resolved}|{string.Join(",", enabledPlugins ?? [])}|{variant}|{request.EnableLinkTimeOptimization}";
+            TargetRules? targetRules;
+            ModuleClosureResult closure;
+            var warmClosure = _services.Warm?.GetClosure(closureKey);
+            if (warmClosure != null)
+            {
+                targetRules = warmClosure.TargetRules;
+                closure = warmClosure.Closure;
+            }
+            else
+            {
+                // Rule constructors may write into the intermediate directory (AddAutoGen's input list and
+                // dry run), so a build server's concurrent builds instantiate them one at a time.
+                var rulesLock = _services.Warm?.GraphLock(context.IntermediateDirectory);
+                if (rulesLock != null)
+                    await rulesLock.WaitAsync(ct);
+                try
+                {
+                    // The instance of the type selected above, not just the first one created - same
+                    // reason.
+                    targetRules = compiledRules.CreateTargetRules(context).FirstOrDefault(t => t.GetType() == targetType);
+                    if (targetRules == null)
+                    {
+                        combinationEvents?.Report(new OrchestratorEvent($"'{targetType.Name}' could not be instantiated.", OrchestratorEventLevel.Error));
+                        return null;
+                    }
+
+                    if (request.EnableLinkTimeOptimization is { } lto)
+                        targetRules.EnableLTO = lto;
+
+                    // A project-wide link type (CMake's LY_MONOLITHIC_GAME) applies to every target.
+                    if (compiledRules.Project?.LinkTypeOverride is { } projectLinkType)
+                        targetRules.LinkType = projectLinkType;
+
+                    var modules = compiledRules.CreateModuleRules(context);
+                    // Gating is always silent, never an error - even when the gated-out module is the
+                    // one LaunchModuleName names. Most real dependencies are referenced unconditionally
+                    // (ExtraModules.Add with no platform check), so a module reference is never a
+                    // promise that the module builds everywhere; a combination left with zero included
+                    // modules this way falls through to the existing "no modules to build" warning path
+                    // a few lines below, exactly as it already does for a target with no modules at all.
+                    var candidateModules = modules.Where(m => IsModuleIncluded(compiledRules, m, resolved)).ToList();
+                    var pluginRules = compiledRules.CreatePluginRules(context);
+                    candidateModules = PluginEnablement.FilterEnabledModules(
+                        candidateModules, enabledPlugins, variant, pluginRules).ToList();
+
+                    // Only what this target can actually reach. Everything below - the duplicate check,
+                    // layering validation, the unresolved-dependency warnings, the graph itself - is
+                    // about the target's own build, and running it over every module the scan roots
+                    // happened to contain produced pages of noise about modules nobody asked to build.
+                    closure = ModuleClosure.Compute(
+                        targetRules,
+                        candidateModules,
+                        pluginRules,
+                        enabledPlugins == null ? null : PluginEnablement.ResolveEnabledTargets(enabledPlugins, variant, pluginRules));
+                    _services.Warm?.SetClosure(closureKey, new ClosureEntry(targetRules, closure));
+                }
+                finally
+                {
+                    rulesLock?.Release();
+                }
+            }
+            Phase(warmClosure != null ? "Rule instantiation and closure (reused)" : "Rule instantiation and closure");
+
+            if (closure.UnresolvedSeeds.Count > 0)
+            {
+                // A seed is what the target explicitly asked for by name. Naming nothing is a
+                // typo or a stale rule file, not something to build around.
+                combinationEvents?.Report(new OrchestratorEvent(
+                    $"'{targetRules.Name}' names {string.Join(", ", closure.UnresolvedSeeds.Select(s => $"'{s}'"))} " +
+                    "in LaunchModuleName/ExtraModules, which match no module in this build.",
+                    OrchestratorEventLevel.Error));
                 return null;
             }
 
-            var modules = compiledRules.CreateModuleRules(context);
-            // Gating is always silent, never an error - even when the gated-out module is the
-            // one LaunchModuleName names. Most real dependencies are referenced unconditionally
-            // (ExtraModules.Add with no platform check), so a module reference is never a
-            // promise that the module builds everywhere; a combination left with zero included
-            // modules this way falls through to the existing "no modules to build" warning path
-            // a few lines below, exactly as it already does for a target with no modules at all.
-            var includedModules = modules.Where(m => IsModuleIncluded(compiledRules, m, resolved)).ToList();
+            var includedModules = closure.Modules.ToList();
+
+            // Written every build, before anything can fail. The console cannot be relied on
+            // for this: orchestrator events render inside a transient Spectre status context
+            // that is erased when an exception unwinds, so the closure disappears exactly when
+            // a failure makes you want it. A file survives.
+            WriteClosureReport(context, targetRules, closure, combinationEvents);
+
+            combinationEvents?.Report(new OrchestratorEvent(
+                closure.WasUnfiltered
+                    ? $"Found 1 target(s), {includedModules.Count} module(s)"
+                    : $"Found 1 target(s), {includedModules.Count} module(s) in {targetRules.Name}'s dependency closure",
+                OrchestratorEventLevel.Info));
+
+            ReportUnresolvedDependencies(includedModules, combinationEvents);
+            ReportMissingIncludePaths(context, includedModules, combinationEvents);
+
+            // Two modules sharing a name is fatal downstream (LayeringValidator and the graph
+            // builder both index modules by name and threw a bare "An item with the same key
+            // has already been added"). Say which name, and where each one came from.
+            var duplicates = includedModules
+                .GroupBy(m => m.Name, StringComparer.Ordinal)
+                .Where(g => g.Count() > 1)
+                .ToList();
+            if (duplicates.Count > 0)
+            {
+                foreach (var duplicate in duplicates)
+                {
+                    combinationEvents?.Report(new OrchestratorEvent(
+                        $"Module '{duplicate.Key}' is defined {duplicate.Count()} times: " +
+                        string.Join(", ", duplicate.Select(m => m.SourceDirectory ?? "(no source directory)")),
+                        OrchestratorEventLevel.Error));
+                }
+                return null;
+            }
 
             try
             {
@@ -206,20 +525,22 @@ public sealed class BuildOrchestrator
             }
             catch (LayeringViolationException ex)
             {
-                events?.Report(new OrchestratorEvent($"Layering violation: {ex.Message}", OrchestratorEventLevel.Error));
+                combinationEvents?.Report(new OrchestratorEvent($"Layering violation: {ex.Message}", OrchestratorEventLevel.Error));
                 return null;
             }
 
-            events?.Report(new OrchestratorEvent($"Found 1 target(s), {includedModules.Count} module(s)", OrchestratorEventLevel.Info));
-
             if (includedModules.Count == 0)
             {
-                events?.Report(new OrchestratorEvent("No modules to build.", OrchestratorEventLevel.Warning));
-                results.Add(ZeroActionResult());
+                combinationEvents?.Report(new OrchestratorEvent("No modules to build.", OrchestratorEventLevel.Warning));
+                var zeroResult = ZeroActionResult();
+                eventLog?.BuildFinished(zeroResult);
+                results.Add(zeroResult);
                 continue;
             }
 
-            var combinationResult = await BuildOneCombinationAsync(context, targetRules, includedModules, toolchain, request.Jobs, events, buildProgress, ct);
+            var combinationResult = await BuildOneCombinationAsync(context, targetRules, includedModules, toolchain, request.Jobs ?? compiledRules.Project?.MaxParallelActions, combinationEvents, combinationProgress, eventLog, closureKey, ct);
+            if (combinationResult != null)
+                eventLog?.BuildFinished(combinationResult);
             if (combinationResult == null)
                 return null;
             results.Add(combinationResult);
@@ -237,6 +558,90 @@ public sealed class BuildOrchestrator
         return AggregateResults(results);
     }
 
+    /// <summary>
+    /// A dependency naming a module that is not in the build resolves to nothing: the graph
+    /// builder's include-path walk and its link step both do a TryGetValue and quietly skip a
+    /// miss. The compile then fails much later with "cannot open include file", pointing at a
+    /// header rather than at the missing module - which is how a plugin built with the wrong
+    /// project root (its rule files discovered, the engine's AZ::AzCore not) presents. Naming
+    /// the unresolved dependency here turns that into one legible warning.
+    /// </summary>
+    private static void ReportUnresolvedDependencies(
+        IReadOnlyList<ModuleRules> modules, IProgress<OrchestratorEvent>? events)
+    {
+        if (events == null)
+            return;
+
+        var known = modules.Select(m => m.Name).ToHashSet(StringComparer.Ordinal);
+
+        foreach (var module in modules)
+        {
+            foreach (var dep in module.AllDependencies.Distinct())
+            {
+                if (!known.Contains(dep))
+                {
+                    events.Report(new OrchestratorEvent(
+                        $"'{module.Name}' depends on '{dep}', which is not part of this build - " +
+                        "its headers and libraries will be missing. Check that the module's rule " +
+                        "file is under one of the project's SourceRoots/ExternalSubdirectories, " +
+                        "and that it is not gated out for this platform/configuration.",
+                        OrchestratorEventLevel.Warning));
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Warns about a declared include path that does not exist on disk.
+    ///
+    /// The compiler ignores one silently, so the failure surfaces much later as C1083 in whatever
+    /// files needed a header from it - and it names the header, never the missing root. A stale
+    /// path survived the Az* rename this way: NightFoxToolsFramework still declared
+    /// PublicIncludePaths.Add("AzToolsFramework"), a directory that no longer existed, and the
+    /// result was a hundred unresolved includes across unrelated files.
+    ///
+    /// Warning rather than failing, because a path can legitimately be generated later in the
+    /// build, and because a rule shared across platforms may name a root only some of them have.
+    /// </summary>
+    private static void ReportMissingIncludePaths(
+        BuildContext context, IReadOnlyList<ModuleRules> modules, IProgress<OrchestratorEvent>? events)
+    {
+        if (events == null)
+            return;
+
+        foreach (var module in modules)
+        {
+            var baseDirectory = Path.Combine(
+                context.ProjectRoot, module.SourceDirectory ?? $"Source/{module.Name}");
+
+            foreach (var declared in module.PublicIncludePaths
+                         .Concat(module.PrivateIncludePaths)
+                         .Concat(module.PublicExternalIncludePaths)
+                         .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var resolved = Path.IsPathRooted(declared)
+                    ? declared
+                    : Path.Combine(baseDirectory, declared);
+
+                if (!Directory.Exists(resolved))
+                {
+                    events.Report(new OrchestratorEvent(
+                        $"'{module.Name}' declares include path '{declared}', which does not exist " +
+                        $"({resolved}). The compiler ignores a missing include root silently, so " +
+                        "anything that needed a header from it will fail with C1083 naming the " +
+                        "header rather than this path.",
+                        OrchestratorEventLevel.Warning));
+                }
+            }
+        }
+    }
+
+    // Hands a build server's action graph back once the build using it is over, however it ends.
+    private sealed class GraphReturn(BuildWarmState warm, string key, BuildWarmState.CachedGraph cached) : IDisposable
+    {
+        public void Dispose() => warm.ReturnGraph(key, cached);
+    }
+
     private async Task<BuildResult?> BuildOneCombinationAsync(
         BuildContext context,
         TargetRules targetRules,
@@ -245,17 +650,70 @@ public sealed class BuildOrchestrator
         int? jobs,
         IProgress<OrchestratorEvent>? events,
         IProgress<BuildProgress>? buildProgress,
+        BuildEventLog? eventLog,
+        string? graphKey,
         CancellationToken ct)
     {
-        var digestCalculator = new Sha256DigestCalculator();
-        var graphBuilder = new ActionGraphBuilder(context, toolchain, digestCalculator);
-        var graph = graphBuilder.Build(targetRules, modules);
+        // Pre-build steps run before the graph is even built: their whole point is often to
+        // generate sources the graph then compiles.
+        if (!await RunBuildStepsAsync(targetRules.PreBuildSteps, "pre-build", context, events, ct))
+            return FailedStepResult();
 
-        var digestStore = new ActionDigestStore(Path.Combine(context.IntermediateDirectory, ".buildtool", "digests.json"));
+        var digestCalculator = new Sha256DigestCalculator();
+        // Header resolutions from the previous run, revalidated by file stamp - the bulk of a
+        // no-op build's time was re-scanning headers that had not changed.
+        var includeCachePath = Path.Combine(context.IntermediateDirectory, ".buildtool", "includes.json");
+        var graphBuilder = new ActionGraphBuilder(context, toolchain, digestCalculator)
+        {
+            IncludeScanner = _services.Warm?.GetIncludeScanner(includeCachePath) ?? IncludeScanner.LoadFrom(includeCachePath)
+        };
+        var annotationCachePath = Path.Combine(context.IntermediateDirectory, ".buildtool", "reflect-annotations.json");
+        ActionGraph graph;
+        var graphClock = System.Diagnostics.Stopwatch.StartNew();
+        var cachedGraph = graphKey == null ? null : _services.Warm?.TakeGraph(graphKey);
+        var reused = cachedGraph != null;
+        if (reused)
+        {
+            graph = cachedGraph.Graph;
+        }
+        else
+        {
+            var graphLock = _services.Warm?.GraphLock(context.IntermediateDirectory);
+            if (graphLock != null)
+                await graphLock.WaitAsync(ct);
+            try
+            {
+                Omen.Core.Reflect.AnnotationCache.LoadFrom(annotationCachePath);
+                graph = graphBuilder.Build(targetRules, modules);
+                graphBuilder.IncludeScanner.SaveTo(includeCachePath);
+                Omen.Core.Reflect.AnnotationCache.SaveTo(annotationCachePath);
+            }
+            finally
+            {
+                graphLock?.Release();
+            }
+            if (graphKey != null)
+                cachedGraph = _services.Warm?.NewGraph(graph);
+        }
+        using var returnGraph = cachedGraph == null ? null : new GraphReturn(_services.Warm!, graphKey!, cachedGraph);
+        events?.Report(new OrchestratorEvent($"  Action graph: {graphClock.Elapsed.TotalSeconds:F1}s{(reused ? " (reused)" : "")}", OrchestratorEventLevel.Info));
+        graphClock.Restart();
+
+        graph.Stamps = _services.Warm?.Stamps;
+        var digestPath = Path.Combine(context.IntermediateDirectory, ".buildtool", "digests.json");
+        var digestStore = _services.Warm?.GetDigestStore(digestPath) ?? new ActionDigestStore(digestPath);
         var skipped = graph.MarkUpToDateActionsAsSkipped(digestCalculator, digestStore);
+        events?.Report(new OrchestratorEvent($"  Up-to-date check: {graphClock.Elapsed.TotalSeconds:F1}s", OrchestratorEventLevel.Info));
+        graphClock.Restart();
+        var rebuilds = graph.SummarizeRebuilds();
+        eventLog?.GraphReady(graph.Actions.Count, skipped, rebuilds.ToRun > 0 ? rebuilds.ToString() : null);
         if (skipped > 0)
         {
             events?.Report(new OrchestratorEvent($"{skipped} action(s) already up to date (unchanged command line), skipped.", OrchestratorEventLevel.Info));
+        }
+        if (rebuilds.ToRun > 0)
+        {
+            events?.Report(new OrchestratorEvent(rebuilds.ToString(), OrchestratorEventLevel.Info));
         }
 
         events?.Report(new OrchestratorEvent($"Created action graph with {graph.Actions.Count} actions", OrchestratorEventLevel.Info));
@@ -263,13 +721,21 @@ public sealed class BuildOrchestrator
         if (graph.Actions.Count == 0)
         {
             events?.Report(new OrchestratorEvent("Nothing to build - up to date!", OrchestratorEventLevel.Success));
+            if (!await RunBuildStepsAsync(targetRules.PostBuildSteps, "post-build", context, events, ct))
+                return FailedStepResult();
             return ZeroActionResult();
         }
 
         var actionCache = new LocalActionCache(Path.Combine(context.IntermediateDirectory, ".cache"));
-        var executor = new ParallelExecutor(jobs, actionCache);
+        Func<BuildAction, bool> isUpToDate = action => graph.IsUpToDate(action, digestCalculator, digestStore);
+        var executor = _services.ExecutorFactory?.Invoke(jobs ?? Environment.ProcessorCount, isUpToDate)
+            ?? new ParallelExecutor(jobs, actionCache, isUpToDate);
 
-        var result = await executor.ExecuteAsync(graph, buildProgress, ct);
+        // Record each action's digest as it completes and flush periodically, so a build that is
+        // killed part-way (the process torn down, not merely an action failing) keeps the work it
+        // finished. The loop after ExecuteAsync stays as the final, complete flush.
+        var result = await executor.ExecuteAsync(graph, new DigestRecordingProgress(buildProgress, digestStore, digestCalculator, _services.Warm), ct);
+        events?.Report(new OrchestratorEvent($"  Execution: {graphClock.Elapsed.TotalSeconds:F1}s", OrchestratorEventLevel.Info));
 
         // ParallelExecutor cancels cooperatively - its loop just exits when ct is cancelled,
         // so a cancelled build has zero *failed* actions and would otherwise fall through to
@@ -295,14 +761,27 @@ public sealed class BuildOrchestrator
             OutputFiles = result.OutputFiles
         };
 
+        // Record every action that completed, whether or not the build as a whole did. A
+        // completed compile is just as complete when a sibling later fails or the process is
+        // killed - and this used to sit inside `if (result.Success)`, so one failed link (or a
+        // SIGTERM at the last step) threw away the digests of the 2,454 actions before it and the
+        // next build recompiled them all. Eight failed builds in one day each paid that in full.
+        foreach (var action in graph.Actions.Where(a => a.Status is ActionStatus.Completed or ActionStatus.Skipped))
+        {
+            if (_services.Warm is { } warmState && action.Status == ActionStatus.Completed)
+            {
+                foreach (var output in action.Outputs)
+                    warmState.OutputWritten(output.Path);
+            }
+            if (action.Outputs.Count == 0 || !File.Exists(action.Outputs[0].Path)) continue;
+            digestStore.Set(action.Outputs[0].Path, action.ComputeDigest(digestCalculator), action.ComputeDigestParts(digestCalculator));
+        }
+        digestStore.Save();
+
         if (result.Success)
         {
-            foreach (var action in graph.Actions.Where(a => a.Status is ActionStatus.Completed or ActionStatus.Skipped))
-            {
-                if (action.Outputs.Count == 0 || !File.Exists(action.Outputs[0].Path)) continue;
-                digestStore.Set(action.Outputs[0].Path, action.ComputeDigest(digestCalculator));
-            }
-            digestStore.Save();
+            if (!await RunBuildStepsAsync(targetRules.PostBuildSteps, "post-build", context, events, ct))
+                return FailedStepResult();
 
             events?.Report(new OrchestratorEvent("Build completed successfully!", OrchestratorEventLevel.Success));
         }
@@ -312,20 +791,95 @@ public sealed class BuildOrchestrator
 
             foreach (var actionResult in result.ActionResults.Where(r => !r.Success))
             {
-                events?.Report(new OrchestratorEvent($"Failed: {actionResult.Action.Description}", OrchestratorEventLevel.Error));
-                events?.Report(new OrchestratorEvent($"Command: {actionResult.Action.CommandLine}", OrchestratorEventLevel.Info));
-                events?.Report(new OrchestratorEvent($"Exit code: {actionResult.ExitCode}", OrchestratorEventLevel.Info));
-
-                if (!string.IsNullOrEmpty(actionResult.StandardOutput))
-                    events?.Report(new OrchestratorEvent($"stdout: {actionResult.StandardOutput}", OrchestratorEventLevel.Info));
-
-                if (!string.IsNullOrEmpty(actionResult.StandardError))
-                    events?.Report(new OrchestratorEvent($"stderr: {actionResult.StandardError}", OrchestratorEventLevel.Error));
+                foreach (var evt in DescribeFailure(actionResult))
+                    events?.Report(evt);
             }
         }
 
         return result;
     }
+
+    /// <summary>
+    /// Runs a target's Pre/PostBuildSteps through the platform shell (cmd /c on Windows,
+    /// /bin/sh -c elsewhere). Returns false when a step fails and doesn't declare
+    /// ContinueOnError - the build stops there, like a failed add_custom_command.
+    /// </summary>
+    private static async Task<bool> RunBuildStepsAsync(
+        IReadOnlyList<BuildStep> steps,
+        string phase,
+        BuildContext context,
+        IProgress<OrchestratorEvent>? events,
+        CancellationToken ct)
+    {
+        foreach (var step in steps)
+        {
+            events?.Report(new OrchestratorEvent($"Running {phase} step: {step.Description}", OrchestratorEventLevel.Info));
+
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh",
+                Arguments = OperatingSystem.IsWindows() ? $"/c {step.Command}" : $"-c \"{step.Command}\"",
+                WorkingDirectory = step.WorkingDirectory ?? context.ProjectRoot,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            foreach (var (key, value) in step.Environment)
+                startInfo.Environment[key] = value;
+
+            using var process = System.Diagnostics.Process.Start(startInfo);
+            if (process == null)
+            {
+                events?.Report(new OrchestratorEvent($"{phase} step '{step.Description}' failed to start.", OrchestratorEventLevel.Error));
+                if (!step.ContinueOnError) return false;
+                continue;
+            }
+
+            var stdout = await process.StandardOutput.ReadToEndAsync(ct);
+            var stderr = await process.StandardError.ReadToEndAsync(ct);
+            await process.WaitForExitAsync(ct);
+
+            if (process.ExitCode != 0)
+            {
+                events?.Report(new OrchestratorEvent(
+                    $"{phase} step '{step.Description}' exited with code {process.ExitCode}.",
+                    step.ContinueOnError ? OrchestratorEventLevel.Warning : OrchestratorEventLevel.Error));
+                if (!string.IsNullOrWhiteSpace(stdout))
+                    events?.Report(new OrchestratorEvent(stdout.Trim(), OrchestratorEventLevel.Info));
+                if (!string.IsNullOrWhiteSpace(stderr))
+                    events?.Report(new OrchestratorEvent(stderr.Trim(), OrchestratorEventLevel.Error));
+                if (!step.ContinueOnError) return false;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// A failed action's output verbatim, so each compiler/linker diagnostic starts its own line in the
+    /// `file(line,col): error CODE: text` form Visual Studio's Error List picks up; then how it was run.
+    /// </summary>
+    public static IEnumerable<OrchestratorEvent> DescribeFailure(ActionResult actionResult)
+    {
+        yield return new OrchestratorEvent($"Failed: {actionResult.Action.Description}", OrchestratorEventLevel.Error);
+        foreach (var output in new[] { actionResult.StandardOutput, actionResult.StandardError })
+        {
+            if (!string.IsNullOrWhiteSpace(output))
+                yield return new OrchestratorEvent(output.TrimEnd(), OrchestratorEventLevel.Error);
+        }
+        yield return new OrchestratorEvent($"Exit code {actionResult.ExitCode}: {actionResult.Action.CommandLine}", OrchestratorEventLevel.Info);
+    }
+
+    private static BuildResult FailedStepResult() => new()
+    {
+        Success = false,
+        TotalDuration = TimeSpan.Zero,
+        TotalActions = 0,
+        SuccessfulActions = 0,
+        FailedActions = 1,
+        SkippedActions = 0,
+        CachedActions = 0
+    };
 
     private static bool IsModuleIncluded(CompiledRules compiledRules, ModuleRules module, ResolvedTarget resolved)
     {
@@ -370,7 +924,7 @@ public sealed class BuildOrchestrator
     {
         if (OperatingSystem.IsWindows()) return TargetPlatform.Windows;
         if (OperatingSystem.IsLinux()) return TargetPlatform.Linux;
-        if (OperatingSystem.IsMacOS()) return TargetPlatform.iOS;
+        if (OperatingSystem.IsMacOS()) return TargetPlatform.Mac;
         if (OperatingSystem.IsFreeBSD()) return TargetPlatform.FreeBSD;
         return TargetPlatform.Windows;
     }
@@ -394,4 +948,83 @@ public sealed class BuildOrchestrator
         SkippedActions = 0,
         CachedActions = 0
     };
+
+    /// <summary>
+    /// Write the target's module closure, and how each module was reached, to
+    /// &lt;IntermediateDirectory&gt;/closure.txt.
+    ///
+    /// "What is actually in this build, and why is this module here?" is otherwise
+    /// unanswerable - a module nothing appears to reference can arrive through several hops of
+    /// dependencies and runtime dependencies, and reading the rule files does not show it.
+    /// </summary>
+    private static void WriteClosureReport(
+        BuildContext context,
+        TargetRules target,
+        ModuleClosureResult closure,
+        IProgress<OrchestratorEvent>? events)
+    {
+        try
+        {
+            Directory.CreateDirectory(context.IntermediateDirectory);
+            var path = Path.Combine(context.IntermediateDirectory, "closure.txt");
+
+            var report = new System.Text.StringBuilder();
+            report.AppendLine($"Target:        {target.Name}");
+            report.AppendLine($"Configuration: {context.Configuration} / {context.Platform} / {context.Architecture}");
+            report.AppendLine($"Modules:       {closure.Modules.Count}{(closure.WasUnfiltered ? " (unfiltered - the target declared no seeds)" : string.Empty)}");
+
+            if (closure.UnresolvedSeeds.Count > 0)
+            {
+                report.AppendLine($"Unresolved seeds: {string.Join(", ", closure.UnresolvedSeeds)}");
+            }
+
+            report.AppendLine();
+            report.AppendLine("Module <- what pulled it in, back to a seed:");
+            report.AppendLine();
+
+            foreach (var module in closure.Modules.OrderBy(m => m.Name, StringComparer.Ordinal))
+            {
+                var path2 = closure.PathToSeed(module.Name);
+                report.AppendLine(path2.Count == 1
+                    ? $"  {module.Name}  (seed)"
+                    : $"  {string.Join(" <- ", path2)}");
+            }
+
+            File.WriteAllText(path, report.ToString());
+
+            events?.Report(new OrchestratorEvent(
+                $"Closure written to {path}", OrchestratorEventLevel.Info));
+        }
+        catch (IOException exception)
+        {
+            // Diagnostics must never be the reason a build fails.
+            events?.Report(new OrchestratorEvent(
+                $"Could not write the closure report: {exception.Message}", OrchestratorEventLevel.Warning));
+        }
+    }
+}
+
+// ponytail: flushes every 25 completions - a kill loses at most 25 actions' digests; switch to a
+// time-based flush if a build of slow actions ever shows that matters.
+file sealed class DigestRecordingProgress(IProgress<BuildProgress>? inner, ActionDigestStore store, IDigestCalculator calculator, BuildWarmState? warm)
+    : IProgress<BuildProgress>
+{
+    private int _recorded;
+
+    public void Report(BuildProgress value)
+    {
+        var action = value.LastResult is { Success: true } result ? result.Action : null;
+        if (action is not null && warm is not null)
+        {
+            foreach (var output in action.Outputs)
+                warm.OutputWritten(output.Path);
+        }
+        if (action is not null && action.Outputs.Count > 0 && File.Exists(action.Outputs[0].Path))
+        {
+            store.Set(action.Outputs[0].Path, action.ComputeDigest(calculator), action.ComputeDigestParts(calculator));
+            if (Interlocked.Increment(ref _recorded) % 25 == 0)
+                store.Save();
+        }
+        inner?.Report(value);
+    }
 }

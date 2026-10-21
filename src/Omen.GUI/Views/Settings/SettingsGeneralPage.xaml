@@ -1,0 +1,50 @@
+<UserControl x:Class="Omen.GUI.Views.Settings.SettingsGeneralPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel MaxWidth="480" HorizontalAlignment="Left">
+        <TextBlock Text="General" FontSize="14" FontWeight="SemiBold"
+                   Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,14" />
+
+        <!-- Row: Check for updates on startup -->
+        <Grid Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Check for updates on startup" FontSize="12.5"
+                       Foreground="{DynamicResource Brush.TextSecondary}" VerticalAlignment="Center" />
+            <CheckBox Grid.Column="1" IsChecked="{Binding CheckForUpdatesOnStartup}"
+                      VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Row: Show confirmation before Clean -->
+        <Grid Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Show confirmation before Clean" FontSize="12.5"
+                       Foreground="{DynamicResource Brush.TextSecondary}" VerticalAlignment="Center" />
+            <CheckBox Grid.Column="1" IsChecked="{Binding ConfirmBeforeClean}"
+                      VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Row: Default project folder -->
+        <Grid Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Default project folder" FontSize="12.5"
+                       Foreground="{DynamicResource Brush.TextSecondary}" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <TextBox Text="{Binding DefaultProjectFolder, Mode=OneWay}"
+                         IsReadOnly="True" Width="220"
+                         FontFamily="{StaticResource Font.Mono}" FontSize="11.5"
+                         Foreground="{DynamicResource Brush.TextMuted}" />
+                <Button Content="..." Width="24" Height="24" Margin="4,0,0,0" Padding="0"
+                        Click="OnBrowseFolderClick" />
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</UserControl>

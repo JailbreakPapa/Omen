@@ -1,0 +1,38 @@
+<UserControl x:Class="Omen.GUI.Views.RuleEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ae="http://icsharpcode.net/sharpdevelop/avalonedit"
+             Background="{StaticResource Brush.Bg}">
+
+    <DockPanel>
+
+        <!-- Status strip: validating spinner text, then error/warning counts. Always visible -
+             "No problems" is a deliberate steady state, not hidden away. -->
+        <Border DockPanel.Dock="Bottom" Height="24"
+                Background="{StaticResource Brush.Panel}"
+                BorderBrush="{StaticResource Brush.Border}"
+                BorderThickness="0,1,0,0">
+            <TextBlock Text="{Binding StatusText}"
+                       Margin="10,0"
+                       VerticalAlignment="Center"
+                       FontSize="11"
+                       Foreground="{StaticResource Brush.TextMuted}" />
+        </Border>
+
+        <Border DockPanel.Dock="Top"
+                Height="1"
+                Background="{StaticResource Brush.Border}"
+                Visibility="Visible" />
+
+        <ae:TextEditor x:Name="Editor"
+                       FontFamily="{StaticResource Font.Mono}"
+                       FontSize="13"
+                       ShowLineNumbers="True"
+                       Background="{StaticResource Brush.InputBg}"
+                       Foreground="{StaticResource Brush.TextPrimary}"
+                       LineNumbersForeground="{StaticResource Brush.TextDim}"
+                       WordWrap="False"
+                       HorizontalScrollBarVisibility="Auto"
+                       VerticalScrollBarVisibility="Auto" />
+    </DockPanel>
+</UserControl>

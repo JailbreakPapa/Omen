@@ -1,0 +1,131 @@
+<Window x:Class="Omen.GUI.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Omen.GUI.ViewModels"
+        xmlns:views="clr-namespace:Omen.GUI.Views"
+        xmlns:controls="clr-namespace:Omen.GUI.Controls"
+        xmlns:avalonDock="https://github.com/Dirkster99/AvalonDock"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="Omen Build System"
+        PreviewKeyDown="OnWindowPreviewKeyDown"
+        PreviewKeyUp="OnWindowPreviewKeyUp"
+        Width="1400" Height="900"
+        MinWidth="900" MinHeight="600"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="{StaticResource Brush.Bg}">
+    <!-- Rider-style custom chrome: WindowChrome takes over the non-client area so the top bar
+         itself becomes the caption. UseAeroCaptionButtons=False stops WPF/DWM from drawing its
+         own translucent min/max/close glyphs over ours in the same corner. GlassFrameThickness=0
+         (rather than -1) because the bar is a fully opaque, square-cornered surface with no glass
+         effect wanted; if a human sees a stray top sliver on their setup, -1 is the fallback.
+         MainWindow.xaml.cs compensates for taskbar overlap (WM_GETMINMAXINFO) and maximized
+         clipping (RootGrid margin) in code, since neither is expressible here. -->
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="30"
+                             ResizeBorderThickness="6"
+                             CornerRadius="0"
+                             GlassFrameThickness="0"
+                             UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.DataContext>
+        <vm:MainWindowViewModel />
+    </Window.DataContext>
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30" />
+            <RowDefinition Height="36" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="26" />
+        </Grid.RowDefinitions>
+
+        <!-- Row 0: menu bar (also the window caption + controls) -->
+        <controls:MenuBar x:Name="MenuBarControl" Grid.Row="0" DataContext="{Binding}" />
+
+        <!-- Row 1: toolbar -->
+        <controls:Toolbar Grid.Row="1" DataContext="{Binding}" />
+
+        <!-- Row 2: rails + docking -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <controls:ToolWindowRail x:Name="LeftRail" Grid.Column="0" />
+
+            <avalonDock:DockingManager x:Name="Docking" Grid.Column="1"
+                                       Background="{StaticResource Brush.Bg}"
+                                       BorderBrush="{StaticResource Brush.Border}"
+                                       FocusVisualStyle="{x:Null}"
+                                       AnchorablePaneControlStyle="{StaticResource Style.AnchorablePaneControl}"
+                                       DocumentPaneControlStyle="{StaticResource Style.DocumentPaneControl}"
+                                       DocumentClosing="OnDocumentClosing"
+                                       ActiveContentChanged="OnActiveContentChanged">
+                <avalonDock:LayoutRoot>
+                    <avalonDock:LayoutPanel Orientation="Horizontal">
+
+                        <avalonDock:LayoutAnchorablePane DockWidth="280">
+                            <avalonDock:LayoutAnchorable x:Name="ProjectAnchorable"
+                                                         Title="Project" CanClose="False">
+                                <views:ProjectToolWindow />
+                            </avalonDock:LayoutAnchorable>
+                        </avalonDock:LayoutAnchorablePane>
+
+                        <avalonDock:LayoutPanel Orientation="Vertical">
+                            <!-- Rule-file editor documents (Task: rule-file editor) are added/removed here
+                                 by MainWindow.xaml.cs, one LayoutDocument per open RuleEditorDocument -
+                                 kept in code rather than an ItemsSource binding so DocumentClosing can
+                                 intercept the close button and route it through the unsaved-changes
+                                 prompt before anything is actually removed. -->
+                            <avalonDock:LayoutDocumentPane x:Name="DocumentPane">
+                                <avalonDock:LayoutDocument Title="Welcome" CanClose="False">
+                                    <views:WelcomePane />
+                                </avalonDock:LayoutDocument>
+                            </avalonDock:LayoutDocumentPane>
+
+                            <avalonDock:LayoutAnchorablePane DockHeight="200">
+                                <avalonDock:LayoutAnchorable x:Name="OutputAnchorable"
+                                                             Title="Build Output" CanClose="False">
+                                    <views:BuildOutputToolWindow />
+                                </avalonDock:LayoutAnchorable>
+                            </avalonDock:LayoutAnchorablePane>
+                        </avalonDock:LayoutPanel>
+
+                        <avalonDock:LayoutAnchorablePane DockWidth="320">
+                            <avalonDock:LayoutAnchorable x:Name="OptionsAnchorable"
+                                                         Title="Options" CanClose="False">
+                                <views:OptionsToolWindow DataContext="{Binding OptionsPanel}" />
+                            </avalonDock:LayoutAnchorable>
+                            <avalonDock:LayoutAnchorable x:Name="MatrixAnchorable"
+                                                         Title="Build Matrix" CanClose="False">
+                                <views:MatrixToolWindow DataContext="{Binding MatrixPanel}" />
+                            </avalonDock:LayoutAnchorable>
+                        </avalonDock:LayoutAnchorablePane>
+
+                    </avalonDock:LayoutPanel>
+                </avalonDock:LayoutRoot>
+            </avalonDock:DockingManager>
+
+            <controls:ToolWindowRail x:Name="RightRail" Grid.Column="2" RailBorderThickness="1,0,0,0" />
+        </Grid>
+
+        <!-- Row 3: status bar (Task 5 fills this slot) -->
+        <controls:StatusBar Grid.Row="3" DataContext="{Binding}" />
+
+        <!-- Settings modal overlay: spans every row, painted last so it sits on top. -->
+        <views:SettingsDialog Grid.Row="0" Grid.RowSpan="4" DataContext="{Binding}" />
+
+        <!-- Search overlay, painted after Settings so it wins if both are somehow open. -->
+        <views:SearchOverlay Grid.Row="0" Grid.RowSpan="4" DataContext="{Binding}" />
+
+        <!-- Unsaved rule-file changes prompt, painted last: it can be triggered while Settings
+             or Search happen to be open (e.g. closing a dirty document from the search overlay)
+             and must win over both. -->
+        <views:UnsavedChangesDialog Grid.Row="0" Grid.RowSpan="4" DataContext="{Binding RuleEditor}" />
+    </Grid>
+</Window>
+

@@ -1,0 +1,52 @@
+<UserControl x:Class="Omen.GUI.Controls.StatusBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="26">
+    <Border Background="{StaticResource Brush.BarRaised}"
+            BorderBrush="{StaticResource Brush.Border}"
+            BorderThickness="0,1,0,0"
+            TextBlock.FontSize="11.5"
+            TextBlock.Foreground="{StaticResource Brush.TextMuted}">
+        <DockPanel LastChildFill="True" Margin="10,0">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+
+                <!-- Build-state dot + status text -->
+                <Ellipse Width="7" Height="7" Margin="0,0,10,0"
+                         Fill="{Binding CurrentBuildState, Converter={StaticResource Conv.BuildStateToBrush}}" />
+                <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource Brush.TextPrimary}"
+                           VerticalAlignment="Center" Margin="0,0,10,0" />
+
+                <TextBlock Text="|" Foreground="{StaticResource Brush.Separator}"
+                           VerticalAlignment="Center" Margin="0,0,10,0" />
+
+                <!-- Breadcrumb: project > platform > configuration -->
+                <TextBlock Text="{Binding ProjectName}" FontFamily="{StaticResource Font.Mono}"
+                           Foreground="{StaticResource Brush.TextMono}" VerticalAlignment="Center" />
+                <TextBlock Text="›" Foreground="{StaticResource Brush.Separator}"
+                           VerticalAlignment="Center" Margin="6,0" />
+                <TextBlock Text="{Binding SelectedPlatform}" FontFamily="{StaticResource Font.Mono}"
+                           Foreground="{StaticResource Brush.TextMono}" VerticalAlignment="Center" />
+                <TextBlock Text="›" Foreground="{StaticResource Brush.Separator}"
+                           VerticalAlignment="Center" Margin="6,0" />
+                <TextBlock Text="{Binding SelectedConfiguration}" FontFamily="{StaticResource Font.Mono}"
+                           Foreground="{StaticResource Brush.TextMono}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Progress readout: flush right -->
+            <TextBlock DockPanel.Dock="Right" Text="{Binding ProgressLabel}"
+                       FontFamily="{StaticResource Font.Mono}" Foreground="{StaticResource Brush.TextMono}"
+                       Width="32" VerticalAlignment="Center" Margin="10,0,0,0" />
+
+            <Border DockPanel.Dock="Right" Width="160" Height="5" CornerRadius="3"
+                    Background="{StaticResource Brush.InputBg}" VerticalAlignment="Center">
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}"
+                             Background="Transparent" Foreground="{StaticResource Brush.Accent}"
+                             BorderThickness="0"
+                             Visibility="{Binding IsBuilding, Converter={StaticResource Conv.BoolToVisibility}}" />
+            </Border>
+
+            <!-- Flexible spacer between the breadcrumb and the progress readout. -->
+            <Grid />
+        </DockPanel>
+    </Border>
+</UserControl>

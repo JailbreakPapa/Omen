@@ -1,0 +1,84 @@
+<UserControl x:Class="Omen.GUI.Controls.MenuBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+             xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
+             Height="30">
+    <Border Background="{StaticResource Brush.BarRaised}"
+            BorderBrush="{StaticResource Brush.Border}"
+            BorderThickness="0,0,0,1">
+        <DockPanel LastChildFill="True">
+
+            <!-- Brand block -->
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="8,0,10,0"
+                        VerticalAlignment="Center"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <Image Source="pack://application:,,,/Assets/omen-icon-64.png" Width="18" Height="18" />
+                <TextBlock Text="Omen" FontWeight="SemiBold" FontSize="12" Margin="6,0,0,0"
+                           Foreground="{StaticResource Brush.TextPrimary}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Window controls: flush to the right edge, Windows convention. -->
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <Button x:Name="MinimizeButton" Style="{StaticResource Style.Button.WindowControl}"
+                        Height="30" Click="OnMinimizeClick" ToolTip="Minimize">
+                    <svgc:SvgIcon UriSource="/Assets/Icons/window-minimize.svg"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  Stretch="Uniform" Width="10" Height="10" SnapsToDevicePixels="True" />
+                </Button>
+                <Button x:Name="MaximizeButton" Style="{StaticResource Style.Button.WindowControl}"
+                        Height="30" Click="OnMaximizeRestoreClick" ToolTip="Maximize">
+                    <svgc:SvgIcon x:Name="MaximizeGlyph" UriSource="/Assets/Icons/window-maximize.svg"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  Stretch="Uniform" Width="10" Height="10" SnapsToDevicePixels="True" />
+                </Button>
+                <Button x:Name="CloseButton" Style="{StaticResource Style.Button.WindowControl}" Tag="Close"
+                        Height="30" Click="OnCloseClick" ToolTip="Close">
+                    <svgc:SvgIcon UriSource="/Assets/Icons/xmark.svg"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  Stretch="Uniform" Width="10" Height="10" SnapsToDevicePixels="True" />
+                </Button>
+            </StackPanel>
+
+            <!-- Menu: fills whatever's left between the brand block and the window controls. -->
+            <Menu VerticalAlignment="Stretch" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <MenuItem Header="_File">
+                    <MenuItem Header="Open Project..." Click="OnOpenProjectClick" />
+                    <MenuItem Header="Close Project" Click="OnCloseProjectClick" />
+                    <Separator />
+                    <MenuItem Header="Exit" Click="OnExitClick" />
+                </MenuItem>
+                <MenuItem Header="_Build">
+                    <MenuItem Header="Build" Click="OnBuildClick"
+                              IsEnabled="{Binding IsBuilding, Converter={StaticResource Conv.InverseBool}}" />
+                    <MenuItem Header="Rebuild" Click="OnRebuildClick"
+                              IsEnabled="{Binding IsBuilding, Converter={StaticResource Conv.InverseBool}}" />
+                    <MenuItem Header="Clean" Click="OnCleanClick"
+                              IsEnabled="{Binding IsBuilding, Converter={StaticResource Conv.InverseBool}}" />
+                    <Separator />
+                    <MenuItem Header="Cancel" Click="OnCancelClick"
+                              IsEnabled="{Binding IsCancellable}" />
+                </MenuItem>
+                <MenuItem Header="_Project">
+                    <MenuItem Header="Generate Visual Studio 2022" Click="OnGenerateVs2022Click" />
+                    <MenuItem Header="Generate Visual Studio 2019" Click="OnGenerateVs2019Click" />
+                    <Separator />
+                    <MenuItem Header="Generate Visual Studio Code" Click="OnGenerateVsCodeClick" />
+                    <MenuItem Header="Generate CMake" Click="OnGenerateCMakeClick" />
+                </MenuItem>
+                <MenuItem Header="_Tools">
+                    <MenuItem Header="OmenNet Coordinator..." Click="OnOmenNetCoordinatorClick" />
+                    <MenuItem Header="OmenNet Agent..." Click="OnOmenNetAgentClick" />
+                    <Separator />
+                    <MenuItem Header="Clear Rule Cache" Click="OnClearRuleCacheClick" />
+                </MenuItem>
+                <MenuItem Header="_Help">
+                    <MenuItem Header="Documentation" Click="OnDocumentationClick" />
+                    <MenuItem Header="About Omen" Click="OnAboutOmenClick" />
+                </MenuItem>
+            </Menu>
+        </DockPanel>
+    </Border>
+</UserControl>
+
