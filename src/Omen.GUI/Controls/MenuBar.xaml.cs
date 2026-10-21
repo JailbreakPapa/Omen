@@ -46,6 +46,8 @@ public partial class MenuBar : UserControl
 
     private void OnCancelClick(object sender, RoutedEventArgs e) => ViewModel?.CancelBuild();
 
+    private async void OnGenerateVs2026Click(object sender, RoutedEventArgs e) => await Generate(IdeKind.VS2026);
+    private async void OnGenerateRiderClick(object sender, RoutedEventArgs e) => await Generate(IdeKind.Rider);
     private async void OnGenerateVs2022Click(object sender, RoutedEventArgs e) => await Generate(IdeKind.VS2022);
     private async void OnGenerateVs2019Click(object sender, RoutedEventArgs e) => await Generate(IdeKind.VS2019);
     private async void OnGenerateVsCodeClick(object sender, RoutedEventArgs e) => await Generate(IdeKind.VSCode);

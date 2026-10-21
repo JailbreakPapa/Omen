@@ -221,8 +221,10 @@ public sealed class ProjectGenerationOrchestrator
 		{
 			await generator.GenerateAsync(combinations[0].Target, combinations[0].Modules, combinations[0].Context, default, solutionName);
 		}
-		string solutionPath = Path.Combine(projectRoot, solutionName + ".sln");
+		string solutionPath = Path.Combine(projectRoot, solutionName + (version == VisualStudioGenerator.VisualStudioVersion.VS2026 ? ".slnx" : ".sln"));
 		events?.Report(new OrchestratorEvent("Generated Visual Studio solution: " + solutionPath, OrchestratorEventLevel.Success));
+		if (version == VisualStudioGenerator.VisualStudioVersion.VS2026)
+			events?.Report(new OrchestratorEvent("Compatibility solution: " + Path.Combine(projectRoot, solutionName + ".sln"), OrchestratorEventLevel.Info));
 		int projectCount = modules.Count((ModuleRules m) => !m.Name.StartsWith("3rdParty::", StringComparison.OrdinalIgnoreCase) && !m.Name.StartsWith("Vcpkg::", StringComparison.OrdinalIgnoreCase));
 		events?.Report(new OrchestratorEvent($"{projectCount} project(s) generated", OrchestratorEventLevel.Info));
 		events?.Report(new OrchestratorEvent("Project files in: Intermediate/ProjectFiles/", OrchestratorEventLevel.Info));

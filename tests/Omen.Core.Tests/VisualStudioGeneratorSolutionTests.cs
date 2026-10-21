@@ -2,6 +2,7 @@
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
 using System.Text;
+using System.Xml.Linq;
 using Omen.Core.Configuration;
 using Omen.Core.Generators;
 using Omen.Core.Rules;
@@ -37,11 +38,12 @@ public class VisualStudioGeneratorSolutionTests : IDisposable
         File.WriteAllText(path, content);
     }
 
-    private BuildContext CreateContext() => new()
+    private BuildContext CreateContext(BuildConfiguration configuration = BuildConfiguration.Development,
+        TargetArchitecture architecture = TargetArchitecture.X64) => new()
     {
         Platform = TargetPlatform.Windows,
-        Architecture = TargetArchitecture.X64,
-        Configuration = BuildConfiguration.Development,
+        Architecture = architecture,
+        Configuration = configuration,
         ProjectRoot = _projectRoot,
         OutputDirectory = Path.Combine(_projectRoot, "bin"),
         IntermediateDirectory = Path.Combine(_projectRoot, "obj")
@@ -63,6 +65,73 @@ public class VisualStudioGeneratorSolutionTests : IDisposable
             return File.ReadAllText(Path.Combine(
                 _projectRoot, "Intermediate", "ProjectFiles", sanitized, $"{sanitized}.vcxproj"));
         });
+    }
+
+    [Fact]
+    public async Task Vs2026_SlnxPreservesFoldersRulesDependenciesAndBuildSelection()
+    {
+        var context = CreateContext();
+        var framework = new FrameworkModule(context);
+        framework.PrivateDependencies.Add("Vendored");
+        WriteFile("Pilot.target.cs", "// rules");
+        context.RuleFilePaths = new Dictionary<string, string>
+        {
+            [typeof(PilotTarget).FullName!] = Path.Combine(_projectRoot, "Pilot.target.cs")
+        };
+        var target = new PilotTarget(context);
+        await new VisualStudioGenerator(_projectRoot, VisualStudioGenerator.VisualStudioVersion.VS2026)
+            .GenerateAsync(target, [new AppModule(context), framework, new VendoredThirdParty(context)], context);
+
+        var xml = XDocument.Load(Path.Combine(_projectRoot, "Pilot.slnx"));
+        var app = xml.Descendants("Project").Single(p => ((string)p.Attribute("Path")!).EndsWith("/App.vcxproj"));
+        var core = xml.Descendants("Project").Single(p => ((string)p.Attribute("Path")!).EndsWith("/AtomCore.vcxproj"));
+        ((string?)core.Parent!.Attribute("Name")).Should().Be("/Code/Framework/");
+        core.Element("BuildDependency")!.Attribute("Project")!.Value.Should().EndWith("/Vendored.vcxproj");
+        app.Elements("BuildDependency").Should().BeEmpty("Omen's launch project builds its own closure");
+        app.Elements("Build").Should().OnlyContain(b => (string?)b.Attribute("Project") == "true");
+        core.Elements("Build").Should().OnlyContain(b => (string?)b.Attribute("Project") == "false");
+        xml.Descendants("File").Should().Contain(f => (string?)f.Attribute("Path") == "Pilot.target.cs");
+        File.Exists(Path.Combine(_projectRoot, "Pilot.sln")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Slnx_MapsGatedConfigurationsAndOverwritesReadOnlyOutput()
+    {
+        var debug = CreateContext(BuildConfiguration.Debug);
+        var shipping = CreateContext(BuildConfiguration.Shipping, TargetArchitecture.ARM64);
+        var generator = new VisualStudioGenerator(_projectRoot, VisualStudioGenerator.VisualStudioVersion.VS2026);
+        (TargetRules Target, IReadOnlyList<ModuleRules> Modules, BuildContext Context)[] combinations =
+        [
+            (new PilotTarget(debug), [new AppModule(debug), new FrameworkModule(debug)], debug),
+            (new PilotTarget(shipping), [new FrameworkModule(shipping)], shipping)
+        ];
+        await generator.GenerateAsync(combinations, solutionName: "A & B");
+        var path = Path.Combine(_projectRoot, "A & B.slnx");
+        File.SetAttributes(path, FileAttributes.ReadOnly);
+        await generator.GenerateAsync(combinations, solutionName: "A & B");
+        new FileInfo(path).IsReadOnly.Should().BeFalse();
+        var xml = XDocument.Load(path);
+        var app = xml.Descendants("Project").Single(p => ((string)p.Attribute("Path")!).EndsWith("/App.vcxproj"));
+        app.Elements("Build").Single(b => (string?)b.Attribute("Solution") == "Debug|x64")
+            .Attribute("Project")!.Value.Should().Be("true");
+        app.Elements("Build").Where(b => (string?)b.Attribute("Solution") != "Debug|x64")
+            .Should().OnlyContain(b => (string?)b.Attribute("Project") == "false");
+        app.Elements("BuildType").Single(b => (string?)b.Attribute("Solution") == "Shipping|ARM64")
+            .Attribute("Project")!.Value.Should().Be("Debug");
+        app.Elements("Platform").Single(b => (string?)b.Attribute("Solution") == "Shipping|ARM64")
+            .Attribute("Project")!.Value.Should().Be("x64");
+    }
+
+    [Theory]
+    [InlineData(VisualStudioGenerator.VisualStudioVersion.VS2019)]
+    [InlineData(VisualStudioGenerator.VisualStudioVersion.VS2022)]
+    public async Task OlderVisualStudio_KeepsLegacySolutionFormat(VisualStudioGenerator.VisualStudioVersion version)
+    {
+        var context = CreateContext();
+        await new VisualStudioGenerator(_projectRoot, version)
+            .GenerateAsync(new PilotTarget(context), [new FrameworkModule(context)], context);
+        File.Exists(Path.Combine(_projectRoot, "Pilot.sln")).Should().BeTrue();
+        File.Exists(Path.Combine(_projectRoot, "Pilot.slnx")).Should().BeFalse();
     }
 
     [Fact]
