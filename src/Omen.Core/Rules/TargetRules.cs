@@ -19,6 +19,14 @@ namespace Omen.Core.Rules;
 /// </summary>
 public abstract class TargetRules
 {
+    /// <summary>Tests for this target. Commands may use $(TargetFile), $(OutputDir) and $(ProjectDir).</summary>
+    public List<TestDefinition> Tests { get; } = [];
+
+    /// <summary>Target artifacts, runtime files and headers to install or package.</summary>
+    public List<InstallRule> InstallRules { get; } = [];
+
+    public List<ConfiguredFile> ConfigureFiles { get; } = [];
+
     /// <summary>
     /// The build context for this target.
     /// </summary>

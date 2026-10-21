@@ -11,6 +11,17 @@
 - **Package Sources**: `3rdParty::` (O3DE package store), `Vcpkg::` (vcpkg installed trees), and `FetchContent` (git/archive source fetching, CMake-FetchContent style)
 - **Modern CLI**: Rich command-line interface with Spectre.Console
 - **Incremental Builds**: Header-dependency-aware, digest-based invalidation
+- **Native workflows**: Shared/user presets and ordered configure/build/test/install/package steps
+- **Tests and distribution**: Registered process tests with JUnit, component installation, and reproducible ZIP packages
+- **Configuration helpers**: Configuration-header templates and real compiler/link/run capability checks
+
+See [the CMake feature comparison](docs/cmake-feature-comparison.md) for usage and remaining gaps.
+[WorkflowSample](examples/WorkflowSample/README.md) includes equivalent Omen and CMake workflows:
+
+```powershell
+cd examples/WorkflowSample
+omen workflow ci
+```
 
 New to the rule model? [docs/rule-files.md](docs/rule-files.md) explains what belongs in a
 `.target.cs` vs a `.module.cs` (and `.gem.cs` / `.omenproject.cs`).

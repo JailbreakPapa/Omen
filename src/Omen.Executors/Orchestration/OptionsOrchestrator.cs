@@ -23,14 +23,15 @@ public sealed class OptionsOrchestrator
 	{
 		string workingDir = ResolveWorkingDir(request.TargetFile);
 		OptionCacheStore cacheStore = new OptionCacheStore(CachePath(workingDir));
+		var platform = request.Platform ?? Omen.Platforms.PlatformFactory.GetHostPlatform();
 		BuildContext context = new BuildContext
 		{
-			Platform = TargetPlatform.Windows,
-			Architecture = TargetArchitecture.X64,
-			Configuration = BuildConfiguration.Development,
+			Platform = platform,
+			Architecture = request.Architecture ?? Omen.Platforms.PlatformFactory.GetDefaultArchitecture(request.Platform ?? Omen.Platforms.PlatformFactory.GetHostPlatform()),
+			Configuration = request.Configuration,
 			ProjectRoot = workingDir,
-			IntermediateDirectory = Path.Combine(workingDir, "Intermediate"),
-			OutputDirectory = Path.Combine(workingDir, "Binaries"),
+			IntermediateDirectory = Path.Combine(workingDir, "Intermediate", $"{platform}_{request.Configuration}"),
+			OutputDirectory = Path.Combine(workingDir, "Binaries", $"{platform}_{request.Configuration}"),
 			CachedOptionValues = cacheStore.Load()
 		};
 		RuleCompiler ruleCompiler = new RuleCompiler(RuleCompiler.CacheDirectoryFor(workingDir));
@@ -49,8 +50,13 @@ public sealed class OptionsOrchestrator
 			events?.Report(new OrchestratorEvent("Error compiling rules: " + ex2.Message, OrchestratorEventLevel.Error));
 			return null;
 		}
-		compiledRules.CreateTargetRules(context);
+		var targets = compiledRules.CreateTargetRules(context);
 		compiledRules.CreateModuleRules(context);
+		int configuredFiles = ProjectWorkflow.ConfigureFiles(context, compiledRules.Project, null);
+		var selectedTypes = compiledRules.FindTargetTypes(request.TargetFile).ToHashSet();
+		foreach (var target in targets.Where(t => selectedTypes.Contains(t.GetType())))
+			configuredFiles += ProjectWorkflow.ConfigureFiles(context, compiledRules.Project, target, includeProject: false);
+		if (configuredFiles > 0) events?.Report(new OrchestratorEvent($"Updated {configuredFiles} configured file(s)", OrchestratorEventLevel.Info));
 		ManualOptionsStore manualOptionsStore = new ManualOptionsStore(ManualOptionsPath(workingDir));
 		HashSet<string> declaredNames = context.DeclaredOptions.Select((BuildOptionDeclaration d) => d.Name).ToHashSet();
 		IEnumerable<BuildOptionDeclaration> manualEntries = from d in manualOptionsStore.All

@@ -1,0 +1,33 @@
+cmake_minimum_required(VERSION 3.24)
+project(WorkflowSample VERSION 1.0.0 LANGUAGES CXX)
+
+option(ENABLE_GREETING "Enable the sample greeting" ON)
+set(ProjectVersion "${PROJECT_VERSION}")
+configure_file(config.h.in Generated/config.h @ONLY NEWLINE_STYLE LF)
+
+add_executable(WorkflowSample Source/Program/main.cpp)
+target_compile_features(WorkflowSample PRIVATE cxx_std_20)
+target_include_directories(WorkflowSample PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/Generated")
+
+enable_testing()
+add_test(NAME sample.self COMMAND WorkflowSample)
+add_test(NAME sample.arguments COMMAND WorkflowSample --argument "value with spaces")
+add_test(NAME sample.environment COMMAND WorkflowSample --environment)
+set_tests_properties(sample.self sample.arguments sample.environment PROPERTIES LABELS smoke)
+set_tests_properties(sample.environment PROPERTIES ENVIRONMENT "OMEN_SAMPLE_MESSAGE=hello from test")
+add_test(NAME sample.expected-failure COMMAND WorkflowSample --fail)
+set_tests_properties(sample.expected-failure PROPERTIES WILL_FAIL TRUE LABELS negative)
+add_test(NAME sample.skipped COMMAND WorkflowSample --skip)
+set_tests_properties(sample.skipped PROPERTIES SKIP_RETURN_CODE 77)
+add_test(NAME sample.disabled COMMAND unused-disabled-command)
+set_tests_properties(sample.disabled PROPERTIES DISABLED TRUE)
+
+install(TARGETS WorkflowSample RUNTIME DESTINATION bin COMPONENT Runtime)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/Generated/config.h" DESTINATION include/WorkflowSample COMPONENT Development)
+install(FILES README.md DESTINATION share/WorkflowSample COMPONENT Documentation)
+
+set(CPACK_GENERATOR ZIP)
+set(CPACK_PACKAGE_NAME WorkflowSample)
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+include(CPack)

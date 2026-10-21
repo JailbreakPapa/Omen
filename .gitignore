@@ -43,6 +43,7 @@ TestResults/
 # Local env files
 /docs-site/.env
 .env
+OmenUserPresets.json
 
 # Ignore example project stuff
 examples/ExampleGame/.vs

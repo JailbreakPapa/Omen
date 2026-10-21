@@ -1,0 +1,3 @@
+#pragma once
+#define WORKFLOW_SAMPLE_VERSION "@ProjectVersion@"
+#cmakedefine01 ENABLE_GREETING

@@ -39,12 +39,10 @@
     "src/Omen.Core/Rules/LayeringValidator.cs",
     "src/Omen.Core/Rules/ModuleClosure.cs",
     "src/Omen.Core/Rules/ModuleRules.cs",
-    "src/Omen.Core/Rules/OmenProjectRules.cs",
     "src/Omen.Core/Rules/PluginAliasResolver.cs",
     "src/Omen.Core/Rules/PluginEnablement.cs",
     "src/Omen.Core/Rules/PluginFlavorModuleRules.cs",
     "src/Omen.Core/Rules/PluginRules.cs",
-    "src/Omen.Core/Rules/TargetRules.cs",
     "src/Omen.Core/Rules/ThirdPartyPackages.cs",
     "src/Omen.Core/Rules/ToolchainOptions.cs",
     "src/Omen.Distributed/Cache/LocalActionCache.cs",
@@ -57,7 +55,6 @@
     "src/Omen.Executors/LocalExecutor.cs",
     "src/Omen.Executors/Orchestration/BuildEvent.cs",
     "src/Omen.Executors/Orchestration/BuildEventLog.cs",
-    "src/Omen.Executors/Orchestration/BuildOrchestrator.cs",
     "src/Omen.Executors/Orchestration/BuildServices.cs",
     "src/Omen.Executors/Orchestration/CleanOrchestrator.cs",
     "src/Omen.Executors/Orchestration/ManualOptionsStore.cs",
@@ -79,7 +76,6 @@
     "src/Omen.CLI/Commands/InfoCommand.cs",
     "src/Omen.CLI/Commands/RebuildCommand.cs",
     "src/Omen.CLI/Commands/ServerCommand.cs",
-    "src/Omen.CLI/Program.cs",
     "src/Omen.Platforms/Android/AndroidNdkSDK.cs",
     "src/Omen.Platforms/Android/AndroidNdkToolchain.cs",
     "src/Omen.Platforms/Apple/AppleSDK.cs",
@@ -109,23 +105,27 @@
     "src/OmenNet.Dashboard/Components/Routes.razor"
   ],
   "reconstructed_or_differing_documents": [
+    "src/Omen.CLI/Commands/ConfigureCommand.cs",
+    "src/Omen.CLI/Commands/GenerateCommand.cs",
+    "src/Omen.CLI/Program.cs",
     "src/Omen.Core/Generators/CompileCommandsWriter.cs",
     "src/Omen.Core/Generators/VisualStudioGenerator.cs",
     "src/Omen.Core/Options/WellKnownOptions.cs",
     "src/Omen.Core/Rules/FindModuleParser.cs",
+    "src/Omen.Core/Rules/OmenProjectRules.cs",
     "src/Omen.Core/Rules/PluginManifest.cs",
     "src/Omen.Core/Rules/RuleCompiler.cs",
+    "src/Omen.Core/Rules/TargetRules.cs",
     "src/Omen.Core/Rules/VcpkgResolver.cs",
     "src/Omen.Executors/HybridExecutor.cs",
+    "src/Omen.Executors/Orchestration/BuildOrchestrator.cs",
     "src/Omen.Executors/Orchestration/OptionsOrchestrator.cs",
     "src/Omen.Executors/Orchestration/ProjectGenerationOrchestrator.cs",
-    "src/Omen.CLI/Commands/ConfigureCommand.cs",
-    "src/Omen.CLI/Commands/GenerateCommand.cs",
     "src/Omen.Platforms/ToolchainBase.cs",
-    "src/OmenNet.Dashboard/Services/CoordinatorClient.cs",
-    "src/OmenNet.Dashboard/Services/OmenNetOptions.cs",
+    "src/Omen.Platforms/Windows/WindowsSDK.cs",
     "src/OmenNet.Dashboard/Components/Pages/Home.razor",
-    "src/Omen.Platforms/Windows/WindowsSDK.cs"
+    "src/OmenNet.Dashboard/Services/CoordinatorClient.cs",
+    "src/OmenNet.Dashboard/Services/OmenNetOptions.cs"
   ],
   "files": [
     {
@@ -175,8 +175,10 @@
     },
     {
       "path": ".gitignore",
-      "sha256": "f5c8c4c23f11c7e9e7afd6b24ad32a350e6a4bf14798ecb93a919d2212894437",
-      "provenance": "archived-original"
+      "sha256": "a7db633eb1d23ceb06d92df8d5835e68d972b2ed86d5362e06b39a0f84703813",
+      "provenance": "archived-original",
+      "pre_workflow_sha256": "f5c8c4c23f11c7e9e7afd6b24ad32a350e6a4bf14798ecb93a919d2212894437",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "Directory.Build.props",
@@ -205,14 +207,18 @@
     },
     {
       "path": "README.md",
-      "sha256": "44c0b6a135a2f083f598d607f6a4ad2b48f9c1a54fd89f0830087ec4f607f137",
-      "provenance": "archived-original"
+      "sha256": "2f269289b7e7165c852ecac1730890b6b314ff1d38c1e0a5725a74278f761e50",
+      "provenance": "archived-original",
+      "pre_workflow_sha256": "44c0b6a135a2f083f598d607f6a4ad2b48f9c1a54fd89f0830087ec4f607f137",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "RECOVERY.md",
-      "sha256": "820f1a1c33a3191ba06a1f04e42a2eb0eb6c22d46b7dc7bba041e9ff3bbecc64",
+      "sha256": "f0552324aade50758a7cca7b239f72912a7ee4d9b39e8a3dc88cee1559d6c390",
       "provenance": "recovered-source-with-follow-up-repairs",
-      "initial_restoration_sha256": "9211facd0d4fe7b17af4f97673da7768680988f604bfef4fe6cbe3f9b13f201c"
+      "initial_restoration_sha256": "9211facd0d4fe7b17af4f97673da7768680988f604bfef4fe6cbe3f9b13f201c",
+      "pre_workflow_sha256": "820f1a1c33a3191ba06a1f04e42a2eb0eb6c22d46b7dc7bba041e9ff3bbecc64",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "RULE-EDITOR-NOTES.md",
@@ -228,6 +234,11 @@
       "path": "docs/2026-09-06-o3de-bringup-gaps.md",
       "sha256": "e7e4746ce01f423a896d89c9e235e7249fb5ef60856abc4d2cf7756a770f0272",
       "provenance": "archived-original"
+    },
+    {
+      "path": "docs/cmake-feature-comparison.md",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "89b24f7bd50f7cc9bc2c0ccfb03bd3f84796ac83a5b9d03787e2b486ea6f3a04"
     },
     {
       "path": "docs/rule-files.md",
@@ -470,6 +481,51 @@
       "provenance": "archived-original"
     },
     {
+      "path": "examples/WorkflowSample/.gitignore",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "598678594a4fa539096b06cf7b34490a6aabe8b7317055b8d5067a685a741b58"
+    },
+    {
+      "path": "examples/WorkflowSample/CMakeLists.txt",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "7a8aa7b67d5c530c5d2c4cb085d16a47fa3801fd23f857b828997303bb540676"
+    },
+    {
+      "path": "examples/WorkflowSample/OmenPresets.json",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "536fb3118951c7c11a4c0574cfe26682d6e288e66767b9bfc032c9b3041f0cd2"
+    },
+    {
+      "path": "examples/WorkflowSample/README.md",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "ad87c95adbf120dc7f3cb1e4a564e84aee6274e07bcdd3a2c00290e908d60d6f"
+    },
+    {
+      "path": "examples/WorkflowSample/Source/Program/WorkflowSample.module.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "8fac6908184012fe2630513ee066e6f56fa975942093b060bba24aa762f584f5"
+    },
+    {
+      "path": "examples/WorkflowSample/Source/Program/main.cpp",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "a5e522c60ddc8a43be81ad37e7f8b10d9e43a01eaf36d52df65fafe1d81bcd25"
+    },
+    {
+      "path": "examples/WorkflowSample/Source/WorkflowSample.target.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "759c174a6b0a1f7274b4ff63b77d380816ea9666d9d908150903c334e0c2a359"
+    },
+    {
+      "path": "examples/WorkflowSample/WorkflowSample.omenproject.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "27cb17b1b4318166801a2fad7a1a2eb926feff835ab0fa816f864479f8e62afa"
+    },
+    {
+      "path": "examples/WorkflowSample/config.h.in",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "2bbd30504c97d638365f6c4003a22735ba07e60b1ea04aaba4a0bafe8a729410"
+    },
+    {
       "path": "images/omen-horizontal.png",
       "sha256": "8f09ba74633b6038a002d7a2a7d1e0b23afd7523d84f4f001254ce2a0987a61b",
       "provenance": "recovery-integration-or-supporting-file"
@@ -481,8 +537,15 @@
     },
     {
       "path": "recovery/FEATURE_AUDIT.md",
-      "sha256": "19ced87ccaac0b6e3df067b03458404c58073072fa2b5b76e3414a760ff1451c",
-      "provenance": "follow-up-feature-audit"
+      "sha256": "d44ffb83172447d50e7359ebbb4e3f049d5cc396d0a938c5c954788c51492dff",
+      "provenance": "follow-up-feature-audit",
+      "pre_workflow_sha256": "19ced87ccaac0b6e3df067b03458404c58073072fa2b5b76e3414a760ff1451c",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
+    },
+    {
+      "path": "schemas/omen-presets.schema.json",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "937424164bcfbf70f73a960c9bcd0b6a90a935d3216eb5b888c3c38101544a9d"
     },
     {
       "path": "scripts/update-omen-tool.ps1",
@@ -506,8 +569,10 @@
     },
     {
       "path": "src/Omen.CLI/Commands/ConfigureCommand.cs",
-      "sha256": "0e2c4565be128fe54e4aa3127dae618c0438787413412602522b2597d9486fa9",
-      "provenance": "reconstructed-from-installed-binary"
+      "sha256": "e65a9a863eaa354e8f781125642b09e8324fd639536a1803b9f8863ee9162019",
+      "provenance": "reconstructed-from-installed-binary",
+      "pre_workflow_sha256": "0e2c4565be128fe54e4aa3127dae618c0438787413412602522b2597d9486fa9",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.CLI/Commands/CoordinatorCommand.cs",
@@ -536,14 +601,21 @@
       "provenance": "pdb-checksum-exact"
     },
     {
+      "path": "src/Omen.CLI/Commands/WorkflowCommands.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "0b85354bde3bdc4743f216628317ff80b317ff9feb99253774bcb8184a01916b"
+    },
+    {
       "path": "src/Omen.CLI/Omen.CLI.csproj",
       "sha256": "51f99dcb96acdd4dd34a9285d30e9b10a683e5e898cbae8d9bf726c16aa6127a",
       "provenance": "archived-original"
     },
     {
       "path": "src/Omen.CLI/Program.cs",
-      "sha256": "07be05dfa955961574b587affb4b6edefec3b64b55992a6310eab5f889f5d884",
-      "provenance": "pdb-checksum-exact"
+      "sha256": "3963425a0fbe91b5a9bde455ac47a86764b68e8d093e438aec8a09f5b8a76e3f",
+      "provenance": "pdb-checksum-exact",
+      "pre_workflow_sha256": "07be05dfa955961574b587affb4b6edefec3b64b55992a6310eab5f889f5d884",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.Core/Build/CompileEnvironment.cs",
@@ -581,6 +653,11 @@
       "provenance": "pdb-checksum-exact"
     },
     {
+      "path": "src/Omen.Core/Configuration/ProjectPresets.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "929a75dd5eb6b1f73338465e1d99471c03c871f6b16afd5dfa471a49702f441a"
+    },
+    {
       "path": "src/Omen.Core/Configuration/ResolvedTarget.cs",
       "sha256": "a46129c6b996ead3396b44cbb0e5db2d7235a2c9f488a7d67bc5e99cdea7592e",
       "provenance": "pdb-checksum-exact"
@@ -599,6 +676,11 @@
       "path": "src/Omen.Core/Generators/CompileCommandsWriter.cs",
       "sha256": "9b489dfb040b0052fae43d9e00384b95c33113918e3c678e8a15131cca9a4781",
       "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Generators/ConfigurationFileGenerator.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "862c845136398490d85f91b3098a1dfbde4800ff9543e0c3e05f8eaaf13b48a4"
     },
     {
       "path": "src/Omen.Core/Generators/GeneratedFile.cs",
@@ -737,6 +819,11 @@
       "provenance": "reconstructed-from-installed-binary"
     },
     {
+      "path": "src/Omen.Core/Rules/ConfiguredFile.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "f4e944ad3a3ce3c036f98ffadc4250a07cebcfb41b2e09b0a921e7224fc6237f"
+    },
+    {
       "path": "src/Omen.Core/Rules/ContentFetcher.cs",
       "sha256": "661c3a8e4d5671f7c70d687f4f079dbeb39040137949656f65a1a860aa5a937a",
       "provenance": "pdb-checksum-exact"
@@ -750,6 +837,11 @@
       "path": "src/Omen.Core/Rules/FindModuleParser.cs",
       "sha256": "9a14244fe70cf9eeefb4186c58f6b0a4097ba8c110421066179ed8bd9710dd1d",
       "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Rules/InstallRule.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "1c63e02354382cb53fbd4088929bc83ca9769795f6a5c48cff6944ecd8acb2a6"
     },
     {
       "path": "src/Omen.Core/Rules/LayeringValidator.cs",
@@ -768,8 +860,10 @@
     },
     {
       "path": "src/Omen.Core/Rules/OmenProjectRules.cs",
-      "sha256": "166fc446f684c2bc63f0d017463447d0a51da3d2538d146610e49725fe77251e",
-      "provenance": "pdb-checksum-exact"
+      "sha256": "b007a07e766b5d2a35d4e655bd60c19e768bed6953907b1a09ad1290ee9f7960",
+      "provenance": "pdb-checksum-exact",
+      "pre_workflow_sha256": "166fc446f684c2bc63f0d017463447d0a51da3d2538d146610e49725fe77251e",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.Core/Rules/PluginAliasResolver.cs",
@@ -818,8 +912,15 @@
     },
     {
       "path": "src/Omen.Core/Rules/TargetRules.cs",
-      "sha256": "e121ea9ef6ad7455bf922e5961c2740c8d316785f665fced7b88b10f4fc89251",
-      "provenance": "pdb-checksum-exact"
+      "sha256": "d85cc421bc6773589242fe7a1ac613f53a01fc38d9e3b1a576a832f1c10c3f9e",
+      "provenance": "pdb-checksum-exact",
+      "pre_workflow_sha256": "e121ea9ef6ad7455bf922e5961c2740c8d316785f665fced7b88b10f4fc89251",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
+    },
+    {
+      "path": "src/Omen.Core/Rules/TestDefinition.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "134761817fbe00318fed86411ef20f6bde44929bc6596c447545a0cc0ead9c59"
     },
     {
       "path": "src/Omen.Core/Rules/ThirdPartyPackages.cs",
@@ -923,8 +1024,10 @@
     },
     {
       "path": "src/Omen.Executors/Orchestration/BuildOrchestrator.cs",
-      "sha256": "1b6207855a7b3a481b5e0c96c85eb80201f924af3a7e9fecf12092fd1c387436",
-      "provenance": "pdb-checksum-exact"
+      "sha256": "d6a7f067d0ca1bcc96019f2ddebe93a6abd274de4cee1129972d3bf948bb5992",
+      "provenance": "pdb-checksum-exact",
+      "pre_workflow_sha256": "1b6207855a7b3a481b5e0c96c85eb80201f924af3a7e9fecf12092fd1c387436",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.Executors/Orchestration/BuildServices.cs",
@@ -942,19 +1045,28 @@
       "provenance": "recovery-integration-or-supporting-file"
     },
     {
+      "path": "src/Omen.Executors/Orchestration/InstallOrchestrator.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "5ea966ce52a4ef6ee19a46a8ac62e0eef4db6c4afcc21bcf19f58a7cbea79312"
+    },
+    {
       "path": "src/Omen.Executors/Orchestration/ManualOptionsStore.cs",
       "sha256": "8205f189b01af391044e55e121b97870cca7aa05d0a3a21033e42526a8b9229c",
       "provenance": "pdb-checksum-exact"
     },
     {
       "path": "src/Omen.Executors/Orchestration/OptionsOrchestrator.cs",
-      "sha256": "7b2f59303c9a66302ad1d99641b5ef1f798d2d0fc29ef7b01c02aa010057288f",
-      "provenance": "reconstructed-from-installed-binary"
+      "sha256": "641dbcdec714b51a6db053dfe38b77d04340979edfa744c3eb3a198ccc21acd7",
+      "provenance": "reconstructed-from-installed-binary",
+      "pre_workflow_sha256": "7b2f59303c9a66302ad1d99641b5ef1f798d2d0fc29ef7b01c02aa010057288f",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.Executors/Orchestration/OptionsOrchestratorRequest.cs",
-      "sha256": "abd120feec7f852052231a8f0a8dcbfda540e106f1b51d731c72d49fec7e73b4",
-      "provenance": "reconstructed-from-installed-binary"
+      "sha256": "3184d74999eec867a8d7db1b2c2d7fe393b1c5f1b464ac757b4e32b507fd7c7f",
+      "provenance": "reconstructed-from-installed-binary",
+      "pre_workflow_sha256": "abd120feec7f852052231a8f0a8dcbfda540e106f1b51d731c72d49fec7e73b4",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.Executors/Orchestration/OrchestratorEvent.cs",
@@ -963,14 +1075,36 @@
     },
     {
       "path": "src/Omen.Executors/Orchestration/ProjectGenerationOrchestrator.cs",
-      "sha256": "e9378a9a9b8f60e7339865f1c3c43ca98bf69d27b3a65547502dd8aa96a097dd",
+      "sha256": "decdb35e2a2a68ae4e5ee34b3cc6d7e8dad7c62af5fefb30c973cd1d0199e446",
       "provenance": "recovered-source-with-follow-up-repairs",
-      "initial_restoration_sha256": "4f729ac59951d865107c1288f5a611478652a9c8531e5eb4aeeec28abb53465d"
+      "initial_restoration_sha256": "4f729ac59951d865107c1288f5a611478652a9c8531e5eb4aeeec28abb53465d",
+      "pre_workflow_sha256": "e9378a9a9b8f60e7339865f1c3c43ca98bf69d27b3a65547502dd8aa96a097dd",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.Executors/Orchestration/ProjectGenerationOrchestratorRequest.cs",
       "sha256": "949801c8851dcf3f1cbcb7c5666e001d0994896d85483c3f838f426a5bd8262e",
       "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/ProjectWorkflow.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "8faa2600adec147170eb00b5ec0cda38dbd0a2067b3a6f2e4d9b9837d9db77bf"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/TestOrchestrator.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "66903da86ca2d4ecaa205df4fc4c4ff7a1b534f13c0a94828740ff76d567cfa5"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/ToolchainProbe.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "2a8e204862936a62ed0ba3febaed1c77278a129a94388e6543b896b77b4097c6"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/WorkflowProcess.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "722f9e28927c76ddc6b13d6869276b12668dbe57d172aa77f052f89adc417016"
     },
     {
       "path": "src/Omen.Executors/ParallelExecutor.cs",
@@ -1109,15 +1243,19 @@
     },
     {
       "path": "src/Omen.GUI/Controls/MenuBar.xaml",
-      "sha256": "0ebd0dbed4f892ae8be6107ad9a553f9d45a6ca315a5d7c0b6c2eab262499d4e",
+      "sha256": "c9f960050f965efe66018ef9844756be320597f612c42f68bc667881cb75e014",
       "provenance": "recovered-source-with-follow-up-repairs",
-      "initial_restoration_sha256": "28fdbbde0f45ebe5bbbeec45b33dc0de726888843895f716f78ce14d21e830ec"
+      "initial_restoration_sha256": "28fdbbde0f45ebe5bbbeec45b33dc0de726888843895f716f78ce14d21e830ec",
+      "pre_workflow_sha256": "0ebd0dbed4f892ae8be6107ad9a553f9d45a6ca315a5d7c0b6c2eab262499d4e",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.GUI/Controls/MenuBar.xaml.cs",
-      "sha256": "22283d84a3f1d24e874d77f4f3af4375d534e63a0922062b38293a2580f1cf24",
+      "sha256": "15b3a267e3baedd96ca69616eb22c120df9533b83cba2bf3ce4a408df5a48abd",
       "provenance": "recovered-source-with-follow-up-repairs",
-      "initial_restoration_sha256": "92291b7cc7ba93c66e24753caf6cf70ac48be692642b86b1d6e5f211b1bf8183"
+      "initial_restoration_sha256": "92291b7cc7ba93c66e24753caf6cf70ac48be692642b86b1d6e5f211b1bf8183",
+      "pre_workflow_sha256": "22283d84a3f1d24e874d77f4f3af4375d534e63a0922062b38293a2580f1cf24",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.GUI/Controls/NumericTextBox.cs",
@@ -1342,9 +1480,11 @@
     },
     {
       "path": "src/Omen.GUI/ViewModels/MainWindowViewModel.cs",
-      "sha256": "0486ff2fdf744b12ec6778f4107922b215cadf39b8ad41e769101090f6f6bd6a",
+      "sha256": "2fd09798cdb279934bcf78bb5943cddf16026288e3ba93558321ea985ced4ade",
       "provenance": "recovered-source-with-follow-up-repairs",
-      "initial_restoration_sha256": "c27c05749aa8f289a42b916f31f0e5a402cdcfe0bf630404707e83cbec09e564"
+      "initial_restoration_sha256": "c27c05749aa8f289a42b916f31f0e5a402cdcfe0bf630404707e83cbec09e564",
+      "pre_workflow_sha256": "0486ff2fdf744b12ec6778f4107922b215cadf39b8ad41e769101090f6f6bd6a",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.GUI/ViewModels/MatrixPanelViewModel.cs",
@@ -1393,13 +1533,17 @@
     },
     {
       "path": "src/Omen.GUI/Views/MainWindow.xaml",
-      "sha256": "e14caf9ad92d5593859f31a68721df1acff5eb4962b79db52f04eb00527726d5",
-      "provenance": "archived-original-with-recovery-repairs"
+      "sha256": "f273702ec23b7ecee757b3245ce51b8df6f0a0438d16afdfbc832b532bd43c79",
+      "provenance": "archived-original-with-recovery-repairs",
+      "pre_workflow_sha256": "e14caf9ad92d5593859f31a68721df1acff5eb4962b79db52f04eb00527726d5",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.GUI/Views/MainWindow.xaml.cs",
-      "sha256": "2062deeea787bf1aeca26d289009fa11812022d955ee574486a8a2b4cba6e05b",
-      "provenance": "archived-original-with-recovery-repairs"
+      "sha256": "6e5afffd5be2aaa3758ad25572d536924cf3c9edda815698390c5fa34407a9e0",
+      "provenance": "archived-original-with-recovery-repairs",
+      "pre_workflow_sha256": "2062deeea787bf1aeca26d289009fa11812022d955ee574486a8a2b4cba6e05b",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.GUI/Views/MatrixToolWindow.xaml",
@@ -1583,8 +1727,10 @@
     },
     {
       "path": "src/Omen.Platforms/ToolchainBase.cs",
-      "sha256": "73aa2895b7a14a5fcec6f16a099be3a8ceddcd48c816888537a8a7889be1b734",
-      "provenance": "reconstructed-from-installed-binary"
+      "sha256": "730cde503459a6cb48bfa29256d363cf62f6c4464d88adadd09907644171b194",
+      "provenance": "reconstructed-from-installed-binary",
+      "pre_workflow_sha256": "73aa2895b7a14a5fcec6f16a099be3a8ceddcd48c816888537a8a7889be1b734",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "src/Omen.Platforms/Unix/ClangToolchain.cs",
@@ -1828,6 +1974,11 @@
       "provenance": "archived-original-with-recovery-repairs"
     },
     {
+      "path": "tests/Omen.Core.Tests/ConfigurationFileGeneratorTests.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "07313fb6847b7687a430dbc3247dba252f5dc602ea3071bf49b8aaec884e88b9"
+    },
+    {
       "path": "tests/Omen.Core.Tests/ContentFetcherTests.cs",
       "sha256": "b7bbaeb2969546f96185ce72309f1e7804dfacdbde6ef58dc0eb2c40232dc372",
       "provenance": "archived-original-with-recovery-repairs"
@@ -1916,6 +2067,11 @@
       "path": "tests/Omen.Core.Tests/ProjectOptionsTests.cs",
       "sha256": "d83fcccf7fa42841e19f5ffb96ae4340d03ee05ac9a589d445f8cbd133d80117",
       "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/ProjectPresetsTests.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "6480c7f9736da9220aa3b95db12fa6d0c2608dce34fdba33e48560913ee32e99"
     },
     {
       "path": "tests/Omen.Core.Tests/RebuildReasonTests.cs",
@@ -2030,9 +2186,11 @@
     },
     {
       "path": "tests/Omen.Executors.Tests/ProjectGenerationOrchestratorTests.cs",
-      "sha256": "14bb202efeae8d5340eaec4731f8321b95e777befef32579af8d826498928726",
+      "sha256": "41ba38d3e8349a56fa0b66101df0bbc81851009381b89b8208808d0e53f13442",
       "provenance": "recovered-source-with-follow-up-repairs",
-      "initial_restoration_sha256": "c0d2e5777223d5f9d9b9ff81bd8d1bdb126be4e0fe9fa4f58837c98e2c438c0f"
+      "initial_restoration_sha256": "c0d2e5777223d5f9d9b9ff81bd8d1bdb126be4e0fe9fa4f58837c98e2c438c0f",
+      "pre_workflow_sha256": "14bb202efeae8d5340eaec4731f8321b95e777befef32579af8d826498928726",
+      "follow_up": "native-workflows-and-platform-generation-fix-2026-10-21"
     },
     {
       "path": "tests/Omen.Executors.Tests/RunProcessCancelTests.cs",
@@ -2070,6 +2228,11 @@
       "provenance": "archived-original-with-recovery-repairs"
     },
     {
+      "path": "tests/Omen.Executors.Tests/WorkflowFeatureTests.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "05b8c3e75df657a9b1e6ca1f475dbb31ab9423e32b8e4acb3084fde4c6d6e9c2"
+    },
+    {
       "path": "tests/Omen.GUI.Tests/GlobalUsings.cs",
       "sha256": "a44d999200b6a1d4a57c3118fe2c4b72f95c22258417eb6cf4a762520ea91981",
       "provenance": "archived-original-with-recovery-repairs"
@@ -2098,21 +2261,77 @@
       "path": "tests/Omen.GUI.Tests/RuleEditorServiceTests.cs",
       "sha256": "879becb86f4433297bc0d2387ca039fe0105258ec114ea9d2ff1a14c62a37334",
       "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.GUI.Tests/WorkflowViewModelTests.cs",
+      "provenance": "native-workflow-addition-2026-10-21",
+      "sha256": "58b5e99c95f8d757fb73dae23ee5fae30beae8127a314b42038f63c005d215d5"
     }
   ],
   "initial_restoration_commit": "dad1e23f28e700f7ff8c9ce53d9467d4a911bb06",
   "initial_restoration_exact_document_count": 106,
   "follow_up_changed_files": [
+    ".gitignore",
+    "README.md",
     "RECOVERY.md",
+    "docs/cmake-feature-comparison.md",
+    "examples/WorkflowSample/.gitignore",
+    "examples/WorkflowSample/CMakeLists.txt",
+    "examples/WorkflowSample/OmenPresets.json",
+    "examples/WorkflowSample/README.md",
+    "examples/WorkflowSample/Source/Program/WorkflowSample.module.cs",
+    "examples/WorkflowSample/Source/Program/main.cpp",
+    "examples/WorkflowSample/Source/WorkflowSample.target.cs",
+    "examples/WorkflowSample/WorkflowSample.omenproject.cs",
+    "examples/WorkflowSample/config.h.in",
+    "recovery/FEATURE_AUDIT.md",
+    "schemas/omen-presets.schema.json",
+    "src/Omen.CLI/Commands/ConfigureCommand.cs",
     "src/Omen.CLI/Commands/GenerateCommand.cs",
+    "src/Omen.CLI/Commands/WorkflowCommands.cs",
+    "src/Omen.CLI/Program.cs",
+    "src/Omen.Core/Configuration/ProjectPresets.cs",
+    "src/Omen.Core/Generators/ConfigurationFileGenerator.cs",
     "src/Omen.Core/Generators/VisualStudioGenerator.cs",
+    "src/Omen.Core/Rules/ConfiguredFile.cs",
+    "src/Omen.Core/Rules/InstallRule.cs",
+    "src/Omen.Core/Rules/OmenProjectRules.cs",
+    "src/Omen.Core/Rules/TargetRules.cs",
+    "src/Omen.Core/Rules/TestDefinition.cs",
+    "src/Omen.Executors/Orchestration/BuildOrchestrator.cs",
+    "src/Omen.Executors/Orchestration/InstallOrchestrator.cs",
+    "src/Omen.Executors/Orchestration/OptionsOrchestrator.cs",
+    "src/Omen.Executors/Orchestration/OptionsOrchestratorRequest.cs",
     "src/Omen.Executors/Orchestration/ProjectGenerationOrchestrator.cs",
+    "src/Omen.Executors/Orchestration/ProjectWorkflow.cs",
+    "src/Omen.Executors/Orchestration/TestOrchestrator.cs",
+    "src/Omen.Executors/Orchestration/ToolchainProbe.cs",
+    "src/Omen.Executors/Orchestration/WorkflowProcess.cs",
     "src/Omen.GUI/Controls/MenuBar.xaml",
     "src/Omen.GUI/Controls/MenuBar.xaml.cs",
     "src/Omen.GUI/Themes/Menus.xaml",
     "src/Omen.GUI/ViewModels/MainWindowViewModel.cs",
+    "src/Omen.GUI/Views/MainWindow.xaml",
+    "src/Omen.GUI/Views/MainWindow.xaml.cs",
+    "src/Omen.Platforms/ToolchainBase.cs",
     "src/Omen.Platforms/Windows/WindowsSDK.cs",
+    "tests/Omen.Core.Tests/ConfigurationFileGeneratorTests.cs",
+    "tests/Omen.Core.Tests/ProjectPresetsTests.cs",
     "tests/Omen.Core.Tests/VisualStudioGeneratorSolutionTests.cs",
-    "tests/Omen.Executors.Tests/ProjectGenerationOrchestratorTests.cs"
-  ]
+    "tests/Omen.Executors.Tests/ProjectGenerationOrchestratorTests.cs",
+    "tests/Omen.Executors.Tests/WorkflowFeatureTests.cs",
+    "tests/Omen.GUI.Tests/WorkflowViewModelTests.cs"
+  ],
+  "workflow_validation": {
+    "tests": 575,
+    "core": 403,
+    "executors": 149,
+    "gui": 23,
+    "lunaengine_projects": 146,
+    "lunaengine_combinations": 75,
+    "source_exact_retained": 101,
+    "evidence": "F:/Omen-recovery-20261021",
+    "cmake_reference": "CMake 4.3.1 / Ninja / VS2026 MSVC",
+    "actual_wpf_generation": "passed"
+  }
 }

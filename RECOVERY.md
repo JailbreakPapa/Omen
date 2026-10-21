@@ -19,8 +19,8 @@ WPF desktop GUI, build-server tray, tests, examples, and recovered documentation
   inventory, checksums, public API, implementation fallback, and documentation comments.
   At the initial restoration, **106 of its 122 non-generated source documents matched their original
   SHA-256 checksums byte-for-byte**, including Luna's separate `UnityC` object naming fix.
-  The subsequent VS2026 SDK discovery repair intentionally changes one of those documents;
-  105 remain byte-identical in the current tree. Fifteen unavailable
+  Subsequent VS2026 and native workflow additions intentionally change five of those documents;
+  101 remain byte-identical in the current tree. Fifteen unavailable
   source documents were reconstructed from the installed assemblies, sometimes split into
   separate files per type. `Home.razor` uses recovered source whose checksum differs from
   the installed package. This is a tested restoration, not a claim of a byte-identical
@@ -37,8 +37,8 @@ test logs, package output, and recovery scripts are in `F:\Omen-recovery-2026102
 ## Validation
 
 - `dotnet build Omen.sln -c Release`: succeeds, including CLI, dashboard, GUI, and tray.
-- Core: 389 tests pass. Executors/build server: 127 tests pass. GUI models/services: 21 tests
-  pass, including a new nested-target/project-root regression. Total: **537 tests pass**.
+- Core: 403 tests pass. Executors/build server/workflows: 149 tests pass. GUI models/services:
+  23 tests pass. Total: **575 tests pass**.
 - A real isolated Windows/MSVC project compiles two C and two C++ sources into separate
   `SmokeModule.UnityC0.obj` and `SmokeModule.Unity0.obj`, links, and exits successfully.
   A second build skips all three actions without compiling or linking again.
@@ -56,7 +56,7 @@ AvalonDock is pinned to 4.72.1, whose .NET 5 Windows assembly supports this .NET
 
 The installed global `omen` tool was left intact. LunaEngine source and its ongoing build were
 not reset, cleaned, or replaced. The actual LunaEngine build was not rerun as part of this
-recovery because a separate LunaTests build was active; compiler/linker validation used an
+recovery because a separate Luna build was active; compiler/linker validation used an
 isolated project. No cause of the original deletion has been established.
 
 ## Later functionality repaired
@@ -75,7 +75,25 @@ parser verified that SLNX configuration mappings, build inclusion and folder pla
 the compatibility solution. VS2026 MSBuild accepted `ValidateSolutionConfiguration`. The native
 fixture compiled, linked, and exited 0 with the updated SDK discovery.
 
+A real LunaEngine generation exposed a cross-platform evaluation bug: the Windows Visual Studio
+exporter instantiated Linux matrix rows, triggering Linux Qt symlink and vcpkg filesystem probes
+on Windows. Visual Studio generation now selects Windows rows before evaluating rules, matching
+its Windows SDK/debugger/output model. LunaEngine's source rules were preserved. The real CLI
+successfully generated 146 projects across 75 combinations, and Microsoft's solution parser
+validated all project mappings against the compatibility solution. The actual WPF VS2026 menu
+also completed generation successfully (`omen-luna-generation.png` and `wpf-luna-generation.log`
+in the evidence directory). Regression tests cover
+VS2019, VS2022 and VS2026.
+
 See [recovery/FEATURE_AUDIT.md](recovery/FEATURE_AUDIT.md) for evidence and remaining limits.
+
+The user's subsequent CMake comparison request adds native presets/workflows, process-test execution
+and JUnit reports, component installation, reproducible ZIP packages, configured-file generation,
+compiler/link/run probes, target discovery and GUI workflow entry points. The implementation and
+remaining CMake gaps are documented in [docs/cmake-feature-comparison.md](docs/cmake-feature-comparison.md).
+The same C++ sample was built/tested/installed/packaged with Omen and a separate CMake/CTest/CPack
+reference. Package hashes, relocation, configuration files, CLI error paths and actual WPF menu
+execution were checked. Detailed logs are in `F:\Omen-recovery-20261021`.
 
 ## Build and retain
 
@@ -89,7 +107,9 @@ dotnet pack src/Omen.CLI -c Release -o artifacts
 
 Run the restored executable directly with
 `dotnet F:\Omen-githubpublic\src\Omen.CLI\bin\Release\net8.0\omen.dll <arguments>`.
-The desktop executable is `src\Omen.GUI\bin\Release\net8.0-windows\Omen.GUI.exe`.
+Current verified binaries are staged in `artifacts\restored\CLI` and `artifacts\restored\GUI`.
+Launch `artifacts\restored\GUI\Omen.GUI.exe` for the updated desktop; an already-running older
+GUI keeps its loaded assemblies until closed. The installed global tool remains unchanged.
 
 The recovered tree is committed locally and independently backed up as a Git bundle and
 source archive under `E:\Backups\Omen\2026-10-21`. It has not been pushed to GitHub.

@@ -117,7 +117,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private readonly GuiSettings _settings = GuiSettings.Load();
 
-    public MainWindowViewModel()
+    public MainWindowViewModel() : this(restoreLastProject: true) { }
+
+    public MainWindowViewModel(bool restoreLastProject)
     {
         foreach (var (platform, _, _) in PlatformFactory.GetAvailablePlatforms())
         {
@@ -131,7 +133,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         RuleEditor.Report = AppendLine;
         RuleEditor.DiagnosticsChanged = OnRuleDocumentDiagnosticsChanged;
 
-        if (!string.IsNullOrEmpty(_settings.LastProjectPath) && Directory.Exists(_settings.LastProjectPath))
+        if (restoreLastProject && !string.IsNullOrEmpty(_settings.LastProjectPath) && Directory.Exists(_settings.LastProjectPath))
         {
             try
             {
@@ -420,6 +422,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             ("Rebuild", "Clean, then build", () => _ = RebuildAsync()),
             ("Clean", "Delete build output", () => _ = CleanAsync()),
             ("Cancel build", "Stop the running build", CancelBuild),
+            ("Run tests", "Run registered project tests", () => _ = RunTestsAsync()),
+            ("Check C++ toolchain", "Compile, link and run a compiler check", () => _ = CheckToolchainAsync()),
             ("Settings", "Open the settings dialog", OpenSettings),
             ("Close project", "Close the open project", CloseProject),
             ("Generate Visual Studio 2022", "Generate project files", () => _ = GenerateProjectFilesAsync(IdeKind.VS2022)),
@@ -645,6 +649,109 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     public void CancelBuild() => _buildCts?.Cancel();
+
+    public Task RunTestsAsync() => RunProjectOperationAsync("Tests", async (workflow, events, ct) =>
+    {
+        var result = await new TestOrchestrator().RunAsync(new()
+        {
+            ProjectRoot = workflow.Root, Tests = workflow.Tests(), Jobs = 1,
+            JunitPath = Path.Combine(workflow.Root, "Intermediate", "TestResults", "results.xml")
+        }, events, ct);
+        foreach (var test in result.Results)
+        {
+            events.Report(new($"{test.Status}: {test.Name} ({test.Seconds:F2}s) {test.Reason}",
+                test.Status == "Failed" ? OrchestratorEventLevel.Error : OrchestratorEventLevel.Info));
+            if (test.Status == "Failed") events.Report(new(test.Output + test.Error, OrchestratorEventLevel.Error));
+        }
+        events.Report(new($"{result.Results.Count(t => t.Status == "Passed")} passed, {result.Results.Count(t => t.Status == "Failed")} failed, {result.Results.Count(t => t.Status == "Skipped")} skipped", OrchestratorEventLevel.Info));
+        if (result.Results.Count == 0) events.Report(new("No tests are registered for this configuration.", OrchestratorEventLevel.Warning));
+        return result.Success;
+    });
+
+    public Task InstallProjectAsync(string destination, bool package) => RunProjectOperationAsync(package ? "Package" : "Install", async (workflow, events, ct) =>
+    {
+        var installer = new InstallOrchestrator();
+        var plan = installer.Plan(workflow.Root, workflow.InstallRules());
+        if (plan.Count == 0) throw new InvalidOperationException("No installation rules produced files. Declare InstallRules on the project or target.");
+        foreach (var entry in plan) events.Report(new($"{entry.Component}: {entry.Destination}", OrchestratorEventLevel.Info));
+        if (package) await installer.PackageAsync(plan, destination, workflow.Name, workflow.Version, ct);
+        else await installer.InstallAsync(plan, destination, workflow.Name, workflow.Version, ct);
+        events.Report(new($"{plan.Count} file(s) {(package ? "packaged" : "installed")} in {destination}", OrchestratorEventLevel.Success));
+        return true;
+    });
+
+    public Task CheckToolchainAsync() => RunProjectOperationAsync("Toolchain check", async (workflow, events, ct) =>
+    {
+        var context = workflow.BaseContext;
+        var toolchain = PlatformFactory.CreateToolchain(context.Platform, context.Architecture)
+            ?? throw new InvalidOperationException($"No toolchain for {context.Platform}/{context.Architecture}.");
+        var result = await new ToolchainProbe().RunAsync(new()
+        {
+            Context = context, Source = "#include <vector>\nint main() { return std::vector<int>{1}.size() == 1 ? 0 : 1; }\n",
+            Link = true, Run = true
+        }, toolchain, ct);
+        events.Report(new(result.Output, result.Success ? OrchestratorEventLevel.Info : OrchestratorEventLevel.Error));
+        return result.Success;
+    });
+
+    private async Task RunProjectOperationAsync(string operation,
+        Func<ProjectWorkflow, IProgress<OrchestratorEvent>, CancellationToken, Task<bool>> action)
+    {
+        if (IsBuilding) return;
+        var projectRoot = ProjectPath;
+        if (string.IsNullOrEmpty(projectRoot))
+        {
+            AppendLine("Open a project first.", OrchestratorEventLevel.Warning);
+            return;
+        }
+        var request = new ProjectWorkflowRequest
+        {
+            ProjectRoot = projectRoot, Platform = SelectedPlatform, Configuration = SelectedConfiguration
+        };
+        if (MatrixPanel.IsActive)
+        {
+            var (platform, architecture, configuration, dimensions) = MatrixPanel.BuildFilter();
+            if (platform == null || architecture == null || configuration == null || dimensions?.Any(d => d.Value.Count != 1) == true)
+            {
+                AppendLine("Choose one platform, architecture, configuration and value for each custom dimension in Build Matrix.", OrchestratorEventLevel.Warning);
+                return;
+            }
+            request = new()
+            {
+                ProjectRoot = projectRoot, Platform = platform, Architecture = architecture, Configuration = configuration.Value,
+                Dimensions = dimensions?.ToDictionary(d => d.Key.Name, d => d.Value[0].ToString()) ?? new Dictionary<string, string>()
+            };
+        }
+        OutputLines.Clear();
+        NotifyOutputLinesChanged();
+        IsBuilding = true;
+        IsCancellable = true;
+        CurrentBuildState = BuildState.Building;
+        StatusText = operation + " running...";
+        using var cancel = new CancellationTokenSource();
+        _buildCts = cancel;
+        var events = new Progress<OrchestratorEvent>(e => AppendLine(e.Message, e.Level));
+        try
+        {
+            bool success = await Task.Run(async () =>
+                await action(await ProjectWorkflow.LoadAsync(request, cancel.Token), events, cancel.Token));
+            CurrentBuildState = success ? BuildState.Success : BuildState.Failed;
+            StatusText = operation + (success ? " succeeded" : " failed");
+        }
+        catch (OperationCanceledException)
+        {
+            CurrentBuildState = BuildState.Failed;
+            StatusText = operation + " cancelled";
+            AppendLine(StatusText, OrchestratorEventLevel.Warning);
+        }
+        catch (Exception ex)
+        {
+            CurrentBuildState = BuildState.Failed;
+            StatusText = operation + " failed";
+            AppendLine(ex.Message, OrchestratorEventLevel.Error);
+        }
+        finally { IsBuilding = false; IsCancellable = false; _buildCts = null; }
+    }
 
     public async Task GenerateProjectFilesAsync(IdeKind ide)
     {

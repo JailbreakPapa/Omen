@@ -124,10 +124,18 @@ public abstract class ToolchainBase : IToolchain
 			}
 		};
 		Stopwatch sw = Stopwatch.StartNew();
+		ct.ThrowIfCancellationRequested();
 		process.Start();
 		process.BeginOutputReadLine();
 		process.BeginErrorReadLine();
-		await process.WaitForExitAsync(ct);
+		try { await process.WaitForExitAsync(ct); }
+		catch (OperationCanceledException)
+		{
+			try { process.Kill(entireProcessTree: true); }
+			catch (InvalidOperationException) { }
+			await process.WaitForExitAsync(CancellationToken.None);
+			throw;
+		}
 		sw.Stop();
 		return new ProcessResult
 		{

@@ -56,6 +56,8 @@
                               IsEnabled="{Binding IsBuilding, Converter={StaticResource Conv.InverseBool}}" />
                     <MenuItem Header="Clean" Click="OnCleanClick"
                               IsEnabled="{Binding IsBuilding, Converter={StaticResource Conv.InverseBool}}" />
+                    <MenuItem Header="Run Tests" Click="OnRunTestsClick"
+                              IsEnabled="{Binding IsBuilding, Converter={StaticResource Conv.InverseBool}}" />
                     <Separator />
                     <MenuItem Header="Cancel" Click="OnCancelClick"
                               IsEnabled="{Binding IsCancellable}" />
@@ -68,8 +70,16 @@
                     <MenuItem Header="Generate Visual Studio Code" Click="OnGenerateVsCodeClick" />
                     <MenuItem Header="Generate Rider" Click="OnGenerateRiderClick" />
                     <MenuItem Header="Generate CMake" Click="OnGenerateCMakeClick" />
+                    <Separator />
+                    <MenuItem Header="Install Project..." Click="OnInstallProjectClick"
+                              IsEnabled="{Binding IsBuilding, Converter={StaticResource Conv.InverseBool}}" />
+                    <MenuItem Header="Package Project (.zip)..." Click="OnPackageProjectClick"
+                              IsEnabled="{Binding IsBuilding, Converter={StaticResource Conv.InverseBool}}" />
                 </MenuItem>
                 <MenuItem Header="_Tools">
+                    <MenuItem Header="Check C++ Toolchain" Click="OnCheckToolchainClick"
+                              IsEnabled="{Binding IsBuilding, Converter={StaticResource Conv.InverseBool}}" />
+                    <Separator />
                     <MenuItem Header="OmenNet Coordinator..." Click="OnOmenNetCoordinatorClick" />
                     <MenuItem Header="OmenNet Agent..." Click="OnOmenNetAgentClick" />
                     <Separator />

@@ -24,6 +24,14 @@ namespace Omen.Core.Rules;
 /// </summary>
 public abstract class OmenProjectRules
 {
+    /// <summary>Project-wide process tests, independent of a particular target.</summary>
+    public List<TestDefinition> Tests { get; } = [];
+
+    /// <summary>Project-wide files and headers installed by <c>omen install</c>.</summary>
+    public List<InstallRule> InstallRules { get; } = [];
+
+    public List<ConfiguredFile> ConfigureFiles { get; } = [];
+
     /// <summary>
     /// Name of the project (derived from the class name by convention, e.g. "FooProject" ->
     /// "Foo" - mirrors TargetRules/PluginRules's own Name convention).
