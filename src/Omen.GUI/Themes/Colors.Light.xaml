@@ -1,0 +1,42 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- DERIVED light palette. Not part of the design spec - the design defines dark only.
+         Surface ramp inverted, text ramp inverted, accent/semantic hues darkened just enough
+         to hold contrast on light ground. Flagged for design review. -->
+    <Color x:Key="Color.Bg">#FFFFFFFF</Color>
+    <Color x:Key="Color.BarRaised">#FFF0F1F3</Color>
+    <Color x:Key="Color.Panel">#FFF7F8F9</Color>
+    <Color x:Key="Color.Border">#FFD8DADE</Color>
+    <Color x:Key="Color.InputBg">#FFFFFFFF</Color>
+    <Color x:Key="Color.PopupBg">#FFFFFFFF</Color>
+    <Color x:Key="Color.PopupBorder">#FFC5C8CE</Color>
+
+    <Color x:Key="Color.TextPrimary">#FF1E1F22</Color>
+    <Color x:Key="Color.TextSecondary">#FF3B3D42</Color>
+    <Color x:Key="Color.TextMuted">#FF6E7075</Color>
+    <Color x:Key="Color.TextDim">#FF8A8D94</Color>
+    <Color x:Key="Color.TextDimmer">#FFA0A3A9</Color>
+    <Color x:Key="Color.TextMono">#FF5A5C62</Color>
+
+    <Color x:Key="Color.Accent">#FF2A6FD6</Color>
+    <Color x:Key="Color.AccentIcon">#FF1F5DB8</Color>
+    <Color x:Key="Color.PrimaryBg">#FF3D6FB8</Color>
+    <Color x:Key="Color.PrimaryHover">#FF34619F</Color>
+    <Color x:Key="Color.SelectedBg">#FFD6E4F7</Color>
+    <Color x:Key="Color.Hover">#FFE8EAED</Color>
+    <Color x:Key="Color.HoverAlt">#FFDDE0E4</Color>
+    <Color x:Key="Color.MenuItemHover">#302A6FD6</Color>
+
+    <Color x:Key="Color.Success">#FF2E7D3A</Color>
+    <Color x:Key="Color.Warning">#FF9A6B0F</Color>
+    <Color x:Key="Color.Error">#FFC0392F</Color>
+
+    <Color x:Key="Color.RowDivider">#FFE8EAED</Color>
+    <Color x:Key="Color.Separator">#FFC5C8CE</Color>
+
+    <!-- Modal backdrop scrim: rgba(0,0,0,.55) -> WPF #AARRGGBB. Same value as dark - a dark
+         scrim reads correctly over either palette. -->
+    <Color x:Key="Color.ModalScrim">#8C000000</Color>
+
+</ResourceDictionary>

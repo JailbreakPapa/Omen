@@ -14,6 +14,7 @@ public class BuildEnumsTests
     [InlineData(TargetPlatform.FreeBSD)]
     [InlineData(TargetPlatform.Android)]
     [InlineData(TargetPlatform.iOS)]
+    [InlineData(TargetPlatform.Mac)]
     public void TargetPlatform_HasExpectedValues(TargetPlatform platform)
     {
         // Assert

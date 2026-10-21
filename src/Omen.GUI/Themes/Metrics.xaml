@@ -1,0 +1,12 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- Standard density. Compact/Roomy variants live in Metrics.Compact.xaml / Metrics.Roomy.xaml. -->
+    <Thickness x:Key="Metric.RowPadding">10,6,10,6</Thickness>
+    <sys:Double x:Key="Metric.PanelHeaderHeight">28</sys:Double>
+    <sys:Double x:Key="Metric.ToolbarButtonHeight">26</sys:Double>
+    <sys:Double x:Key="Metric.FontSizeBody">12.5</sys:Double>
+    <sys:Double x:Key="Metric.FontSizeMono">12</sys:Double>
+
+</ResourceDictionary>

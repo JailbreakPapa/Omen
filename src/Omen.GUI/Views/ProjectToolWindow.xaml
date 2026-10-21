@@ -1,0 +1,97 @@
+<UserControl x:Class="Omen.GUI.Views.ProjectToolWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:Omen.GUI.Models"
+             xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
+             Background="{StaticResource Brush.Panel}">
+    <UserControl.Resources>
+
+        <!-- Row icon: folder or file glyph, 13px, coloured by the node's role. Tag=="Root" is
+             set only by Style.TreeViewItem.ProjectRoot below (the top-level TreeView.ItemContainerStyle),
+             so that trigger only ever fires for the single root node, never nested children which
+             use Style.TreeViewItem.ProjectNode instead. Rendered from the vendored Font Awesome
+             Pro .svg files via SharpVectors' SvgIcon, same as MenuBar/Toolbar/Docking. -->
+        <Style x:Key="Style.Icon.ProjectNode" TargetType="svgc:SvgIcon">
+            <Setter Property="Width" Value="13" />
+            <Setter Property="Height" Value="13" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="UriSource" Value="pack://application:,,,/Assets/Icons/folder.svg" />
+            <Setter Property="Fill" Value="{StaticResource Brush.TextMono}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsDirectory}" Value="False">
+                    <Setter Property="UriSource" Value="pack://application:,,,/Assets/Icons/file.svg" />
+                    <Setter Property="Fill" Value="{StaticResource Brush.TextDim}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Name}" Value="Binaries">
+                    <Setter Property="Fill" Value="{StaticResource Brush.TextDim}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Name}" Value="Intermediate">
+                    <Setter Property="Fill" Value="{StaticResource Brush.TextDim}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TreeViewItem}, Path=Tag}" Value="Root">
+                    <Setter Property="Fill" Value="{StaticResource Brush.Accent}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Row label. Property triggers keyed on Tag read the ancestor TreeViewItem's Tag, which
+             flows from RelativeSource below - see the Root distinction note on the icon style. -->
+        <Style x:Key="Style.Text.ProjectNode" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Text" Value="{Binding Name}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsDirectory}" Value="False">
+                    <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+                    <Setter Property="FontSize" Value="11.5" />
+                    <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Name}" Value="Binaries">
+                    <Setter Property="Foreground" Value="{StaticResource Brush.TextDim}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Name}" Value="Intermediate">
+                    <Setter Property="Foreground" Value="{StaticResource Brush.TextDim}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TreeViewItem}, Path=Tag}" Value="Root">
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                    <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Icon + text both read Tag off the ancestor TreeViewItem to pick up the Root look. -->
+        <Style x:Key="Style.TreeViewItem.ProjectNodeBase" TargetType="TreeViewItem"
+               BasedOn="{StaticResource {x:Type TreeViewItem}}">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            <Setter Property="Padding" Value="2,3" />
+        </Style>
+
+        <!-- Used only for the TreeView's own top-level ItemContainerStyle, i.e. the project root(s). -->
+        <Style x:Key="Style.TreeViewItem.ProjectRoot" TargetType="TreeViewItem"
+               BasedOn="{StaticResource Style.TreeViewItem.ProjectNodeBase}">
+            <Setter Property="Tag" Value="Root" />
+        </Style>
+
+    </UserControl.Resources>
+
+    <TreeView ItemsSource="{Binding ProjectTreeRoots}" Margin="4"
+              ItemContainerStyle="{StaticResource Style.TreeViewItem.ProjectRoot}">
+        <TreeView.ItemTemplate>
+            <!-- HierarchicalDataTemplate.ItemContainerStyle applies to every level below the root
+                 (it is reused recursively since children are the same ProjectTreeNode type), which is
+                 exactly what gives the root its distinct look: only the TreeView's own
+                 ItemContainerStyle above sets Tag="Root". -->
+            <HierarchicalDataTemplate DataType="{x:Type models:ProjectTreeNode}"
+                                      ItemsSource="{Binding Children}"
+                                      ItemContainerStyle="{StaticResource Style.TreeViewItem.ProjectNodeBase}">
+                <StackPanel Orientation="Horizontal">
+                    <svgc:SvgIcon Style="{StaticResource Style.Icon.ProjectNode}" />
+                    <TextBlock Style="{StaticResource Style.Text.ProjectNode}" />
+                </StackPanel>
+            </HierarchicalDataTemplate>
+        </TreeView.ItemTemplate>
+    </TreeView>
+</UserControl>
+

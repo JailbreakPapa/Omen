@@ -1,0 +1,126 @@
+<UserControl x:Class="Omen.GUI.Views.SettingsDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Omen.GUI.Controls"
+             xmlns:settings="clr-namespace:Omen.GUI.Views.Settings"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+             Focusable="False">
+
+    <UserControl.Resources>
+        <!-- Sidebar category rows: fixed 5-item list, so SelectedItem is just the string itself
+             (WPF auto-wraps each sys:String child into a ListBoxItem). -->
+        <Style x:Key="Style.SettingsCategoryItem" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bg" Background="Transparent"
+                                BorderBrush="Transparent" BorderThickness="2,0,0,0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Hover}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.SelectedBg}" />
+                                <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <!-- Overlay across the whole window; only visible while a settings session is open. -->
+    <Grid Visibility="{Binding IsSettingsOpen, Converter={StaticResource Conv.BoolToVisibility}}">
+
+        <!-- Backdrop: clicking it closes the dialog without saving. -->
+        <Border Background="{StaticResource Brush.ModalScrim}" MouseDown="OnBackdropMouseDown" />
+
+        <!-- Dialog -->
+        <Border Width="860" Height="560" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{StaticResource Brush.Panel}"
+                BorderBrush="{StaticResource Brush.PopupBorder}" BorderThickness="1"
+                CornerRadius="8"
+                MouseDown="OnDialogMouseDown">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="60" ShadowDepth="20" Opacity="0.6" Color="Black" />
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="40" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="48" />
+                </Grid.RowDefinitions>
+
+                <!-- Header -->
+                <Grid Grid.Row="0">
+                    <TextBlock Text="Settings" FontSize="13" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="16,0,0,0" />
+                    <Button Content="&#x2715;" Style="{StaticResource Style.Button.Icon}"
+                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0"
+                            Click="OnCloseClick" />
+                </Grid>
+
+                <!-- Body: sidebar + content -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="210" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Sidebar -->
+                    <DockPanel Grid.Column="0" LastChildFill="True"
+                               Background="{StaticResource Brush.BarRaised}">
+                        <!-- Presentational only - nothing filters on this yet. -->
+                        <controls:PlaceholderTextBox DockPanel.Dock="Top" Placeholder="Find setting..."
+                                                      Margin="10" Height="24" />
+
+                        <ListBox BorderThickness="0" Background="Transparent"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ItemContainerStyle="{StaticResource Style.SettingsCategoryItem}"
+                                 SelectedItem="{Binding Settings.SelectedCategory, Mode=TwoWay}">
+                            <sys:String>General</sys:String>
+                            <sys:String>Build</sys:String>
+                            <sys:String>Toolchains</sys:String>
+                            <sys:String>Distributed builds</sys:String>
+                            <sys:String>Appearance</sys:String>
+                        </ListBox>
+                    </DockPanel>
+
+                    <!-- Content: the five pages, one visible at a time. Tasks 14-17 fill these. -->
+                    <Grid Grid.Column="1" Margin="16" DataContext="{Binding Settings}">
+                        <settings:SettingsGeneralPage
+                            Visibility="{Binding SelectedCategory, Converter={StaticResource Conv.EqualsToVisibility}, ConverterParameter=General}" />
+                        <settings:SettingsBuildPage
+                            Visibility="{Binding SelectedCategory, Converter={StaticResource Conv.EqualsToVisibility}, ConverterParameter=Build}" />
+                        <settings:SettingsToolchainsPage
+                            Visibility="{Binding SelectedCategory, Converter={StaticResource Conv.EqualsToVisibility}, ConverterParameter=Toolchains}" />
+                        <settings:SettingsDistributedPage
+                            Visibility="{Binding SelectedCategory, Converter={StaticResource Conv.EqualsToVisibility}, ConverterParameter=Distributed builds}" />
+                        <settings:SettingsAppearancePage
+                            Visibility="{Binding SelectedCategory, Converter={StaticResource Conv.EqualsToVisibility}, ConverterParameter=Appearance}" />
+                    </Grid>
+                </Grid>
+
+                <!-- Footer -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                            VerticalAlignment="Center" Margin="0,0,16,0">
+                    <Button Content="Cancel" Height="28" Padding="14,0" Margin="0,0,8,0"
+                            Background="Transparent" BorderBrush="{StaticResource Brush.Border}"
+                            BorderThickness="1" Click="OnCancelClick" />
+                    <Button Content="OK" Height="28" Padding="14,0"
+                            Style="{StaticResource Style.Button.ToolbarPrimary}"
+                            Click="OnOkClick" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

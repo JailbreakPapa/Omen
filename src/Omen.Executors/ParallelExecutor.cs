@@ -14,14 +14,16 @@ public sealed class ParallelExecutor : IExecutor
 {
     private readonly int _maxParallelism;
     private readonly IActionCache? _actionCache;
+    private readonly Func<BuildAction, bool>? _isUpToDate;
     
     public string Name => "Parallel Executor";
     public int MaxParallelism => _maxParallelism;
     
-    public ParallelExecutor(int? maxParallelism = null, IActionCache? actionCache = null)
+    public ParallelExecutor(int? maxParallelism = null, IActionCache? actionCache = null, Func<BuildAction, bool>? isUpToDate = null)
     {
         _maxParallelism = maxParallelism ?? Environment.ProcessorCount;
         _actionCache = actionCache;
+        _isUpToDate = isUpToDate;
     }
     
     public async Task<BuildResult> ExecuteAsync(
@@ -68,22 +70,68 @@ public sealed class ParallelExecutor : IExecutor
             }
             
             if (readyActions.Count == 0)
+            {
+                // Nothing runnable and nothing running, with work still pending: the graph is
+                // stalled, not finished. Breaking out quietly reported SUCCESS for a build that
+                // executed nothing - 877 actions, 0 compiled, no artifacts, exit 0 - which is
+                // worse than any failure, because it looks like it worked.
+                var stalled = graph.Actions.Where(a => a.Status == ActionStatus.Pending).ToList();
+                if (stalled.Count > 0)
+                {
+                    var example = stalled[0];
+                    var blocking = example.Dependencies
+                        .Where(d => d.Status is not (ActionStatus.Completed or ActionStatus.Cached or ActionStatus.Skipped))
+                        .Select(d => $"{d.Id} [{d.Status}]")
+                        .Take(3)
+                        .ToList();
+
+                    throw new InvalidOperationException(
+                        $"Build stalled: {stalled.Count} of {totalActions} action(s) could never run because " +
+                        $"their dependencies never completed. For example '{example.Id}' " +
+                        $"({example.Description ?? example.Type.ToString()}) is waiting on " +
+                        (blocking.Count > 0 ? string.Join(", ", blocking) : "a dependency not present in the graph") +
+                        ".");
+                }
+
                 break;
+            }
             
             foreach (var action in readyActions)
             {
                 if (ct.IsCancellationRequested)
                     break;
                 
+                // The orchestrator's pre-pass cannot judge an action while a dependency is still
+                // pending (that dependency's outputs weren't final), so one stale action near the
+                // roots left every dependent unjudged and dragged it through the cache. Judge it
+                // here, where its dependencies are done.
+                if (_isUpToDate?.Invoke(action) == true)
+                {
+                    action.Status = ActionStatus.Skipped;
+                    skippedCount++;
+                    continue;
+                }
+
                 await semaphore.WaitAsync(ct);
-                
+
                 action.Status = ActionStatus.Executing;
-                
+
+                // A start report (LastResult null) is what lets a watcher show the actions running
+                // now; without it a link parked on a locked DLL is invisible until it fails.
+                progress?.Report(new BuildProgress
+                {
+                    CompletedActions = completedCount + skippedCount,
+                    TotalActions = totalActions,
+                    ActiveActions = _maxParallelism - semaphore.CurrentCount,
+                    CurrentAction = action,
+                    LastResult = null
+                });
+
                 var task = Task.Run(async () =>
                 {
                     try
                     {
-                        var result = await ExecuteActionAsync(action, ct);
+                        var result = await RunProcessAsync(action, _actionCache, ct);
                         
                         lock (actionLock)
                         {
@@ -115,6 +163,30 @@ public sealed class ParallelExecutor : IExecutor
                             CurrentAction = action,
                             LastResult = result
                         });
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        // Without this the exception escaped into the Task, which nothing ever
+                        // observed: RemoveAll(t => t.IsCompleted) treats Faulted as completed, so
+                        // the action stayed Executing forever, every dependent stalled, and the
+                        // reason was lost entirely. A throwing action is a failed action.
+                        lock (actionLock)
+                        {
+                            results.Add(new ActionResult
+                            {
+                                Action = action,
+                                Success = false,
+                                Duration = TimeSpan.Zero,
+                                StandardError = exception.ToString(),
+                                ExitCode = -1
+                            });
+
+                            action.Status = ActionStatus.Failed;
+                            failedActions.Add(action.Id);
+                            MarkDependentsFailed(action, failedActions);
+
+                            Interlocked.Increment(ref completedCount);
+                        }
                     }
                     finally
                     {
@@ -151,14 +223,15 @@ public sealed class ParallelExecutor : IExecutor
         };
     }
     
-    private async Task<ActionResult> ExecuteActionAsync(BuildAction action, CancellationToken ct)
+    /// <summary>Runs one action's command line (or restores it from <paramref name="cache"/>); shared with the build server's scheduler.</summary>
+    public static async Task<ActionResult> RunProcessAsync(BuildAction action, IActionCache? cache, CancellationToken ct)
     {
         var stopwatch = Stopwatch.StartNew();
         
         // Check cache
-        if (_actionCache != null && action.ActionDigest.HasValue)
+        if (cache != null && action.ActionDigest.HasValue)
         {
-            var cached = await _actionCache.GetAsync(action.ActionDigest.Value, ct);
+            var cached = await cache.GetAsync(action.ActionDigest.Value, ct);
             if (cached != null)
             {
                 // Restore outputs from cache
@@ -211,18 +284,45 @@ public sealed class ParallelExecutor : IExecutor
         process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
         
         process.Start();
+        using var job = ProcessJob.For(process);
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
-        
-        await process.WaitForExitAsync(ct);
+
+        try
+        {
+            await process.WaitForExitAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelling the wait is not cancelling the work: the compiler (a grandchild, under cmd.exe) would keep
+            // writing its outputs, and under the build server nothing else ever stops it. Kill everything the action
+            // started and wait for it, so a cancelled action's slot is only free once nothing is writing its outputs.
+            if (job != null)
+            {
+                job.KillAll();
+            }
+            else
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Already exited.
+                }
+            }
+            await process.WaitForExitAsync(CancellationToken.None);
+            throw;
+        }
         stopwatch.Stop();
         
         var success = process.ExitCode == 0;
         
         // Cache successful results
-        if (success && _actionCache != null && action.ActionDigest.HasValue)
+        if (success && cache != null && action.ActionDigest.HasValue)
         {
-            await _actionCache.StoreAsync(action.ActionDigest.Value, new CachedActionResult
+            await cache.StoreAsync(action.ActionDigest.Value, new CachedActionResult
             {
                 Success = true,
                 OutputDigests = [],

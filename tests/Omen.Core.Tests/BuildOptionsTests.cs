@@ -99,4 +99,68 @@ public class BuildOptionsTests
         context.DeclaredOptions.Should().ContainSingle();
         context.DeclaredOptions.Single().Description.Should().Be("First description");
     }
+
+    [Fact]
+    public void Declare_Bool_DefaultsToNotAdvanced()
+    {
+        var context = CreateContext();
+
+        BuildOptions.Declare(context, "ENABLE_FEATURE_X", "Enable feature X", false);
+
+        context.DeclaredOptions.Single().IsAdvanced.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Declare_Bool_WithAdvancedTrue_RecordsAdvanced()
+    {
+        var context = CreateContext();
+
+        BuildOptions.Declare(context, "INTERNAL_DEBUG_FLAG", "Internal debug flag", false, advanced: true);
+
+        context.DeclaredOptions.Single().IsAdvanced.Should().BeTrue();
+    }
+
+    [Fact]
+    public void DeclareEnum_NoCachedValue_ReturnsDefaultAndRecordsAllowedValues()
+    {
+        var context = CreateContext();
+
+        var result = BuildOptions.DeclareEnum(context, "LOG_LEVEL", "Logging verbosity", ["Quiet", "Normal", "Verbose"], "Normal");
+
+        result.Should().Be("Normal");
+        var declared = context.DeclaredOptions.Single();
+        declared.Type.Should().Be(BuildOptionType.Enum);
+        declared.AllowedValues.Should().BeEquivalentTo(["Quiet", "Normal", "Verbose"]);
+    }
+
+    [Fact]
+    public void DeclareEnum_WithCachedValue_ReturnsCachedOverride()
+    {
+        var context = CreateContext(new Dictionary<string, string> { ["LOG_LEVEL"] = "Verbose" });
+
+        var result = BuildOptions.DeclareEnum(context, "LOG_LEVEL", "Logging verbosity", ["Quiet", "Normal", "Verbose"], "Normal");
+
+        result.Should().Be("Verbose");
+    }
+
+    [Fact]
+    public void DeclareEnum_CachedValueNotInAllowedValues_FallsBackToDefault()
+    {
+        var context = CreateContext(new Dictionary<string, string> { ["LOG_LEVEL"] = "Stale" });
+
+        var result = BuildOptions.DeclareEnum(context, "LOG_LEVEL", "Logging verbosity", ["Quiet", "Normal", "Verbose"], "Normal");
+
+        result.Should().Be("Normal");
+    }
+
+    [Fact]
+    public void Declare_Bool_AllowedValuesIsNull()
+    {
+        var context = CreateContext();
+
+        BuildOptions.Declare(context, "ENABLE_FEATURE_X", "Enable feature X", false);
+
+        context.DeclaredOptions.Single().AllowedValues.Should().BeNull();
+    }
 }
+

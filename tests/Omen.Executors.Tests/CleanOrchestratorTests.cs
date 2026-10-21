@@ -29,7 +29,7 @@ public class CleanOrchestratorTests : IDisposable
 
         var result = await orchestrator.CleanAsync(
             new CleanOrchestratorRequest { ProjectRoot = _projectRoot },
-            new Progress<OrchestratorEvent>(events.Add));
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add));
 
         result.DirectoriesCleaned.Should().Be(0);
         result.DirectoriesFailed.Should().Be(0);
@@ -50,7 +50,7 @@ public class CleanOrchestratorTests : IDisposable
 
         var result = await orchestrator.CleanAsync(
             new CleanOrchestratorRequest { ProjectRoot = _projectRoot },
-            new Progress<OrchestratorEvent>(events.Add));
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add));
 
         result.DirectoriesCleaned.Should().Be(2);
         Directory.Exists(intermediate).Should().BeFalse();
@@ -69,7 +69,7 @@ public class CleanOrchestratorTests : IDisposable
 
         var result = await orchestrator.CleanAsync(
             new CleanOrchestratorRequest { ProjectRoot = _projectRoot, Platform = "Windows", Configuration = "Development" },
-            new Progress<OrchestratorEvent>(events.Add));
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add));
 
         result.DirectoriesCleaned.Should().Be(1);
         Directory.Exists(Path.Combine(intermediate, "Windows_Development")).Should().BeFalse();

@@ -1,7 +1,9 @@
-// Omen Build System
+﻿// Omen Build System
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
 using System.CommandLine;
+using Omen.Core.Diagnostics;
+using Omen.Core.Rules;
 using Omen.Executors.Orchestration;
 using Spectre.Console;
 
@@ -29,11 +31,19 @@ public static class CleanCommand
         var allOption = new Option<bool>(
             "--all",
             "Clean all platforms and configurations");
-        
+
+        // Separate from --all (which deletes Intermediate wholesale, rule cache included):
+        // recompiling rules is cheap next to recompiling C++, so "my rule edits aren't taking
+        // effect" wants this, not a full clean.
+        var rulesOption = new Option<bool>(
+            "--rules",
+            "Clear the compiled rule cache (Intermediate/RuleCache). On its own, leaves build outputs alone.");
+
         command.AddArgument(targetArgument);
         command.AddOption(platformOption);
         command.AddOption(configOption);
         command.AddOption(allOption);
+        command.AddOption(rulesOption);
         
         command.SetHandler(async (context) =>
         {
@@ -41,8 +51,9 @@ public static class CleanCommand
             var platform = context.ParseResult.GetValueForOption(platformOption);
             var config = context.ParseResult.GetValueForOption(configOption);
             var all = context.ParseResult.GetValueForOption(allOption);
-            
-            context.ExitCode = await ExecuteCleanAsync(target, platform, config, all);
+            var rules = context.ParseResult.GetValueForOption(rulesOption);
+
+            context.ExitCode = await ExecuteCleanAsync(target, platform, config, all, rules);
         });
         
         return command;
@@ -52,18 +63,39 @@ public static class CleanCommand
         string? target,
         string? platform,
         string? configuration,
-        bool all = false)
+        bool all = false,
+        bool rules = false,
+        string? projectRoot = null)
     {
+        projectRoot ??= Environment.CurrentDirectory;
+
+        if (rules)
+        {
+            var cacheDirectory = RuleCompiler.CacheDirectoryFor(projectRoot);
+            var removed = RuleCompiler.ClearCacheDirectory(cacheDirectory);
+            RenderEvent(new OrchestratorEvent(
+                removed == 0
+                    ? "Rule cache was already empty."
+                    : $"Cleared {removed} cached rule file(s) from {cacheDirectory}.",
+                OrchestratorEventLevel.Success));
+
+            // --rules on its own means only the rule cache; build outputs are left alone.
+            if (!all && string.IsNullOrEmpty(platform) && string.IsNullOrEmpty(configuration))
+                return 0;
+        }
+
+        await ServerCommand.StopServersAsync(projectRoot);
+
         var orchestrator = new CleanOrchestrator();
         var result = await orchestrator.CleanAsync(
             new CleanOrchestratorRequest
             {
-                ProjectRoot = Environment.CurrentDirectory,
+                ProjectRoot = projectRoot,
                 Platform = platform,
                 Configuration = configuration,
                 All = all
             },
-            new Progress<OrchestratorEvent>(RenderEvent));
+            new SynchronousProgress<OrchestratorEvent>(RenderEvent));
 
         return result.DirectoriesFailed > 0 ? 1 : 0;
     }

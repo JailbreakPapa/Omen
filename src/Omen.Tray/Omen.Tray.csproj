@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- NotifyIcon is Windows Forms; overrides Directory.Build.props' net8.0. -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>Omen.Tray</RootNamespace>
+    <AssemblyName>omen-tray</AssemblyName>
+    <Description>Omen Build System - tray icon for running build servers</Description>
+    <ApplicationIcon>..\Omen.GUI\Assets\omen.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\Omen.GUI\Assets\omen.ico" LogicalName="omen.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Omen.Executors\Omen.Executors.csproj" />
+  </ItemGroup>
+
+</Project>

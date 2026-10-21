@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -26,8 +26,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Omen.Core\Omen.Core.csproj" />
+    <ProjectReference Include="..\..\src\Omen.Executors\Omen.Executors.csproj" />
     <ProjectReference Include="..\..\src\Omen.Platforms\Omen.Platforms.csproj" />
     <ProjectReference Include="..\Omen.Core.Tests.Fixtures\Omen.Core.Tests.Fixtures.csproj" />
   </ItemGroup>
 
 </Project>
+

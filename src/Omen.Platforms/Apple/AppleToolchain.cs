@@ -10,49 +10,61 @@ using Omen.Core.Interfaces;
 namespace Omen.Platforms.Apple;
 
 /// <summary>
-/// iOS/Xcode toolchain implementation.
+/// Xcode/clang toolchain implementation shared by the Darwin platforms (iOS and macOS).
+/// They share the compiler, linker, archiver, frameworks and .dylib/bundle conventions;
+/// what differs is the SDK name in the target triple, the deployment-target flag
+/// (-mmacosx-version-min vs -mios-version-min), bitcode (iOS-only, long deprecated but
+/// still iOS-specific), and simulator handling (iOS-only - Mac binaries are always native).
 /// </summary>
 public sealed partial class AppleToolchain : ToolchainBase
 {
     private readonly SDKInfo _sdkInfo;
     private readonly TargetArchitecture _architecture;
+    private readonly TargetPlatform _platform;
     private readonly bool _isSimulator;
-    
-    public override TargetPlatform Platform => TargetPlatform.iOS;
+
+    public override TargetPlatform Platform => _platform;
     public override TargetArchitecture Architecture => _architecture;
-    public override string Name => _isSimulator ? "iOS Simulator" : "iOS";
+    public override string Name => _platform == TargetPlatform.Mac ? "macOS" : (_isSimulator ? "iOS Simulator" : "iOS");
     public override string Version { get; }
-    
+
     public override string CompilerPath { get; }
     public override string LinkerPath { get; }
     public override string ArchiverPath { get; }
     public override string? SysrootPath { get; }
-    
+
     public override string ObjectFileExtension => ".o";
     public override string StaticLibraryExtension => ".a";
     public override string SharedLibraryExtension => ".dylib";
     public override string ExecutableExtension => "";
-    
+
     private readonly string _minVersion;
-    
-    public AppleToolchain(SDKInfo sdkInfo, TargetArchitecture architecture, bool isSimulator = false, string minVersion = "14.0")
+
+    public AppleToolchain(
+        SDKInfo sdkInfo,
+        TargetArchitecture architecture,
+        TargetPlatform platform = TargetPlatform.iOS,
+        bool isSimulator = false,
+        string? minVersion = null)
     {
         _sdkInfo = sdkInfo;
         _architecture = architecture;
-        _isSimulator = isSimulator;
-        _minVersion = minVersion;
+        _platform = platform;
+        // Mac has no simulator - only iOS builds can target the simulator SDK.
+        _isSimulator = platform == TargetPlatform.Mac ? false : isSimulator;
+        _minVersion = minVersion ?? (platform == TargetPlatform.Mac ? "11.0" : "14.0");
         Version = sdkInfo.Version;
-        
+
         var toolchainPath = sdkInfo.AdditionalPaths.GetValueOrDefault("ToolchainPath", "/usr/bin");
         CompilerPath = Path.Combine(toolchainPath, "clang++");
         LinkerPath = CompilerPath;
         ArchiverPath = Path.Combine(toolchainPath, "ar");
-        
-        SysrootPath = isSimulator 
+
+        SysrootPath = _isSimulator
             ? sdkInfo.AdditionalPaths.GetValueOrDefault("SimulatorSdkPath")
             : sdkInfo.AdditionalPaths.GetValueOrDefault("DeviceSdkPath");
     }
-    
+
     private string GetTargetTriple()
     {
         var arch = _architecture switch
@@ -61,8 +73,8 @@ public sealed partial class AppleToolchain : ToolchainBase
             TargetArchitecture.X64 => "x86_64",
             _ => "arm64"
         };
-        
-        var platform = _isSimulator ? "ios-simulator" : "ios";
+
+        var platform = _platform == TargetPlatform.Mac ? "macosx" : (_isSimulator ? "ios-simulator" : "ios");
         return $"{arch}-apple-{platform}{_minVersion}";
     }
     
@@ -77,10 +89,11 @@ public sealed partial class AppleToolchain : ToolchainBase
             $"-isysroot", $"\"{SysrootPath}\""
         };
         
-        // iOS specific flags
-        args.Add($"-mios-version-min={_minVersion}");
-        args.Add("-fembed-bitcode");
-        
+        // Deployment-target flag differs per Darwin platform; bitcode is iOS-only.
+        args.Add(GetVersionMinFlag());
+        if (_platform != TargetPlatform.Mac)
+            args.Add("-fembed-bitcode");
+
         // C++ standard
         args.Add(request.CppStandard switch
         {
@@ -174,8 +187,8 @@ public sealed partial class AppleToolchain : ToolchainBase
             $"-isysroot", $"\"{SysrootPath}\""
         };
         
-        args.Add($"-mios-version-min={_minVersion}");
-        
+        args.Add(GetVersionMinFlag());
+
         if (request.OutputType == TargetType.SharedLibrary)
             args.Add("-dynamiclib");
         
@@ -255,15 +268,26 @@ public sealed partial class AppleToolchain : ToolchainBase
         };
     }
     
+    /// <summary>
+    /// The clang deployment-target flag for the current Darwin platform -
+    /// "-mmacosx-version-min=" for Mac, "-mios-version-min=" for iOS/simulator.
+    /// </summary>
+    private string GetVersionMinFlag() =>
+        _platform == TargetPlatform.Mac
+            ? $"-mmacosx-version-min={_minVersion}"
+            : $"-mios-version-min={_minVersion}";
+
     public override IReadOnlyList<string> GetDefaultCompilerFlags(BuildConfiguration configuration)
     {
         var flags = new List<string>
         {
             "-fPIC",
             "-fobjc-arc",
-            "-fembed-bitcode",
             "-fvisibility=hidden"
         };
+
+        if (_platform != TargetPlatform.Mac)
+            flags.Add("-fembed-bitcode");
         
         if (configuration is BuildConfiguration.Debug or BuildConfiguration.Development)
         {

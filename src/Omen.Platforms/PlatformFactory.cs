@@ -60,6 +60,7 @@ public static class PlatformFactory
             TargetPlatform.iOS => TargetArchitecture.ARM64,
             TargetPlatform.Prospero => TargetArchitecture.X64,
             TargetPlatform.Xbox => TargetArchitecture.X64,
+            TargetPlatform.Mac => TargetArchitecture.ARM64,
             _ => TargetArchitecture.X64
         };
     }
@@ -76,8 +77,8 @@ public static class PlatformFactory
         if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.FreeBSD))
             return TargetPlatform.FreeBSD;
         if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
-            return TargetPlatform.iOS; // macOS can build for iOS
-        
+            return TargetPlatform.Mac;
+
         return TargetPlatform.Unknown;
     }
     
@@ -120,6 +121,7 @@ public static class PlatformFactory
             new FreeBsdSDK(),
             new AndroidNdkSDK(),
             new AppleSDK(),
+            new MacSDK(),
             new ProsperoSDK(),
             new XboxSDK()
         };

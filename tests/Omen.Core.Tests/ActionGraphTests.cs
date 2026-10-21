@@ -1,10 +1,10 @@
-﻿// Omen Build System - Unit Tests
+// Omen Build System - Unit Tests
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
 namespace Omen.Core.Tests;
 
 /// <summary>
-/// Tests for ActionGraph dependency management and topological sorting.
+/// Tests for ActionGraph dependency manapluginent and topological sorting.
 /// </summary>
 public class ActionGraphTests
 {

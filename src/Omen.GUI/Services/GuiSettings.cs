@@ -12,6 +12,21 @@ public sealed class GuiSettings
 
     public string? LastProjectPath { get; set; }
 
+    public bool CheckForUpdatesOnStartup { get; set; } = true;
+    public bool ConfirmBeforeClean { get; set; } = true;
+    public string? DefaultProjectFolder { get; set; }
+    public string DefaultConfiguration { get; set; } = "Development";
+    public int ParallelJobs { get; set; } = Environment.ProcessorCount;
+    public bool UseUnityBuilds { get; set; } = true;
+    public bool UsePrecompiledHeaders { get; set; } = true;
+    public bool EnableLto { get; set; }
+    public bool EnableDistributedBuilds { get; set; }
+    public string CoordinatorAddress { get; set; } = "";
+    public int LocalAgentJobs { get; set; } = Environment.ProcessorCount;
+    public string Theme { get; set; } = "Dark";
+    public string UiDensity { get; set; } = "Standard";
+    public int ConsoleFontSize { get; set; } = 12;
+
     public static GuiSettings Load()
     {
         if (!File.Exists(SettingsPath))

@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Omen.Core.Configuration;
 using Omen.Core.Rules;
+using Omen.Executors.Orchestration;
 
 namespace Omen.GUI.ViewModels;
 
@@ -40,24 +41,38 @@ public sealed partial class MatrixPanelViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isActive;
 
+    /// <summary>
+    /// Set by MainWindowViewModel so matrix-resolution failures reach the output pane instead
+    /// of vanishing. The old code returned silently on any rule-compilation error.
+    /// </summary>
+    public Action<string, OrchestratorEventLevel>? Report { get; set; }
+
+    /// <summary>Drops all matrix state so a closed project's dimensions do not linger.</summary>
+    public void Reset()
+    {
+        DimensionGroups.Clear();
+        IsActive = false;
+    }
+
     public async Task ResolveAsync(string targetFile)
     {
         DimensionGroups.Clear();
         IsActive = false;
 
-        var workingDir = Path.GetDirectoryName(targetFile) ?? Path.GetPathRoot(targetFile) ?? targetFile;
-        var ruleCompiler = new RuleCompiler(Path.Combine(workingDir, "Intermediate", "RuleCache"));
+        var workingDir = RuleCompiler.ResolveProjectRoot(targetFile);
+        var ruleCompiler = new RuleCompiler(RuleCompiler.CacheDirectoryFor(workingDir));
         CompiledRules compiledRules;
         try
         {
-            compiledRules = await ruleCompiler.CompileRulesAsync(workingDir);
+            compiledRules = await Task.Run(() => ruleCompiler.CompileRulesAsync(workingDir));
         }
-        catch
+        catch (Exception ex)
         {
-            return; // Configure/Build's own error reporting already surfaces rule-compile failures.
+            Report?.Invoke($"Could not resolve the build matrix: {ex.Message}", OrchestratorEventLevel.Warning);
+            return;
         }
 
-        var targetType = compiledRules.FindTargetType();
+        var targetType = compiledRules.FindTargetType(targetFile);
         if (targetType == null) return;
 
         var matrix = compiledRules.GetSupportedTargets(targetType);

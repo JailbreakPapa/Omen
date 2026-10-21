@@ -1,0 +1,49 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.00000.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gems", "Gems", "{775CF015-3F3A-1214-367D-7310CF41FE47}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Greeter", "Greeter", "{6917AEDB-088F-0EF3-F66F-6D5B614803FD}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AppModule", "Intermediate\ProjectFiles\AppModule\AppModule.vcxproj", "{36B2D030-0DC6-5C2B-3531-F1AD0F7848FD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{606F6F97-C0A3-FBE9-01B6-4896932F62BB} = {606F6F97-C0A3-FBE9-01B6-4896932F62BB}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Greeter.Static", "Intermediate\ProjectFiles\Greeter.Static\Greeter.Static.vcxproj", "{E5B80653-B20D-E08B-C340-BAD8956C4AFB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Greeter", "Intermediate\ProjectFiles\Greeter\Greeter.vcxproj", "{606F6F97-C0A3-FBE9-01B6-4896932F62BB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E5B80653-B20D-E08B-C340-BAD8956C4AFB} = {E5B80653-B20D-E08B-C340-BAD8956C4AFB}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Development|x64 = Development|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{36B2D030-0DC6-5C2B-3531-F1AD0F7848FD}.Debug|x64.ActiveCfg = Debug|x64
+		{36B2D030-0DC6-5C2B-3531-F1AD0F7848FD}.Debug|x64.Build.0 = Debug|x64
+		{36B2D030-0DC6-5C2B-3531-F1AD0F7848FD}.Development|x64.ActiveCfg = Development|x64
+		{36B2D030-0DC6-5C2B-3531-F1AD0F7848FD}.Development|x64.Build.0 = Development|x64
+		{E5B80653-B20D-E08B-C340-BAD8956C4AFB}.Debug|x64.ActiveCfg = Debug|x64
+		{E5B80653-B20D-E08B-C340-BAD8956C4AFB}.Development|x64.ActiveCfg = Development|x64
+		{606F6F97-C0A3-FBE9-01B6-4896932F62BB}.Debug|x64.ActiveCfg = Debug|x64
+		{606F6F97-C0A3-FBE9-01B6-4896932F62BB}.Development|x64.ActiveCfg = Development|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E5B80653-B20D-E08B-C340-BAD8956C4AFB} = {6917AEDB-088F-0EF3-F66F-6D5B614803FD}
+		{606F6F97-C0A3-FBE9-01B6-4896932F62BB} = {6917AEDB-088F-0EF3-F66F-6D5B614803FD}
+		{6917AEDB-088F-0EF3-F66F-6D5B614803FD} = {775CF015-3F3A-1214-367D-7310CF41FE47}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D8D6BC82-5DBD-2558-656A-89CD81C71442}
+	EndGlobalSection
+EndGlobal
+

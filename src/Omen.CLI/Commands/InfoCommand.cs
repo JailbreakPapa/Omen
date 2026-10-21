@@ -111,6 +111,22 @@ public static class InfoCommand
                     {
                         toolTable.AddRow("iOS (Xcode)", "[dim]N/A[/]", "macOS only");
                     }
+
+                    // macOS / Xcode
+                    try
+                    {
+                        var macSdk = PlatformFactory.GetSDK(Core.Configuration.TargetPlatform.Mac);
+                        var info = macSdk?.Detect();
+                        var isValid = info != null && !string.IsNullOrEmpty(info.InstallPath);
+                        toolTable.AddRow(
+                            "macOS (Xcode)",
+                            isValid ? "[green]✓ Available[/]" : "[dim]N/A[/]",
+                            isValid ? $"Xcode @ {TruncatePath(info!.InstallPath)}" : "macOS only");
+                    }
+                    catch
+                    {
+                        toolTable.AddRow("macOS (Xcode)", "[dim]N/A[/]", "macOS only");
+                    }
                 });
             
             AnsiConsole.Write(toolTable);

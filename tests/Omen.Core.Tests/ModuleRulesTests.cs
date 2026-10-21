@@ -1,4 +1,4 @@
-﻿// Omen Build System - Unit Tests
+// Omen Build System - Unit Tests
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
 namespace Omen.Core.Tests;
@@ -144,6 +144,122 @@ public class ModuleRulesTests
         module.PublicSystemLibraries.Should().Contain("user32.lib");
     }
 
+    [Fact]
+    public void ThirdPartyDependencies_AreEmptyByDefault()
+    {
+        // Arrange & Act
+        var module = new TestModule(CreateTestContext());
+
+        // Assert
+        module.ThirdPartyDependencies.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ThirdPartyDependencies_CanBeAdded_ButNeverPopulatesLinkedDependencyLists()
+    {
+        // A 3rdParty:: name (e.g. O3DE's "3rdParty::Lua") is recorded-only - see the property's
+        // doc comment. It must never leak into PublicDependencies/PrivateDependencies, since
+        // ActionGraphBuilder walks those two lists to link this module against other Omen
+        // modules by name and a 3rdParty:: entry there would silently resolve to nothing.
+        var module = new TestModule(CreateTestContext());
+        module.ThirdPartyDependencies.Add("3rdParty::Lua");
+        module.ThirdPartyDependencies.Add("3rdParty::zstd");
+
+        module.ThirdPartyDependencies.Should().BeEquivalentTo(["3rdParty::Lua", "3rdParty::zstd"]);
+        module.PublicDependencies.Should().BeEmpty();
+        module.PrivateDependencies.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RequiredTraits_IsEmptyByDefault()
+    {
+        var module = new TestModule(CreateTestContext());
+        module.RequiredTraits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void PlatformIncludeFiles_CanBeAdded_ButNothingExecutesThem()
+    {
+        // PLATFORM_INCLUDE_FILES entries are recorded-only (see the property's doc comment) -
+        // Omen has no CMake evaluator, so adding one must not have any side effect on the
+        // module's other lists (no library/definition/include-path leaks from a fragment
+        // nothing here ever reads).
+        var module = new TestModule(CreateTestContext());
+        module.PlatformIncludeFiles.Add("Platform/Windows/platform_windows.cmake");
+        module.PlatformIncludeFiles.Add("Platform/Mac/platform_mac.cmake");
+
+        module.PlatformIncludeFiles.Should().BeEquivalentTo([
+            "Platform/Windows/platform_windows.cmake",
+            "Platform/Mac/platform_mac.cmake"
+        ]);
+        module.PublicLibraries.Should().BeEmpty();
+        module.PrivateLibraries.Should().BeEmpty();
+        module.PublicDefinitions.Should().BeEmpty();
+        module.PrivateDefinitions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ResolveSourceFiles_ExplicitSourceFiles_IsAuthoritativeAndIgnoresExtraDirectoryContents()
+    {
+        // Arrange: directory has 3 .cpp files, but SourceFiles (mirroring an O3DE FILES_CMAKE
+        // list) only names 2 of them. Several O3DE targets can share one Source/ directory
+        // with different FILES_CMAKE lists (e.g. Camera's .Static/.Runtime/.Editor all point
+        // at Source/) - globbing the directory would wrongly pull in the third file.
+        var projectRoot = Path.Combine(Path.GetTempPath(), "OmenTests", nameof(ModuleRulesTests), Guid.NewGuid().ToString("N"));
+        var sourceDir = Path.Combine(projectRoot, "Source", "Included");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "A.cpp"), "");
+        File.WriteAllText(Path.Combine(sourceDir, "B.cpp"), "");
+        File.WriteAllText(Path.Combine(sourceDir, "NotListed.cpp"), "");
+
+        try
+        {
+            var module = new TestModule(CreateTestContext()) { SourceDirectory = "Source/Included" };
+            module.SourceFiles.Add("A.cpp");
+            module.SourceFiles.Add("B.cpp");
+
+            var resolved = module.ResolveSourceFiles(projectRoot, ".cpp", ".c");
+
+            var normalized = resolved.Select(Path.GetFullPath).ToList();
+            normalized.Should().HaveCount(2);
+            normalized.Should().Contain(Path.GetFullPath(Path.Combine(sourceDir, "A.cpp")));
+            normalized.Should().Contain(Path.GetFullPath(Path.Combine(sourceDir, "B.cpp")));
+            normalized.Should().NotContain(Path.GetFullPath(Path.Combine(sourceDir, "NotListed.cpp")));
+        }
+        finally
+        {
+            Directory.Delete(projectRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ResolveSourceFiles_EmptySourceFiles_GlobsSourceDirectory()
+    {
+        // No-regression guard: when a module doesn't opt into an explicit SourceFiles list,
+        // behavior must be identical to before this member existed - glob the directory.
+        var projectRoot = Path.Combine(Path.GetTempPath(), "OmenTests", nameof(ModuleRulesTests), Guid.NewGuid().ToString("N"));
+        var sourceDir = Path.Combine(projectRoot, "Source", "Globbed");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "A.cpp"), "");
+        File.WriteAllText(Path.Combine(sourceDir, "B.cpp"), "");
+
+        try
+        {
+            var module = new TestModule(CreateTestContext()) { SourceDirectory = "Source/Globbed" };
+
+            var resolved = module.ResolveSourceFiles(projectRoot, ".cpp", ".c");
+
+            var normalized = resolved.Select(Path.GetFullPath).ToList();
+            normalized.Should().HaveCount(2);
+            normalized.Should().Contain(Path.GetFullPath(Path.Combine(sourceDir, "A.cpp")));
+            normalized.Should().Contain(Path.GetFullPath(Path.Combine(sourceDir, "B.cpp")));
+        }
+        finally
+        {
+            Directory.Delete(projectRoot, recursive: true);
+        }
+    }
+
     private static BuildContext CreateTestContext() => new()
     {
         Platform = TargetPlatform.Windows,
@@ -189,3 +305,4 @@ public class ModuleRulesTests
         }
     }
 }
+

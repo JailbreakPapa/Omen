@@ -6,7 +6,7 @@ using System.Reflection;
 namespace Omen.Core.Configuration;
 
 /// <summary>
-/// Builds the set of ResolvedTargets a TargetRules/GemRules/ModuleRules declares via its
+/// Builds the set of ResolvedTargets a TargetRules/PluginRules/ModuleRules declares via its
 /// optional static SupportedTargets property - Omen's equivalent of Sharpmake's fragment/
 /// Target system. Immutable: every method returns a new TargetMatrix.
 /// </summary>

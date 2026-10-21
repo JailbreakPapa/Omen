@@ -9,5 +9,9 @@
     <AnalysisLevel>none</AnalysisLevel>
     <NoWarn>$(NoWarn);CA1805;CA1822;CA1850;CA1859;CA2016;CA1305;1591</NoWarn>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Preserve source in portable symbols so an installed build can recover its own code. -->
+    <DebugType>portable</DebugType>
+    <EmbedAllSources>true</EmbedAllSources>
   </PropertyGroup>
 </Project>
+

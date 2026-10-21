@@ -103,10 +103,36 @@ public sealed class BuildAction
     /// </summary>
     public ContentDigest ComputeDigest(IDigestCalculator calculator)
     {
-        var content = $"{Type}|{CommandLine}|{string.Join(",", Inputs.Select(i => $"{i.Path}:{i.Digest}"))}|{string.Join(",", Environment.OrderBy(e => e.Key).Select(e => $"{e.Key}={e.Value}"))}";
+        var content = $"{Type}|{CommandLine}|{InputsText()}|{EnvironmentText()}";
         ActionDigest = calculator.ComputeDigest(content);
         return ActionDigest.Value;
     }
+
+    /// <summary>
+    /// Separate digests of the command line, the input set and the environment ("flags:inputs:env"),
+    /// recorded beside <see cref="ComputeDigest"/> so a changed digest can say which part changed.
+    /// </summary>
+    public string ComputeDigestParts(IDigestCalculator calculator) =>
+        $"{calculator.ComputeDigest($"{Type}|{CommandLine}")}:{calculator.ComputeDigest(InputsText())}:{calculator.ComputeDigest(EnvironmentText())}";
+
+    private string InputsText() => string.Join(",", Inputs.Select(i => $"{i.Path}:{i.Digest}"));
+
+    private string EnvironmentText() => string.Join(",", Environment.OrderBy(e => e.Key).Select(e => $"{e.Key}={e.Value}"));
+
+    /// <summary>Why this action will run ("input-newer C:/x.h", "command-changed flags", ...); null when it won't.</summary>
+    public string? RebuildReason { get; set; }
+
+    /// <summary>
+    /// The reason at the top of the chain: this action's own <see cref="RebuildReason"/>, or for one that runs only
+    /// because a dependency does, that dependency's root cause.
+    /// </summary>
+    public string? RootCause { get; set; }
+
+    /// <summary>
+    /// On a shared build server: the request that started the job this action joined instead of running itself;
+    /// null when this request ran it.
+    /// </summary>
+    public string? SharedWith { get; set; }
     
     public override string ToString() => $"[{Type}] {Description}";
 }

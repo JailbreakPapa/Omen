@@ -1,7 +1,8 @@
-// Omen Build System
+﻿// Omen Build System
 // Copyright (c) WD Studios Corp., Mikael K. Aboagye, and Contributors. All Rights Reserved.
 
 using Omen.Core.Configuration;
+using Omen.Core.Rules;
 using Omen.Core.Graph;
 
 namespace Omen.Core.Interfaces;
@@ -21,6 +22,13 @@ public interface IToolchain
     /// Architecture this toolchain targets.
     /// </summary>
     TargetArchitecture Architecture { get; }
+
+    /// <summary>
+    /// Which compiler driver this toolchain speaks. Selects which of a project's
+    /// per-family engine-wide flag sets applies (OmenProjectRules.ToolchainOptions) - platform
+    /// alone cannot decide it, since Windows can be MSVC or clang-cl and Linux gcc or clang.
+    /// </summary>
+    CompilerFamily CompilerFamily { get; }
     
     /// <summary>
     /// Display name of the toolchain.
@@ -46,6 +54,11 @@ public interface IToolchain
     /// Path to the archiver (static library creator) executable.
     /// </summary>
     string ArchiverPath { get; }
+
+    /// <summary>
+    /// Path to the resource compiler (rc.exe), or null where the platform has none.
+    /// </summary>
+    string? ResourceCompilerPath => null;
     
     /// <summary>
     /// Optional sysroot path for cross-compilation.
@@ -112,6 +125,9 @@ public sealed class CompileRequest
     public required string OutputFile { get; init; }
     public required BuildConfiguration Configuration { get; init; }
     public IReadOnlyList<string> IncludePaths { get; init; } = [];
+    /// <summary>Include roots the compiler should treat as system headers - warnings from them are
+    /// not ours to fix. MSVC: /external:I with /external:W0.</summary>
+    public IReadOnlyList<string> ExternalIncludePaths { get; init; } = [];
     public IReadOnlyList<string> Definitions { get; init; } = [];
     public IReadOnlyList<string> AdditionalFlags { get; init; } = [];
     public CppStandard CppStandard { get; init; } = CppStandard.Cpp20;

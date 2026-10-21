@@ -52,7 +52,7 @@ public class OptionsOrchestratorTests : IDisposable
 
         var result = await orchestrator.DiscoverAsync(
             new OptionsOrchestratorRequest { TargetFile = targetFile },
-            new Progress<OrchestratorEvent>(events.Add));
+            new Omen.Core.Diagnostics.SynchronousProgress<OrchestratorEvent>(events.Add));
 
         result.Should().BeNull();
         events.Should().Contain(e => e.Level == OrchestratorEventLevel.Error);
@@ -84,6 +84,28 @@ public class OptionsOrchestratorTests : IDisposable
     }
 
     [Fact]
+    public async Task DiscoverAsync_ManualOptionEditedThenSaved_ReturnsEditedValueNotFrozenDefault()
+    {
+        var targetFile = WriteTargetWithOption();
+        var orchestrator = new OptionsOrchestrator();
+
+        orchestrator.AddManualOption(targetFile, new BuildOptionDeclaration
+        {
+            Name = "CUSTOM_FLAG",
+            Description = "A manually added flag",
+            Type = BuildOptionType.String,
+            DefaultValue = "abc",
+            EffectiveValue = "abc"
+        });
+        orchestrator.SaveOptions(targetFile, new Dictionary<string, string> { ["CUSTOM_FLAG"] = "xyz" });
+
+        var result = await orchestrator.DiscoverAsync(new OptionsOrchestratorRequest { TargetFile = targetFile }, events: null);
+
+        result.Should().NotBeNull();
+        result!.Single(o => o.Name == "CUSTOM_FLAG").EffectiveValue.Should().Be("xyz");
+    }
+
+    [Fact]
     public void SaveOptions_WritesToIntermediateOmenCacheJson()
     {
         var targetFile = WriteTargetWithOption();
@@ -94,3 +116,4 @@ public class OptionsOrchestratorTests : IDisposable
         File.Exists(Path.Combine(_projectRoot, "Intermediate", "omen-cache.json")).Should().BeTrue();
     }
 }
+

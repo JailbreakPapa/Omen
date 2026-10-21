@@ -6,10 +6,14 @@
 
 - **Pure C# Build Rules**: Define your modules and targets using C# classes (`*.module.cs`, `*.target.cs`)
 - **Cross-Platform Support**: Build for Windows, Linux, FreeBSD, Android, and iOS
-- **Distributed Builds**: Scale your builds across multiple machines with OmenNet
-- **Build Optimizations**: Unity builds, precompiled headers, and action caching
+- **Distributed Builds** *(in progress)*: OmenNet coordinator/agent protocol exists; local parallel builds are what runs today
+- **Build Optimizations**: Unity builds (opt-in via `UseUnityBuild`), precompiled headers, and action caching
+- **Package Sources**: `3rdParty::` (O3DE package store), `Vcpkg::` (vcpkg installed trees), and `FetchContent` (git/archive source fetching, CMake-FetchContent style)
 - **Modern CLI**: Rich command-line interface with Spectre.Console
-- **Incremental Builds**: Content-addressed caching for fast rebuilds
+- **Incremental Builds**: Header-dependency-aware, digest-based invalidation
+
+New to the rule model? [docs/rule-files.md](docs/rule-files.md) explains what belongs in a
+`.target.cs` vs a `.module.cs` (and `.gem.cs` / `.omenproject.cs`).
 
 ## Quick Start
 
@@ -138,10 +142,7 @@ Omen/
 │   │   ├── ParallelExecutor # Multi-threaded local execution
 │   │   └── HybridExecutor   # Local + distributed execution
 │   │
-│   ├── Omen.Optimizations/  # Build optimizations
-│   │   ├── UnityBuildGenerator
-│   │   ├── PCHManager
-│   │   └── IncludeAnalyzer
+│   ├── Omen.Optimizations/  # Build optimizations (PCHManager; unity builds live in Omen.Core/Graph)
 │   │
 │   ├── Omen.CLI/            # Command-line interface
 │   │
@@ -229,3 +230,4 @@ MIT License - see LICENSE file for details.
 ## Contributing
 
 Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+

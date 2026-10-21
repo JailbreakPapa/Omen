@@ -13,6 +13,11 @@ public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
+        // Redirected (Visual Studio's Output window, a teed log) Spectre wraps at 80 columns, splitting
+        // paths across lines; the reader's window wraps on its own.
+        if (Console.IsOutputRedirected)
+            AnsiConsole.Profile.Width = 4096;
+
         var rootCommand = new RootCommand("Omen Build System - Fast, scalable, distributed C/C++ builds")
         {
             Name = "omen"
@@ -23,9 +28,11 @@ public static class Program
         rootCommand.AddCommand(RebuildCommand.Create());
         rootCommand.AddCommand(CleanCommand.Create());
         rootCommand.AddCommand(GenerateCommand.Create());
+        rootCommand.AddCommand(ConfigureCommand.Create());
         rootCommand.AddCommand(AgentCommand.Create());
         rootCommand.AddCommand(CoordinatorCommand.Create());
         rootCommand.AddCommand(InfoCommand.Create());
+        rootCommand.AddCommand(ServerCommand.Create());
         
         // Global options
         var verboseOption = new Option<bool>(
@@ -48,7 +55,11 @@ public static class Program
             .UseDefaults()
             .UseExceptionHandler((exception, context) =>
             {
-                AnsiConsole.MarkupLine($"[red]Error:[/] {exception.Message}");
+                // Escape the message: exception text routinely contains square brackets
+                // (type names, indexer paths, MSBuild diagnostics), which Spectre parses as
+                // markup and then throws on - replacing the real error with an unbalanced-tag
+                // crash from inside the error handler.
+                AnsiConsole.MarkupLine($"[red]Error:[/] {Markup.Escape(exception.Message)}");
                 context.ExitCode = 1;
             })
             .Build();

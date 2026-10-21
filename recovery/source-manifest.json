@@ -1,0 +1,2087 @@
+{
+  "baseline": "81a72c3195343bc32a058746e1ce1dbb5f6c5408",
+  "missing_checkout_head": "460c54655e50236878e530ece5df77329b2b01f4",
+  "exact_original_documents": [
+    "src/Omen.Core/Build/CompileEnvironment.cs",
+    "src/Omen.Core/Build/CompileEnvironmentResolver.cs",
+    "src/Omen.Core/Build/ModulePathName.cs",
+    "src/Omen.Core/Configuration/BuildContext.cs",
+    "src/Omen.Core/Configuration/BuildDimensionAttribute.cs",
+    "src/Omen.Core/Configuration/BuildEnums.cs",
+    "src/Omen.Core/Configuration/DimensionLookup.cs",
+    "src/Omen.Core/Configuration/ResolvedTarget.cs",
+    "src/Omen.Core/Configuration/TargetMatrix.cs",
+    "src/Omen.Core/Diagnostics/SynchronousProgress.cs",
+    "src/Omen.Core/Generators/GeneratedFile.cs",
+    "src/Omen.Core/Graph/ActionDigestStore.cs",
+    "src/Omen.Core/Graph/ActionGraph.cs",
+    "src/Omen.Core/Graph/ActionGraphBuilder.cs",
+    "src/Omen.Core/Graph/BuildAction.cs",
+    "src/Omen.Core/Graph/IFileStamps.cs",
+    "src/Omen.Core/Graph/IncludeScanner.cs",
+    "src/Omen.Core/Graph/RebuildSummary.cs",
+    "src/Omen.Core/Graph/UnityBuildGenerator.cs",
+    "src/Omen.Core/Implementations/Sha256DigestCalculator.cs",
+    "src/Omen.Core/Interfaces/IActionCache.cs",
+    "src/Omen.Core/Interfaces/IContentAddressableStorage.cs",
+    "src/Omen.Core/Interfaces/IDigestCalculator.cs",
+    "src/Omen.Core/Interfaces/IExecutor.cs",
+    "src/Omen.Core/Interfaces/IPlatformSDK.cs",
+    "src/Omen.Core/Interfaces/IToolchain.cs",
+    "src/Omen.Core/Options/BuildOptions.cs",
+    "src/Omen.Core/Options/OptionCacheStore.cs",
+    "src/Omen.Core/Qt/QtCodeGenSynthesizer.cs",
+    "src/Omen.Core/Qt/QtModuleEnvironment.cs",
+    "src/Omen.Core/Qt/QtToolchain.cs",
+    "src/Omen.Core/Qt/QtToolchainResolver.cs",
+    "src/Omen.Core/Reflect/ReflectCodeGenSynthesizer.cs",
+    "src/Omen.Core/Rules/ContentFetcher.cs",
+    "src/Omen.Core/Rules/LayeringValidator.cs",
+    "src/Omen.Core/Rules/ModuleClosure.cs",
+    "src/Omen.Core/Rules/ModuleRules.cs",
+    "src/Omen.Core/Rules/OmenProjectRules.cs",
+    "src/Omen.Core/Rules/PluginAliasResolver.cs",
+    "src/Omen.Core/Rules/PluginEnablement.cs",
+    "src/Omen.Core/Rules/PluginFlavorModuleRules.cs",
+    "src/Omen.Core/Rules/PluginRules.cs",
+    "src/Omen.Core/Rules/TargetRules.cs",
+    "src/Omen.Core/Rules/ThirdPartyPackages.cs",
+    "src/Omen.Core/Rules/ToolchainOptions.cs",
+    "src/Omen.Distributed/Cache/LocalActionCache.cs",
+    "src/Omen.Distributed/CAS/LocalContentAddressableStorage.cs",
+    "src/Omen.Distributed/Coordinator/AgentManager.cs",
+    "src/Omen.Distributed/Coordinator/OperationQueue.cs",
+    "src/Omen.Distributed/Interfaces/IOmenAgent.cs",
+    "src/Omen.Distributed/Interfaces/IOmenCoordinator.cs",
+    "src/Omen.Distributed/Server/CoordinatorService.cs",
+    "src/Omen.Executors/LocalExecutor.cs",
+    "src/Omen.Executors/Orchestration/BuildEvent.cs",
+    "src/Omen.Executors/Orchestration/BuildEventLog.cs",
+    "src/Omen.Executors/Orchestration/BuildOrchestrator.cs",
+    "src/Omen.Executors/Orchestration/BuildServices.cs",
+    "src/Omen.Executors/Orchestration/CleanOrchestrator.cs",
+    "src/Omen.Executors/Orchestration/ManualOptionsStore.cs",
+    "src/Omen.Executors/Orchestration/OrchestratorEvent.cs",
+    "src/Omen.Executors/ParallelExecutor.cs",
+    "src/Omen.Executors/ProcessJob.cs",
+    "src/Omen.Executors/Server/BuildServer.cs",
+    "src/Omen.Executors/Server/BuildServerClient.cs",
+    "src/Omen.Executors/Server/BuildWarmState.cs",
+    "src/Omen.Executors/Server/ServerControl.cs",
+    "src/Omen.Executors/Server/ServerProtocol.cs",
+    "src/Omen.Executors/Server/SharedActionScheduler.cs",
+    "src/Omen.Executors/Server/TrayModel.cs",
+    "src/Omen.Optimizations/PCHManager.cs",
+    "src/Omen.CLI/Commands/AgentCommand.cs",
+    "src/Omen.CLI/Commands/BuildCommand.cs",
+    "src/Omen.CLI/Commands/CleanCommand.cs",
+    "src/Omen.CLI/Commands/CoordinatorCommand.cs",
+    "src/Omen.CLI/Commands/InfoCommand.cs",
+    "src/Omen.CLI/Commands/RebuildCommand.cs",
+    "src/Omen.CLI/Commands/ServerCommand.cs",
+    "src/Omen.CLI/Program.cs",
+    "src/Omen.Platforms/Android/AndroidNdkSDK.cs",
+    "src/Omen.Platforms/Android/AndroidNdkToolchain.cs",
+    "src/Omen.Platforms/Apple/AppleSDK.cs",
+    "src/Omen.Platforms/Apple/AppleToolchain.cs",
+    "src/Omen.Platforms/Apple/AppleXcodeLocator.cs",
+    "src/Omen.Platforms/Apple/MacSDK.cs",
+    "src/Omen.Platforms/AssemblyInfo.cs",
+    "src/Omen.Platforms/Console/ProsperoSDK.cs",
+    "src/Omen.Platforms/Console/XboxSDK.cs",
+    "src/Omen.Platforms/PlatformFactory.cs",
+    "src/Omen.Platforms/Unix/ClangToolchain.cs",
+    "src/Omen.Platforms/Unix/LinuxSDK.cs",
+    "src/Omen.Platforms/Windows/MsvcToolchain.cs",
+    "src/Omen.Platforms/Windows/WindowsSDK.cs",
+    "src/OmenNet.Dashboard/Program.cs",
+    "src/OmenNet.Dashboard/Services/DashboardService.cs",
+    "src/OmenNet.Dashboard/Services/ICoordinatorClient.cs",
+    "src/OmenNet.Dashboard/Services/IDashboardService.cs",
+    "src/OmenNet.Dashboard/Services/MetricsCollector.cs",
+    "src/OmenNet.Dashboard/Components/Pages/Agents.razor",
+    "src/OmenNet.Dashboard/Components/Pages/Cache.razor",
+    "src/OmenNet.Dashboard/Components/Pages/History.razor",
+    "src/OmenNet.Dashboard/Components/Pages/Jobs.razor",
+    "src/OmenNet.Dashboard/Components/Pages/Settings.razor",
+    "src/OmenNet.Dashboard/Components/Layout/MainLayout.razor",
+    "src/OmenNet.Dashboard/Components/_Imports.razor",
+    "src/OmenNet.Dashboard/Components/App.razor",
+    "src/OmenNet.Dashboard/Components/Routes.razor"
+  ],
+  "reconstructed_or_differing_documents": [
+    "src/Omen.Core/Generators/CompileCommandsWriter.cs",
+    "src/Omen.Core/Generators/VisualStudioGenerator.cs",
+    "src/Omen.Core/Options/WellKnownOptions.cs",
+    "src/Omen.Core/Rules/FindModuleParser.cs",
+    "src/Omen.Core/Rules/PluginManifest.cs",
+    "src/Omen.Core/Rules/RuleCompiler.cs",
+    "src/Omen.Core/Rules/VcpkgResolver.cs",
+    "src/Omen.Executors/HybridExecutor.cs",
+    "src/Omen.Executors/Orchestration/OptionsOrchestrator.cs",
+    "src/Omen.Executors/Orchestration/ProjectGenerationOrchestrator.cs",
+    "src/Omen.CLI/Commands/ConfigureCommand.cs",
+    "src/Omen.CLI/Commands/GenerateCommand.cs",
+    "src/Omen.Platforms/ToolchainBase.cs",
+    "src/OmenNet.Dashboard/Services/CoordinatorClient.cs",
+    "src/OmenNet.Dashboard/Services/OmenNetOptions.cs",
+    "src/OmenNet.Dashboard/Components/Pages/Home.razor"
+  ],
+  "files": [
+    {
+      "path": ".github/dependabot.yml",
+      "sha256": "6d5395782f945846feacdf6a2042cbe654b00a20ac4c55e1bbd1bb49df95a2f8",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.md",
+      "sha256": "d318f30f64925a85f2738b25610e52e0ca9a8d7985f1d707e40e087ea3018ff8",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.md",
+      "sha256": "0284be2e2ae2fa7257aa4365c4bfed715a606010c313164542d1b82a3685595a",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": ".github/labeler.yml",
+      "sha256": "3c88aa50e9ac238d7539ac223da93eb2aca028f83a2f14a3225e830f030397ce",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "sha256": "00b95dec9a0db59c08f94e75e6c147e5debf7514f9952a8d5d8ba9dffab18d23",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "ac23dbc285f5891bdf537f8aca970859b68d1e59c90f3028dbb17bb0774aa1c0",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": ".github/workflows/codeql.yml",
+      "sha256": "e14ed7da4e9a9f3cc76ef07fe7c460898238c1d891acb2bdd3a805674bd6556b",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": ".github/workflows/docs.yml",
+      "sha256": "f41bc80c5357425ef16fb113dabde0dc2d330b316da78a3c879f93e2c7ebed7d",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": ".github/workflows/pr.yml",
+      "sha256": "131c567dca8b6915caf151ddf01a5b2e6c26631857c15a9b9854d9b0aca53950",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "f5c8c4c23f11c7e9e7afd6b24ad32a350e6a4bf14798ecb93a919d2212894437",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "Directory.Build.props",
+      "sha256": "f17b34ebe8e96c3d6060929c95b5e084353c74aadc6ca5d3925e4505039e2937",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "Directory.Packages.props",
+      "sha256": "c8059a6d22a9152a9dde14616b076a3349d85626a846fd316c8cbf9a54bb8a8d",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "docs/2026-09-01-o3de-readiness-audit.md",
+      "sha256": "276aedf6841dec55c1239ba3fea8d6060aac771c85b3269acc7daa1bd462e7a6",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/2026-09-06-o3de-bringup-gaps.md",
+      "sha256": "e7e4746ce01f423a896d89c9e235e7249fb5ef60856abc4d2cf7756a770f0272",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/rule-files.md",
+      "sha256": "0ee60d3312cf079e11c56d7259453890323edda6ef327c6656a4171ab105c41b",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-04-nightfox-cmake-replacement.md",
+      "sha256": "25ff08a5659d3caac66cc225cc546e6b514058bb32a61cbb5579254ea3e2c9c4",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-05-omen-gui.md",
+      "sha256": "d1138dd5dcfca3dd6a06608debc9c049a944e5a2c777891084fe241bb825aa56",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-06-omen-gui-options-and-polish.md",
+      "sha256": "8836515b2fbff8d7e1337ac0e3b9381b90b64a53bb44072938d26b253c55caf3",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-11-build-dimension-matrix.md",
+      "sha256": "723e521d128c3c7d2e95bfa733cb6e11788e3d2bddf6699d42032164cfee145d",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-19-framework-library-conversion.md",
+      "sha256": "6d59a061280411261034cba0f2c93e2bf5592ba3fed12e55dd01f84e3d18c118",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-19-omen-gui-cmake-parity.md",
+      "sha256": "ce924b7caf1a8a3e761d6fd7d70554e97698e49fcc243953f581f5aaf4559422",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-19-omen-gui-design-port.md",
+      "sha256": "70abd643228c13edba2eab14192df1455da6842879a1e7e51093b75034113ceb",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-19-omen-gui-wpf-rider.md",
+      "sha256": "df7f17635925637d83623ba62486f4988ad5a2b5488391344f4de6649fa8b2f5",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-27-omen-build-server.md",
+      "sha256": "e1c0f19796443977d1a9043643c22995fd13d38e030a8a72af95e2d71c9735ac",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-04-nightfox-cmake-replacement-design.md",
+      "sha256": "0b42bc30ba35c04e7e9340a6059a39bac80cd4d0f92d12c2d18485c136182dae",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-05-omen-gui-design.md",
+      "sha256": "bc168dbea109d1bbc029df12228f3ad4169f0d59d86fd178a057ea73238f77f0",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-06-omen-gui-options-and-polish-design.md",
+      "sha256": "207fd59a29bdc3fce7d7d1ee1165a4a0bc48872fb542fe00a07e9b77e301e013",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-11-build-dimension-matrix-design.md",
+      "sha256": "71f9793157b9411e172b073b79f907cf97c124a6dca90c2ae711dd1032c677a0",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-11-gum-style-gui-polish-design.md",
+      "sha256": "65dc6c9606f7b87b4f960c7382fdbb081904f11d45a28742c9a1c315acc04c85",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-19-framework-library-conversion-design.md",
+      "sha256": "3eb4ae968e08a3a536960c383191011377999a4251c316e2ee16aac33708588d",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-19-omen-gui-cmake-parity-design.md",
+      "sha256": "f151caeebdf604c22e3d564e09617370777613b5444a8af5c8746f9a98960d05",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-19-omen-gui-wpf-rider-design.md",
+      "sha256": "51fee55126b2ae9aa5cad6ca4ed4030e31602d7658b7305b25258c816de47853",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-27-omen-build-server-design.md",
+      "sha256": "9faa5b69aa0bbaa9ff8084a1af37401a3a0b79ce03757cc947d3522b66da6b63",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "examples/CSharpModuleExample.cs",
+      "sha256": "e8712c00360dbeb406701f03eceae8a7dc82293e98cc27a5e739449124122447",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "examples/ExampleGame/CMakeLists.txt",
+      "sha256": "3d877756338cddb0dd053fa5d54428c5f067e88d0b289b10b358291209ca42a0",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/ExampleGame.sln",
+      "sha256": "1dddea3cf456f81b7fe287ca387f8426a8f070fe7c6d0115fb1ba7a88a2cba73",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/ExampleGame.target.cs",
+      "sha256": "b0406d5bcca58bad6264f9507044c2f7f0844e50dae427de3e51e09230450ae5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Core/Core.module.cs",
+      "sha256": "964df060125abd2d0099e0039ed44a0fe0580295860cee5977cfc1b816fc8a9a",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Core/Private/Core.cpp",
+      "sha256": "a7672b1cfa20b91dc4dd906acbfc4dcc3564790395d93c553e42c5d9696bf324",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Core/Public/CorePCH.h",
+      "sha256": "01e9a1f1df5e2616c8ddb2a99ac35fd5ba98d0b565652b10af4680dcfd056a32",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Core/Public/CoreTypes.h",
+      "sha256": "3048368c6b4ea1350da9e1bb12341d85f6b0262c441376789a7fce21a8f12278",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Engine/Engine.module.cs",
+      "sha256": "7d93cbdd03424dbf3085d07910394e24329310e2b9af5ca5afb39736de2f77d3",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Engine/Private/Engine.cpp",
+      "sha256": "a2b06ddc9a5b4f0eca41edf4f1a8b7089867442e0a01e454b92e0962c8482899",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Engine/Public/Engine.h",
+      "sha256": "c91c89cdb43e957c0a17dc90d9a9c1d6eaa820ab5b08a765fdff461bf34091d8",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Game/Game.module.cs",
+      "sha256": "e1e07ca3be92c54d23375f519a92d8061883d3d0755ae8ae4a6e16c979403907",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Game/Private/Game.cpp",
+      "sha256": "1847dfa10bd82f597a4d34b4583dfb11e217677a3188fede28922d9b4e33e13f",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Renderer/Private/Renderer.cpp",
+      "sha256": "be89e0e8f31c96bce3450845ca1987f05a77664d2701bbf9f3d2a8bec239eed0",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Renderer/Public/Renderer.h",
+      "sha256": "fc9fc52c3e64567e12d9debe180bc65f09abecba672a5849579047853ffd6a23",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "examples/ExampleGame/Source/Renderer/Renderer.module.cs",
+      "sha256": "36717c41ae839b5193b0a58772de28145804cf01d30c2a9ca95405c03349a826",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "examples/PluginSample/cmake/3rdParty/BuiltInPackages.cmake",
+      "sha256": "09396ba4f5ecbdf635e97b3b85d7491f96ecbdf079efecbe31b5e50d263161c8",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/CMakeLists.txt",
+      "sha256": "afe40f9a6cc933f5afea2e746c563ba84b266a1e49f988abf808340df594d2d8",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/Gems/Greeter/Code/Source/Runtime/Private/GreeterRuntime.cpp",
+      "sha256": "e56f9c9689d9d6d6fe5a1dc90d34a2db3b21476f2a4bf599c803b376d6d0933b",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/Gems/Greeter/Code/Source/Runtime/Public/GreeterRuntime.h",
+      "sha256": "df2d34d0d406c2ac8225d25fc326ec41ae195b2fe87b90c260470fc3f906bb72",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/Gems/Greeter/Code/Source/Static/Private/Greeter.cpp",
+      "sha256": "34ac8fa79033774efa79995c50c80d9258b269de3819b4c374c73c87d6f36cee",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/Gems/Greeter/Code/Source/Static/Public/Greeter.h",
+      "sha256": "51689053bcfc1bd811611a386a282e8156273eb8e43bc75bdbb2ad48cee53125",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/GemSample.sln",
+      "sha256": "50d4a5ccde93b3f500ba4d1180354156eaa23a53c64e8a79bee28d3a67904d72",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/Plugins/Greeter/Greeter.plugin.cs",
+      "sha256": "eed16fbfe3dcab720d48c143fab2cc7d06adcb950892b8226adac7cec1fc1a48",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/Plugins/Greeter/plugin.json",
+      "sha256": "5a67f6855c635416d7284bdc35c27ede616ecc7575ecf5b2c58a2e2fdadc1404",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/PluginSample.target.cs",
+      "sha256": "d78d06b8d3e97686b2330b98e11c695c96b83086bfea479ce1a71c84c1165dd9",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/Source/App/App.module.cs",
+      "sha256": "3e490b8e4777ca7d66e6b8b9edd06e713b94c996cae071e655484e5e080d3a9e",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/PluginSample/Source/App/Private/Main.cpp",
+      "sha256": "56b35c0c8f1525a05ebc0a3e70f32ae69960d6f68e00c6504799c847e80f3ecf",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "examples/QtModuleExample.cs",
+      "sha256": "dd62be88d221a2287a17da1e3b8066b7d29655050c27be83b128ff0893ccc68b",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "images/omen-horizontal.png",
+      "sha256": "8f09ba74633b6038a002d7a2a7d1e0b23afd7523d84f4f001254ce2a0987a61b",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "images/omen-logo.png",
+      "sha256": "fb7dc6a656c6b11664a0aee94541e9068459bcf20b60065c8e542eac37199d3d",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "745736e9d26aff07f57854e4fdb6546ccd7268dc9f5fee6bbf263362fc742b78",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "LICENSE.txt",
+      "sha256": "63b01cbee8cb3424c4cd552c6549a3a66097e4b75c7bdf705d0bdc3bfd41bed6",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "Omen.sln",
+      "sha256": "526eaaa13ef9fa5205d66202754cb0cd0c117c290ba1f1caa9f425b143cdb64f",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "README.md",
+      "sha256": "44c0b6a135a2f083f598d607f6a4ad2b48f9c1a54fd89f0830087ec4f607f137",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "RECOVERY.md",
+      "sha256": "9211facd0d4fe7b17af4f97673da7768680988f604bfef4fe6cbe3f9b13f201c",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "RULE-EDITOR-NOTES.md",
+      "sha256": "dd2e81131487c822c3b6a15b7a7dc04a97ecf68481c002ef3da751aa8306a30c",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "scripts/update-omen-tool.ps1",
+      "sha256": "2b46ad53e3e8b0740116336c94b5d92e9e691d13399b98b32666febd1b42e244",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/Omen.CLI/Commands/AgentCommand.cs",
+      "sha256": "ed481d46476e012cb8f19b89a0ec30b00bc7f68c20d7ac00648397ba45c2942f",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.CLI/Commands/BuildCommand.cs",
+      "sha256": "fa0957c245534fd0a87dfd6ddd408b2be334dd58ac36db43fa6578ee08c3d5e8",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.CLI/Commands/CleanCommand.cs",
+      "sha256": "0e560197d45438eb51d0edddd0da2fb08013b72c9b7b49859efddb6da0b98700",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.CLI/Commands/ConfigureCommand.cs",
+      "sha256": "0e2c4565be128fe54e4aa3127dae618c0438787413412602522b2597d9486fa9",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.CLI/Commands/CoordinatorCommand.cs",
+      "sha256": "dc114fc80366cdc241c0e175dd5c335424e34cf7b134740d6871bbea3df67e7a",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.CLI/Commands/GenerateCommand.cs",
+      "sha256": "c3066af85f2c7a65fe17d84d7c86ff0c1a799d01c38fa4cba381ce489c3ec56d",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.CLI/Commands/InfoCommand.cs",
+      "sha256": "6b9d3aedfea5c98df03c5a36f4b87135fd66aec739ede1d5a7952055f5732fbc",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.CLI/Commands/RebuildCommand.cs",
+      "sha256": "6d5bed81889e3b73e7188a73defa27aa411538f0e8d8d16f080ded366116b0f8",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.CLI/Commands/ServerCommand.cs",
+      "sha256": "db7db62cc430ceafc97f2ddd06f57dbf95710bf0d356bcbd8a9275f827978302",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.CLI/Omen.CLI.csproj",
+      "sha256": "51f99dcb96acdd4dd34a9285d30e9b10a683e5e898cbae8d9bf726c16aa6127a",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/Omen.CLI/Program.cs",
+      "sha256": "07be05dfa955961574b587affb4b6edefec3b64b55992a6310eab5f889f5d884",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Build/CompileEnvironment.cs",
+      "sha256": "fbdd88ffaab7b90cfbe0bb550e3e3855508906121b6490a7e5da2f6703612a70",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Build/CompileEnvironmentResolver.cs",
+      "sha256": "be6c61d4a33ff9d6f63ec4558a27b1a62812c81101e27f06c12b0141b2deeacb",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Build/ModulePathName.cs",
+      "sha256": "d44a6fb137360ef95ba9f4fad89934d618303a33cbd64bd791411440877087e7",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Configuration/BuildContext.cs",
+      "sha256": "33e622907d18a7316fc95aa94bd4674af43c9cecb18eadeba118126191e104b4",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Configuration/BuildDimensionAttribute.cs",
+      "sha256": "94e5acbdc1cc5834cc5d717ea47fa4e177d506da5c2358f01ddcb6fe2ee3a8a5",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Configuration/BuildEnums.cs",
+      "sha256": "acee881163fe15a1d9be217cfbd7970193e7f710aa5039e8af6899e721262c8f",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Configuration/DimensionLookup.cs",
+      "sha256": "96d32d70e00c46c2974c7aae1d04da886fe4b712390f7bd89d1896e89d600bfb",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Configuration/ResolvedTarget.cs",
+      "sha256": "a46129c6b996ead3396b44cbb0e5db2d7235a2c9f488a7d67bc5e99cdea7592e",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Configuration/TargetMatrix.cs",
+      "sha256": "c8b2e5ee7e719063f3cb0e214a635ae9a06cf385ffb7fa1875d5140faa99b553",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Diagnostics/SynchronousProgress.cs",
+      "sha256": "39dd8d8ea49a28d6566ec61cbc29feb5c80804e68d4d6003cdccdf1da7a5946f",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Generators/CompileCommandsWriter.cs",
+      "sha256": "9b489dfb040b0052fae43d9e00384b95c33113918e3c678e8a15131cca9a4781",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Generators/GeneratedFile.cs",
+      "sha256": "ee7a066255c00d5aef4201bb30b9d2fc562f4d0796791b6a4a459d2e39e16fe3",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Generators/VisualStudioGenerator.cs",
+      "sha256": "477f719aa1af15a052fc4ebe12e91eabb7ba75f9788b51a1afada31ef513fc18",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Graph/ActionDigestStore.cs",
+      "sha256": "d8dba431b4d082471fe57e6492182906d53cd5b4d7a4246b9ff95e625bc9bcd4",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Graph/ActionGraph.cs",
+      "sha256": "9251dbfa5da29130931db42886173ae312868497505dbd1106b4e4a6408735d0",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Graph/ActionGraphBuilder.cs",
+      "sha256": "a6c02f87816ef70c6f975e6ffe36610d226ccfeb7dbadaaf18c5c8ef4c6089db",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Graph/BuildAction.cs",
+      "sha256": "b4a46afeeb537cf08fca65997c77496b4852f63c83e410cad30b7e3138cf381d",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Graph/IFileStamps.cs",
+      "sha256": "edddb8b05c6825946ea256742265a99a2ac9170f9b06aa75875e591f17274bb3",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Graph/IncludeScanner.cs",
+      "sha256": "be08a2d7e13054450e48cb28724100b2743c77843b543f84a69c8238ffca3191",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Graph/RebuildSummary.cs",
+      "sha256": "1d67036102c4dfab70c957c1d126e735fb2f229164c5b755b00cd6adcdd011fb",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Graph/UnityBuildGenerator.cs",
+      "sha256": "b9f0e19bb6b9f6d811a6a305599db269b869f8ffb807b44599f0899d55da959e",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Implementations/Sha256DigestCalculator.cs",
+      "sha256": "d0c42705c3eac59b9d178f81afa6320ae4263a543f9883b3c386dade60f23ed9",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Interfaces/IActionCache.cs",
+      "sha256": "a7405fc6fee7e86d9061eadb9771a9a4fe7281e752b184b7fe494bc280fddbb7",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Interfaces/IContentAddressableStorage.cs",
+      "sha256": "3f0cbed1570be4bc7c6b6b98d8e3bcef8f5fef01703c2c78a846b5968c86e568",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Interfaces/IDigestCalculator.cs",
+      "sha256": "df527ef25296ef14c2ba1ae22b14828960ccc17f6acdea0984dc6d878007db8f",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Interfaces/IExecutor.cs",
+      "sha256": "13115d832800b8a860a4ec24cb45ad66408c24837f45d7f8c627f69ef94f2293",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Interfaces/IPlatformSDK.cs",
+      "sha256": "6a703ea9d4e9ccccf31472b3123c0dd5c6500fbff457ab6078002ccea1617464",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Interfaces/IToolchain.cs",
+      "sha256": "fbf6bbbcba88306efa330e92a878ab5bd1de8bb9188a8b4689540b1b7df8248a",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Omen.Core.csproj",
+      "sha256": "03e2636481d870027b6cc41f0a4a4e0364191c4b9785e87a90632ffb8a3d55fb",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.Core/Options/BuildOptions.cs",
+      "sha256": "be8c2fb950b2a1f8a7a1930255e97c5097e1e3ce11612aa5b760b87dc2fd2428",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Options/OptionCacheStore.cs",
+      "sha256": "018b3ef57c4541078395fa4ed1bad17d586c7095fbe35ddb5c7105e8d1341736",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Options/WellKnownOptions.cs",
+      "sha256": "392a104d12773d0664f67a23a38135cf274fc7bc21f038790bba07eaa329fc18",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Qt/QtCodeGenSynthesizer.cs",
+      "sha256": "d2f6f302a1ea619982a4b42b515ca61f77c267acfe1aaffff035f1253f057875",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Qt/QtModuleEnvironment.cs",
+      "sha256": "7a4402f894523479236e0f8b64f788c57ae36f3ff0251ca3ddd38a1a3efd0f85",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Qt/QtToolchain.cs",
+      "sha256": "d72536acf6895721318474daab54f00f965002e9ba0f939f2d24902752035bf8",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Qt/QtToolchainResolver.cs",
+      "sha256": "4593bdd2d5a7471549427993ca5c0dcbeaab6700fca9e1e96a70d26785264dd3",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Reflect/ReflectCodeGenSynthesizer.cs",
+      "sha256": "7aa234dd6748c21f3cfd022cb9a930954a4f1a942528fe823dc16d82e07d76af",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/CompiledRules.cs",
+      "sha256": "c1efaf2d07e50a7f423bf5e14aa16dab7a355545312343f69f669ad0b151ae4d",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Rules/ContentFetcher.cs",
+      "sha256": "661c3a8e4d5671f7c70d687f4f079dbeb39040137949656f65a1a860aa5a937a",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/FindModuleParseException.cs",
+      "sha256": "01581941446834487e9914b9d6a3137ce490c6ef862754f9b03e6b4d2fce059e",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Rules/FindModuleParser.cs",
+      "sha256": "9a14244fe70cf9eeefb4186c58f6b0a4097ba8c110421066179ed8bd9710dd1d",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Rules/LayeringValidator.cs",
+      "sha256": "bd750970239377d7a2238babec60fd5e771bc7d2459623dde5d11a0cf69915ce",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/ModuleClosure.cs",
+      "sha256": "87e1e814c06bb7ea60acfd876fd0abcbb6af236e7c8a2f23851a75b240fcc417",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/ModuleRules.cs",
+      "sha256": "5b37159ab09549e2f07b01bbfae255089f2580644cc7dc89bfef66402dd00ce7",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/OmenProjectRules.cs",
+      "sha256": "166fc446f684c2bc63f0d017463447d0a51da3d2538d146610e49725fe77251e",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/PluginAliasResolver.cs",
+      "sha256": "cb141947f305e8d511d28145b458c4bc56d78e632375b0c68cf54ecbd3f888c6",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/PluginEnablement.cs",
+      "sha256": "43f9baf131d1313abcea0e036dd67f524b18c0e5a6c5bf37e7c3333ba47e85ef",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/PluginFlavorModuleRules.cs",
+      "sha256": "5f8b77d211202aeecf400b2b19786d2654f0ad8492f8f8b92c470c7fd9aa233e",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/PluginManifest.cs",
+      "sha256": "eab2dadf8bf7c78c401489dede407e09683e4c87ce1d27d040847f193c9833fa",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Rules/PluginRules.cs",
+      "sha256": "272e001192e8fbc83cf16a51f126b8cfe5ffb0d641f7b31c04c11cf9ca8084e3",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/RuleCompilationException.cs",
+      "sha256": "b4694e73a700294f485589bd159d8caf40e6e4f38ad27e51e41898c43dc1c50b",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Rules/RuleCompiler.cs",
+      "sha256": "08da438eb24ca8ebb69497aa962a7c976c07a08c810966c405506899057a57d0",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Rules/RuleFileDiscovery.cs",
+      "sha256": "4450a39a8ba1e1ef756130ceb07da8fbfcff489edea11743da64e4d8bca4074c",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Rules/RuleInstantiationException.cs",
+      "sha256": "22985bbaece9da39b253baad2c4a3e5a4c07da15ffa1f6d13cb6ac3c8ffdde15",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Rules/TargetRules.cs",
+      "sha256": "e121ea9ef6ad7455bf922e5961c2740c8d316785f665fced7b88b10f4fc89251",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/ThirdPartyPackages.cs",
+      "sha256": "2ea51011d73ac8c7995b0b518198970684af7e2b114c7804ed2954c6513eb408",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/ThirdPartyTargetDefinition.cs",
+      "sha256": "5a8bf2f34ea87bd4fa5fcd4450a1e81b14bf97cde4676c6e5d69bc0906287730",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Core/Rules/ToolchainOptions.cs",
+      "sha256": "7b955a45d07b3b35fa8b2cdff373cf6d3456e89955f4623c7b66294db68e1ef0",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Core/Rules/VcpkgResolver.cs",
+      "sha256": "aacba3a9baa9a2dfc672ee70b4b72a92492a9bca132a096a58dd3b828c85469c",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Distributed/Cache/LocalActionCache.cs",
+      "sha256": "c020b7391699d57765f53a8a3851040c2e1355c02d4f30ca54b852b00dacfcf5",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Distributed/CAS/LocalContentAddressableStorage.cs",
+      "sha256": "627bb912e0438393ff76ffc56349eeeea0de0b64294e4e2a13c043d8549b532d",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Distributed/Coordinator/AgentManager.cs",
+      "sha256": "4d326b39cd4f2e2cfe0444d6e242feef22b7f0a02130bb8ad2d047721da37370",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Distributed/Coordinator/OperationQueue.cs",
+      "sha256": "7249796860cf72ae7817f066be709db3ec8f92997a3bd44cdc0badc9257ade0e",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Distributed/Interfaces/IOmenAgent.cs",
+      "sha256": "71134c51cf49ca14ebebbc56c72b8d64fe572b3baed636b308a434d27de23aa8",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Distributed/Interfaces/IOmenCoordinator.cs",
+      "sha256": "26b0bc5d7a4bbaaf4f437dcb1d6e20e127584e1f20873f09e4cc5a5dafc21404",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Distributed/Omen.Distributed.csproj",
+      "sha256": "77304eddafc22e94aa7b6851a9ac29cddd1d82e624a0bbc04258573715d17f81",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.Distributed/Protos/omen_services.proto",
+      "sha256": "d9ed6c9672109774d202d38b213542fb21495868aff00bcb862d4cde7f8377a2",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.Distributed/README.md",
+      "sha256": "097b2f68c9bc9e648bba521b4c1bdc2e8f96df4d508343730ddd9e94d516e54e",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.Distributed/Server/CoordinatorService.cs",
+      "sha256": "3164c78938514d31941f8e40d65e59da94d8913874db5ae1a13039c7df177ce0",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/HybridExecutor.cs",
+      "sha256": "9ef1edd1c09181f1a9787d7a8213a32ed4a8aac497a4b56808b04892daaaaa2b",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Executors/HybridExecutorOptions.cs",
+      "sha256": "bd0febf32fb79dc58ee7ae49783aecafcf00db679ecdabe4b6549251ce09e6fd",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Executors/LocalExecutor.cs",
+      "sha256": "b5e433372aeba2d768e3804c9e8ae57db0c2895230ef81164ace4489186a0bb8",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Omen.Executors.csproj",
+      "sha256": "e0c08f62dfe50ea03bb1ca01c6a6451a608e655c51142cf4bbc780925771df9e",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/BuildEvent.cs",
+      "sha256": "e05bef96bcf0ec0fa061d2c65558fc54ba151f1efe21172cf9626e0c9459ec30",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/BuildEventLog.cs",
+      "sha256": "774bfc5e9482da64638b9ee10fc1f349bd62676cc5cd0b0fecc16ce29010c997",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/BuildOrchestrator.cs",
+      "sha256": "1b6207855a7b3a481b5e0c96c85eb80201f924af3a7e9fecf12092fd1c387436",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/BuildServices.cs",
+      "sha256": "2528c0d422d2fc00e95ea13b050756fa613dfe8c10579c66c702bee2c85765a4",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/CleanOrchestrator.cs",
+      "sha256": "548fd2940e338514cccc14e43c664794b60336d2dd8399ec3a768d5c13f7463a",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/IdeKind.cs",
+      "sha256": "a8847e6e39d4be6d4857795ff9f9db4be21e34baa068f2209fd9f04095c0ee01",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/ManualOptionsStore.cs",
+      "sha256": "8205f189b01af391044e55e121b97870cca7aa05d0a3a21033e42526a8b9229c",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/OptionsOrchestrator.cs",
+      "sha256": "7b2f59303c9a66302ad1d99641b5ef1f798d2d0fc29ef7b01c02aa010057288f",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/OptionsOrchestratorRequest.cs",
+      "sha256": "abd120feec7f852052231a8f0a8dcbfda540e106f1b51d731c72d49fec7e73b4",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/OrchestratorEvent.cs",
+      "sha256": "1e957204a770298623a502062cfe6dde198be53b4b5ffbee3bdbd1fb7c7352c9",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/ProjectGenerationOrchestrator.cs",
+      "sha256": "4f729ac59951d865107c1288f5a611478652a9c8531e5eb4aeeec28abb53465d",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Executors/Orchestration/ProjectGenerationOrchestratorRequest.cs",
+      "sha256": "949801c8851dcf3f1cbcb7c5666e001d0994896d85483c3f838f426a5bd8262e",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Executors/ParallelExecutor.cs",
+      "sha256": "5503a72ee9362044e774f1313c7d936465c2c0d096c029c690b247bb2c045ba3",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/ProcessJob.cs",
+      "sha256": "89994af853fd1ac0eabb3318ccd6bdf8fcacc68e62df489f4629133ea3c50e3e",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Server/BuildServer.cs",
+      "sha256": "fca28b6b7cfaf9a3d349aa61c7d16049b7d9252660c8e7de4e03ecfa82c7e3a4",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Server/BuildServerClient.cs",
+      "sha256": "2f2233e75c09a60a4a31f5251182fe9974a96632d008ec83ca2c51f8c0dd301c",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Server/BuildWarmState.cs",
+      "sha256": "f85c4c4ccc6bb8e28fb014bcaff6f5324d8eddf6834dc0763692727b7025acda",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Server/ServerControl.cs",
+      "sha256": "cc214b140acb9ef94e87e8315a4806ca6a8ed44fe818b5ef54b586ae93283e52",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Server/ServerProtocol.cs",
+      "sha256": "7cb428a41c86e4d9c6955793e74449c1bc1c17174445c8db7fe7d7e84ba4b95a",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Server/SharedActionScheduler.cs",
+      "sha256": "6da967ff35e5774824fa36e283ab1ea4c41426c66ddce20e6852c7c190b08a30",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Executors/Server/TrayModel.cs",
+      "sha256": "732d4e74c37b751edb282f8a83e4b565837dabaffe5822663acde4503e7171da",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.GUI/App.xaml",
+      "sha256": "18b88df2b2d1a0637863a7cb22457b53ceb4b11df2509fd4dc8e6c24f90204ed",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/App.xaml.cs",
+      "sha256": "d290e4c844b4dcccba836436732f6fe67d056123b8f4ae7e06987a76bd333070",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/arrows-rotate.svg",
+      "sha256": "ca419a3b3d2d1a1931c7aaa763db90d2ea947ed1c4ffc6b186851a3b12444ad1",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/bolt.svg",
+      "sha256": "a3b618acd583f74fa5adefba5f673be7643b1908684a89e03f53b6755da95d3b",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/circle-stop.svg",
+      "sha256": "893b1efac8b50b3ea2b4fe0f28338841c9c79fa611e23cfe002be1faf5c6cb32",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/file.svg",
+      "sha256": "92c399e3a3b12652ba13bba483fd89b18aa46df0dc5031b574fd9709b755fe77",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/folder-open.svg",
+      "sha256": "a8176f8c207c48590e88211f0a0af9075d10df63afb57d232e643cc279089154",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/folder.svg",
+      "sha256": "c67619f5896009726529e14d219039c33b1d813e4c5db38e4c0f4206b5c37ca7",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/gear.svg",
+      "sha256": "c5059cd25df14919f74c33b96603555f22676512f44e5185a61e52ef79d82097",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/LICENSE.txt",
+      "sha256": "a5476c3d107f303de4f3d1a10b3ecd44fc8d407b23979307b9e896c590855909",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/magnifying-glass.svg",
+      "sha256": "69d88b8be2fbb7ca153abe4b89b71c525eb62ee5ce83fa6745df2de426978d89",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/trash-can.svg",
+      "sha256": "752a452a44eb5e7aab2ea43b721d85c3ac704c14f8cee817c3bba930020834a1",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/window-maximize.svg",
+      "sha256": "5ec614cdfd9719607e6147b6d47bd86e13e3dfa5e7d9001fb05e9c5712e26eb9",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/window-minimize.svg",
+      "sha256": "e082cf0432213681f9d17e023b72203dcd4f18dc560f15ac2ad4328cbd9deba7",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/window-restore.svg",
+      "sha256": "32426795e9e0959c350d46eb8e8c2ee49cb8db28f5ccf3e1d2604daaf04ead08",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/Icons/xmark.svg",
+      "sha256": "d0fffe935f8b664f69d02063e368816386d10fd643a8199a4b4c4ffed795a71f",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/omen-icon-64.png",
+      "sha256": "fb7dc6a656c6b11664a0aee94541e9068459bcf20b60065c8e542eac37199d3d",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Assets/omen.ico",
+      "sha256": "41ebddca082b0dbeb574439418f0af86606517d339d5128880186376348666c7",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/MenuBar.xaml",
+      "sha256": "28fdbbde0f45ebe5bbbeec45b33dc0de726888843895f716f78ce14d21e830ec",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/MenuBar.xaml.cs",
+      "sha256": "92291b7cc7ba93c66e24753caf6cf70ac48be692642b86b1d6e5f211b1bf8183",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/NumericTextBox.cs",
+      "sha256": "023363a15225004a6271b7cd6d0776875bd69ccc0381377491fd91791b717413",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/PlaceholderTextBox.cs",
+      "sha256": "265d24b2cb240fa7e6d89fe29aa8a4de1fc376cf72322083e1a7ded5fb8b5e1c",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/RuleCompletionData.cs",
+      "sha256": "69089040410ea00175807e5a1f2c883a233f0e63c08e70ed21559f6b19f977c6",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/RuleDiagnosticRenderer.cs",
+      "sha256": "5843a0671f9ea55642b61b95d9aa5b45a59c837cf8d38afc8ebe13c7dc13a7b5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/StatusBar.xaml",
+      "sha256": "4c82b8beb3555a21576fda4a08748ad8551733f80cc165b4820cac50776a1677",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/StatusBar.xaml.cs",
+      "sha256": "5c788873760a986c525618e2f6ef8264816c2daefa5d09b136b755d8ea708eb0",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/Toolbar.xaml",
+      "sha256": "d0df5e917499348434c6bf184b2ad26309d27d2628a70e404efb2e1e886002d5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/Toolbar.xaml.cs",
+      "sha256": "4e0d5fbbbacf24395e0d89cf913db602b4c99f08e6383af01ea0165e728fcf5c",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/ToolWindowRail.xaml",
+      "sha256": "10825aafc5361386042b0c07d2f6989a04d4a1ce8001fdbb6453b95014716799",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/ToolWindowRail.xaml.cs",
+      "sha256": "82ff17a4bf18f02dcfc6efd224574d29db8d43e080c3a1026187fdbb46fde790",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/TopBar.xaml",
+      "sha256": "bc1755ede81f7dd8318b612c5182747a08c8e4c30c1fcfbc28eb1d23b20e04c1",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Controls/TopBar.xaml.cs",
+      "sha256": "5c0d2e35d58858c1a586a653430345b631b83b97d9ebab03ad4197e50a2fb296",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Converters/BoolToVisibilityConverter.cs",
+      "sha256": "69fb88dfb91ab6b48aef90e31357a482e50f1927b2f394a0584affe6fbba2283",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Converters/BuildStateToBrushConverter.cs",
+      "sha256": "d55b8de448330ca562d002f6a66f3d8aaa1544a2f34dede17a79afc7dec1662d",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Converters/EqualsToVisibilityConverter.cs",
+      "sha256": "d1001766960d3786a7fcc2d365687003f5a234f825209112b730a2654d383c78",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Converters/InverseBoolConverter.cs",
+      "sha256": "8c81bf5ca6834ac58e5d4830aca6d5be728693743384b6b27b84f61cbe90e609",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Converters/OutputLevelToBrushConverter.cs",
+      "sha256": "8854faf9d7f5005d70815ec4a3186350926279fa709dae8f31490c30f8008640",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Converters/StringNotEmptyConverter.cs",
+      "sha256": "32c485830227f0b37f6a95c19f43f9e6929eaf57152f5b654587f4757d195cdb",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Converters/ToolchainStateToBrushConverter.cs",
+      "sha256": "31c8b0f34071fac747c3fe5402bfc11a3814692d5f4ed1b9cfd5a8d80ae03c89",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Converters/UpperCaseConverter.cs",
+      "sha256": "8bd2641f6850e9c49ddd8d2a1dce8a6e9de8bd089e28ffa2df92b9c1db8364b5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Models/OutputLine.cs",
+      "sha256": "8833eb9b4f53416dfcc897ad79300c84afb8348bb50cc7571a7a2fc0a6b270dc",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Models/ProjectTreeNode.cs",
+      "sha256": "768d20270537dcf765270f295a4e4d723a3ace10fcadf71b1ce64db60b72e843",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Models/QuickSearchResult.cs",
+      "sha256": "93bc2fbba2c99d4f420255cb683be18ea76779240fb7a344c2a39cbd7131e1d2",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "src/Omen.GUI/Models/RuleCompletionItem.cs",
+      "sha256": "13f7477d057d1ef35ab16dce0ac65e61a8a80592e77e70e8065143973f5fda84",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Models/RuleDiagnostic.cs",
+      "sha256": "ca0e00ca5b32b834fe4254a8f1199de8518861bd9c4397a245b1ee07dc1d7159",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Models/RuleEditorDocument.cs",
+      "sha256": "dd5d37abbc485baca0d2dd3f9228708d1a4c12d28853fc6d3bf2126637d8c495",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Omen.GUI.csproj",
+      "sha256": "c987915e40da4689e18ae60f58a2e27e102c75b35d5ffb5a72ee2d9179652571",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Services/ExternalLauncher.cs",
+      "sha256": "f4a1c2d78ac3139d126b68e361953f19163af5e74d879a7439544e607e305a9d",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Services/GuiSettings.cs",
+      "sha256": "9af769d3397cfde4071319a2f1dd2cb241afab291ec85bfc01626ec964d35636",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Services/RuleEditorService.cs",
+      "sha256": "7e6b46089c82cc52a15e6bd8d5c4869fc4f745c1432181bda74b6e6104c87cfb",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Services/RuleFileKinds.cs",
+      "sha256": "69ef5e8d169ed8e42550042d4afc6732efa80f782be956e73465858817d0f5d8",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Services/ThemeService.cs",
+      "sha256": "5b8bef67be90216206ccb4565fa5bfbd861967513e7a4cbf442218c6f8c251d5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/Brushes.xaml",
+      "sha256": "e4da878fbbfab08ec701fbdab8abd1b9365d1f897e997806d4262382c20acf68",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/Colors.Light.xaml",
+      "sha256": "cbd3d133fdcf9d1c9874d32d530f1405ff5c249c7568a369bed38cdb0e3e3aa5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/Colors.xaml",
+      "sha256": "c003d0f78c0722757ce6ebe6854646a7885e1a30a46d963b4184938cdf05e8f9",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/Controls.xaml",
+      "sha256": "5e21efe233bc16a5b9f41ba66b1d1541c93612bc9d40773322f70b8bfd48bfa1",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/Docking.xaml",
+      "sha256": "f3a89518ec713bcad492b865444a08b517fecfa9b30b295af24f331bdc7d9503",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/Icons.xaml",
+      "sha256": "61022a66823db4f766a0340810016a57d3cc7c5be40627ebfec7f754962a833a",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/Menus.xaml",
+      "sha256": "d0f39be304421db606510a7551d3fc0d0964ea8ffc433cd9ae37b5d12466ba78",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/Metrics.Compact.xaml",
+      "sha256": "584a01c45fc5e87477db99ebe633a8afc2cf02adc3168608886c26c7370238b7",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/Metrics.Roomy.xaml",
+      "sha256": "670a444c0517bbf8883d2939f38fe4a19dee53fd44ec7521ff9002d9b983959f",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/Metrics.xaml",
+      "sha256": "c3f6c54b13a4d93628746fe41846a2f9f747c26bc3fd8b6757ec2851158e5a08",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Themes/ScrollBars.xaml",
+      "sha256": "501f24800c1b4cb54056b560838b07774934bb7f220688f6393a298da3d7c4dd",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/ViewModels/BuildOptionViewModel.cs",
+      "sha256": "badc286646aa148973c0f756f6bd0a8d13e682a5381d704fd8115b2de2ae123e",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/ViewModels/MainWindowViewModel.cs",
+      "sha256": "c27c05749aa8f289a42b916f31f0e5a402cdcfe0bf630404707e83cbec09e564",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/ViewModels/MatrixPanelViewModel.cs",
+      "sha256": "bf0fb7d6f82bd7761c10b71246aa02e60b0f478655963d214830d146a4941eec",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/ViewModels/OptionsPanelViewModel.cs",
+      "sha256": "87026778ae42979f4025130ee5a9334c92a4e4144ceb70be0ece067802b1a02b",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/ViewModels/RuleEditorPanelViewModel.cs",
+      "sha256": "aaa19542ef3f71abfa9da9d7cf8df190286fd8498232dc245627230f4eacd115",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/ViewModels/SettingsViewModel.cs",
+      "sha256": "6b6c854d46f76c38a447a0b9828cca4a45a6efe85d72632e5625bc6c1c9537ab",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/ViewModels/ViewModelBase.cs",
+      "sha256": "5774293faf5216967374b80350dd2cccdfec3dada3e222ba6e30dc93ad9bef4e",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/AboutDialog.xaml",
+      "sha256": "fa63d69ee514f2dffbd24e76ffcbef39738a2244765fa40dc0df0f8b8dd03160",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/AboutDialog.xaml.cs",
+      "sha256": "07a289df8beb344b5d33d50c0fac6a757009664eeee5d07568a9c0b84f51353d",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/BuildOutputToolWindow.xaml",
+      "sha256": "d6749ba307558a341ec1b48cb7d5a69bc7ebd2ea5afc8aa86a185bf82fafdeb5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/BuildOutputToolWindow.xaml.cs",
+      "sha256": "d64933dff8bff186dcd3b13afd0907255d6c34fd9df64d42229f1055bcbbc776",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/MainWindow.xaml",
+      "sha256": "e14caf9ad92d5593859f31a68721df1acff5eb4962b79db52f04eb00527726d5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/MainWindow.xaml.cs",
+      "sha256": "2062deeea787bf1aeca26d289009fa11812022d955ee574486a8a2b4cba6e05b",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/MatrixToolWindow.xaml",
+      "sha256": "730ffbe80dd6a97bd8c98a72b34b8ae79d738ae0c4e77ff9f4d0747609ad5f29",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/MatrixToolWindow.xaml.cs",
+      "sha256": "a8ef1671331d86b52ae8b408de583a4cbd430aeb11f95be45aab0264c6299a67",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/OptionsToolWindow.xaml",
+      "sha256": "c54631de7e0d4a1383b136f7bd7aaafb1d8cee449ec7840adc7bf6a6de832097",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/OptionsToolWindow.xaml.cs",
+      "sha256": "53a06688f48076e3d3444e4b07df7e3f475d9c8ce4c22115464b03ccf08113fa",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/ProjectToolWindow.xaml",
+      "sha256": "4bb4a78fb0ef5155244245bd27839125a103e6f6b66999495ec544fd45b18426",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/ProjectToolWindow.xaml.cs",
+      "sha256": "53e60a7d0c9ce9458f5797e7e7528849e1318152e9b738883bce49c624be16f8",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/RuleEditorView.xaml",
+      "sha256": "a0cb8a93cb551bb07d481da401f16b2e0e59f94aa2d48d3f81d4fe076956af8c",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/RuleEditorView.xaml.cs",
+      "sha256": "1fefe0d1e079bbf1748f2e66dc6d2e490a4f3705c3945fdc1bb4a86e25240afe",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/SearchOverlay.xaml",
+      "sha256": "2c24354577f3e3495feee4e875509ef184ca30237904fd391ff9ae81e37ee0ad",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/SearchOverlay.xaml.cs",
+      "sha256": "ba7019bee1c41d5e97927a3a133ba353188545d7af5841ac37e5b8aa858dcd4d",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/Settings/SettingsAppearancePage.xaml",
+      "sha256": "e2717f0c45f0a1ae2233e2920ff5dbc61f3e9c24f1d621b207b81a91ff61c9b5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/Settings/SettingsAppearancePage.xaml.cs",
+      "sha256": "20bb605a2db309252ef96c1c64691045cf93ec246cf3b67df1811e5f783018de",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/Settings/SettingsBuildPage.xaml",
+      "sha256": "81c49c6b80ea31a79339cc5a138181c1388371412f29e88caba8072cb3b50db4",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/Settings/SettingsDistributedPage.xaml",
+      "sha256": "07677ff02447c5719c958603c9b6a1e201156d272f45fd8631ac500d8faa2300",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/Settings/SettingsGeneralPage.xaml",
+      "sha256": "72519bf99420c048bae3c1ce3798036f0e2790664339c22a96b2f95d5198a3f3",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/Settings/SettingsGeneralPage.xaml.cs",
+      "sha256": "eea46004f771cf52b2ecd4d471b7716ee804b2b923bd10b57336be73b7bf569f",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/Settings/SettingsToolchainsPage.xaml",
+      "sha256": "58033ca98c5b89c5036f212adbf7680e967c2e66b06153035487d2f736a9faa9",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/SettingsDialog.xaml",
+      "sha256": "8ecd2d41cdfcbf4c791e159be855a5e05d305bbcd7f4018712c8bf2cc2b26e03",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/SettingsDialog.xaml.cs",
+      "sha256": "23aae38f6a15f0509cdf25c1be4bb724fe7b02331dd122fbbcf4a4dbbbfe0b78",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/UnsavedChangesDialog.xaml",
+      "sha256": "f1905ec2c66cee4bfd43401477835411673cbc45bdcf282efcac8034307a1a03",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/UnsavedChangesDialog.xaml.cs",
+      "sha256": "dd5e751da6e7f67e4946fd43d5a448d58be2d7aaa46556483ac3619d39aeaef7",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/WelcomePane.xaml",
+      "sha256": "5c47a35aa30bf9541c41a7135b8680323f8846d3b82f79beb5d248b8b016e4eb",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.GUI/Views/WelcomePane.xaml.cs",
+      "sha256": "4e6fa20c5d6c29c96a5f60592df662122d8c743ca2a325f01ec3ebf9536e88bb",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.Optimizations/Omen.Optimizations.csproj",
+      "sha256": "c5a91c3f302377051ba3af3a4daa928ff3c33871dc7df3cf46a76852aa7ddb1a",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.Optimizations/PCHManager.cs",
+      "sha256": "b3229660c4fc8297db6e4099ef1d988a4e8e94421f6e88740adf295757346376",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Android/AndroidNdkSDK.cs",
+      "sha256": "2dbc0ca2979e53f166a2a010447938bc3e726073ae903ba19cf9b1aaa759afba",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Android/AndroidNdkToolchain.cs",
+      "sha256": "cad2679524b2a03f7323cf2e337fe3673317cb9318a42c0779de454ca5ec331a",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Apple/AppleSDK.cs",
+      "sha256": "e82934b537093b388efa955237c337b7dfe45fc33edb44f4d8e9db1583ade906",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Apple/AppleToolchain.cs",
+      "sha256": "24fd7d5e9f94fa1bf2a7ec210511b2ee8294669b78ea6a97e57342717559fa81",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Apple/AppleXcodeLocator.cs",
+      "sha256": "f2f30181030d2e43573541d929c97346a1e5ea23acaf3b2c460efed8bafb795d",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Apple/MacSDK.cs",
+      "sha256": "f54dc413239f5885167d412b98b280d0e2fde5c78cd078080e77dea2ea3f0eef",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/AssemblyInfo.cs",
+      "sha256": "c24139265799e4070b53b3c18c33f37b110ee79538fc1469bdc39f26bfbe750e",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Console/ProsperoSDK.cs",
+      "sha256": "e9d3b7520c3aa057a8a3d7021bb0f7ca1bcc5214a2ea054ab258b858ec806884",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Console/XboxSDK.cs",
+      "sha256": "23248d437c849eb31069a65649b364f96237282a60d0afd8f4fefa95709bc0fc",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Omen.Platforms.csproj",
+      "sha256": "eeeaa81ae18b0f8387aaf186903cac762237d404d77c4962f8b3310640ddeee8",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/Omen.Platforms/PlatformFactory.cs",
+      "sha256": "2929cad686cea223a5d1835b65bccdfcb97dc6a97c0a3305958167ed8f3ef2d6",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/ToolchainBase.cs",
+      "sha256": "73aa2895b7a14a5fcec6f16a099be3a8ceddcd48c816888537a8a7889be1b734",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/Omen.Platforms/Unix/ClangToolchain.cs",
+      "sha256": "24f3adc154b7d61c4246d2c79c5f6514209eb9026f8874a6281764a63edd1aaa",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Unix/LinuxSDK.cs",
+      "sha256": "4a7c23174b297de1a67ff11d762de5fb0cdb6c7f42f02a8cd17876c5c695531e",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Windows/MsvcToolchain.cs",
+      "sha256": "337a689ac34f6ade9b2515a910740e56eae2037b36ab8f4aea40cd41f175e37c",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.Platforms/Windows/WindowsSDK.cs",
+      "sha256": "72ae386cf5593806082ceae9b970d1a0882e46dc96d80542f1a40052aaf23253",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/Omen.QtUI/include/mainwindow.h",
+      "sha256": "b612e9f8bb54d7f35f5bd32001065881821b999518e889959027ede7ca690075",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/Omen.QtUI/src/buildoutput.cpp",
+      "sha256": "139f7bde50bb63b0ddac3386c4132508f573698382e7ed59dbf8d348fcd7440d",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/Omen.QtUI/src/main.cpp",
+      "sha256": "d235a4e365e973a17d011d505133e546f7cb004d78c375c400660eb6266593ad",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/Omen.QtUI/src/mainwindow.cpp",
+      "sha256": "c0053365b31b6c92524a0dec3cc6af6ea9037127228797a6064f5cd03df0b92a",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/Omen.QtUI/src/projecttree.cpp",
+      "sha256": "1ae56d80c65e354b35646a9a7fae0baf39ac574d41a89ca572c2fd75b02d9474",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/Omen.Tray/Omen.Tray.csproj",
+      "sha256": "a7f4e4891e46a53e67626d0009d62a454c607d6d2ca01b6cf22077efb4951713",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/Omen.Tray/Program.cs",
+      "sha256": "1478150728e39e11a3d8f7f67be50a10dc8029d2c830bdf3b92d9cfcf482ab05",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/Omen.Tray/StatusWindow.cs",
+      "sha256": "db66ed44c6ec537af1483ab803fe296666d3f95f5e6d27159edafa8fd0a31a26",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/Omen.Tray/TrayApp.cs",
+      "sha256": "29160c3d37a4a9b958c7ef912d104184f281da1e19ec9a0fba29ba4f13acb950",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/appsettings.Development.json",
+      "sha256": "12251b0ba4805e0b63327381f77f85ae5044b0a8fea3249c659b6872bfb71a97",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/appsettings.json",
+      "sha256": "9ffa873bbfcab0b786fa236589740ab678c69b2673409dca251b9bf821ee5cc6",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Components/_Imports.razor",
+      "sha256": "9a3f4999caccab51c2d99ff6f71c43f3e22ddf4a259902295ffe5f1437606225",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Components/App.razor",
+      "sha256": "f81c05d1a2ec91d510a36cdd438e6ac4fb0739cf8e72869523e6f8b71bfe902c",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Components/Layout/MainLayout.razor",
+      "sha256": "79880248b73c1615f950e1215ea72ddd2e29c604aa0b0c8de1964b08caf88952",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Components/Pages/Agents.razor",
+      "sha256": "8b2250729640ad4edad54fab89d61cb6d542936b15a7adc0a3f2b6a73d4fca8e",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Components/Pages/Cache.razor",
+      "sha256": "7414e756053d06b29215ec089e58d0526c854ae1f8a93bdb4fe34cb68a2617f6",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Components/Pages/History.razor",
+      "sha256": "6f0d2228be3bff54fe431a211f54537a3acfc213ef9cc55489920e1726d0d34f",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Components/Pages/Home.razor",
+      "sha256": "14db6fbf0ef8c6c016cca49e6afba711b58e73c085c69f07bda778b578ada86f",
+      "provenance": "archived-original-checksum-differs"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Components/Pages/Jobs.razor",
+      "sha256": "b85840a88690de0d03ccb9b13fdf50904ea59fe0c349f222f12e0479481cf488",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Components/Pages/Settings.razor",
+      "sha256": "d6f8a402560b80b5bcda5aba40512ee454e0637f14b0586945a84dc947476e5e",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Components/Routes.razor",
+      "sha256": "95a2e7ae6d8f1e3e501e5391b2a940b03eea0f8b835ecd42a373fa8fec9b0259",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/OmenNet.Dashboard.csproj",
+      "sha256": "c27a853ec7484148de8fd91b35ad6d50dcee934543f6d35041c237cedcacc4b4",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Program.cs",
+      "sha256": "b535653c00341f08f0fdd4bb55264ab7b2957944155a7f5e0ef65263f992ea43",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Properties/launchSettings.json",
+      "sha256": "33144d10ef724c3dae833a585eb56bfd835e789aa1cfe8316ce970d3180445df",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/README.md",
+      "sha256": "a894ae4b2f880ddda04a27dc2deef05e7b90978644baa3903b967daacdbe993c",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Services/CoordinatorClient.cs",
+      "sha256": "bf8c3a844c34234c3ae3c7a80aeee4d568bf88dd59c626d856a4defc02d572ee",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Services/DashboardService.cs",
+      "sha256": "63b88bad7eeed8aa3a61ec047251f80814be641eaf3bb8855f2ca80cad5b73c1",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Services/ICoordinatorClient.cs",
+      "sha256": "72e63a64882cea53b6102fc1cb12c8623b1544c992148726aa6b1efd886a7ffc",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Services/IDashboardService.cs",
+      "sha256": "d3d85a64eb2777c037229326d03d062b14c054da75361331d8809c2420a863ea",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Services/MetricsCollector.cs",
+      "sha256": "9b35ab46d186ffb8eb70936e7af3698790094615954e64f098fb19e83b045f70",
+      "provenance": "pdb-checksum-exact"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/Services/OmenNetOptions.cs",
+      "sha256": "c2be8538bbd32ba5e1c2f561f319e014ac9f8e4ab321abf2e4b91faec29a1f27",
+      "provenance": "reconstructed-from-installed-binary"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/wwwroot/css/app.css",
+      "sha256": "e785b236644200888d9def6cada19091d0671aba8de8cfec22f2922ca6faaac4",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "src/OmenNet.Dashboard/wwwroot/css/icons.css",
+      "sha256": "9a0df5199f703736fffc987674983d6f63f3ab902ed72bbb1a110c6f812054ed",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/ActionDigestStoreTests.cs",
+      "sha256": "b361a289b10987371a9e945d5da9eab40695c4482fccf7baffa05a4f90aa800a",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/ActionGraphBuilderTests.cs",
+      "sha256": "1cb275d0ed312b8bee6ae1dcf97ac9c1b0051e169c2772d1514336e085204222",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/ActionGraphTests.cs",
+      "sha256": "18aeffe52de23eb7f901383bd878f0b716ad8a64482a912d49d501c3b725f0c7",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/BuildActionTests.cs",
+      "sha256": "b9d2c7155e6bf4248c52051ccc54219c0200eaa610a0dfb3f5591a81c11fe59d",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/BuildContextTests.cs",
+      "sha256": "6d23bc44603b68218552921dcbf06e67debfa34078fc531b70da5a6f998f7244",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/BuildEnumsTests.cs",
+      "sha256": "d1ef994f560917ee9033c29f4eade0d7cb37eddc184ca3b9e0dc8fee25b03671",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/BuildOptionsTests.cs",
+      "sha256": "c6e48d665d5f00bd1b6ccbd0b6ddde345d7cc85dd496ae8006cf99c4fc515c13",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/CompileCommandsWriterTests.cs",
+      "sha256": "107aebc1a46543b175f8238193a68dccc9f840e168389217993d37fb8493cd54",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/CompiledRulesSupportedTargetsTests.cs",
+      "sha256": "c85be5262457591a43ab8e296be861a66ed54b82f55d51d0747eee041ad6fef5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/ContentFetcherTests.cs",
+      "sha256": "b7bbaeb2969546f96185ce72309f1e7804dfacdbde6ef58dc0eb2c40232dc372",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/DigestCalculatorTests.cs",
+      "sha256": "07521ae051212dcc26d42f37a7fa16710a368a3d271609e526281e2e5f0ae959",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/DimensionLookupTests.cs",
+      "sha256": "17922ab74cd795c8728fc09d3193ba61b179044012954216546a9e8a9bfb782e",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/GlobalUsings.cs",
+      "sha256": "bf968592fc136a779ee1b6769ebeb4b1532b8a255cdd586044c3ec20e78b4a31",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/LayeringValidatorTests.cs",
+      "sha256": "200420f3a2d37ba5d2ebf548cf15313c34d6ef6f3e5ae04422110c4a932f73d8",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/MacPlatformTests.cs",
+      "sha256": "534bdf364087c435cdb12d373946461b907cb105fb0094b8bd632d67f0b0f305",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/ManualOptionsStoreTests.cs",
+      "sha256": "884218d8e5c25db5b2776cc97584ed0d099c77abc4c6c682a2671350528a8d21",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/ModuleRulesTests.cs",
+      "sha256": "b633fdaf4f46b7a347481c649c22a17efc3c9c31f742086f35f77c54780a020e",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/Omen.Core.Tests.csproj",
+      "sha256": "d199eee997fdafd168255e6266d1ab5d44a9a3cc228275b483dd9927327bf520",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/OptionCacheStoreTests.cs",
+      "sha256": "686f2990a3bffb26502f00a48ed1b5482887f974091ab81b0d5c4fab43ca59f0",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/PlatformFactoryDiscoveryTests.cs",
+      "sha256": "a8364fb08b105be2acfdf171f45788e51378282ed7fe681c444a99ccd35426be",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/PluginAliasResolverTests.cs",
+      "sha256": "123935316147aa0d2123e2efa5f290ad256c64ee5780f7a65b18c1f82bd570cf",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/PluginEnablementFilterTests.cs",
+      "sha256": "36372d343bd3566ed5105358fb9a182c14ec8e40f475dc07d209a0050977982c",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/PluginEnablementTests.cs",
+      "sha256": "6eeb4384d79ce4c0d771deca19ed8df9078ab8735399b2ad17bedf0b342b4170",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/PluginFlavorSuffixTailTests.cs",
+      "sha256": "25d2bf95d3644c83b72119cb50e508929a05e63299648dee7dd9e661180a63cf",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/PluginManifestTests.cs",
+      "sha256": "7d460cb1c38fd4df6d213a739c930283d18ddc5ad0bb01704c19b24f485d16cf",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/PluginRulesTests.cs",
+      "sha256": "e01a0ddd873263feb619ba134e13796a8a782579a750910ab784a4ba94077d02",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/ProjectOptionsTests.cs",
+      "sha256": "d83fcccf7fa42841e19f5ffb96ae4340d03ee05ac9a589d445f8cbd133d80117",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/RebuildReasonTests.cs",
+      "sha256": "123e5756211dd94b47816945884894d443be6e5d2e08a289fb2a26b61a9c5ebd",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/ReflectCodeGenSynthesizerTests.cs",
+      "sha256": "bbf570696a34b89684ffe1a8eeced2a548a8c3d06a9e145170f9bfb664126313",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/RuleCompilerPluginTests.cs",
+      "sha256": "d43f669d17ac5da2515c459f7b8c357c21abc0587b0f0d9b8a7d4b66fc0bd0cf",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/RuleCompilerProjectDefinitionTests.cs",
+      "sha256": "8139e03d4cba0cb7d4a60284db23239a1b01b029621e6ef3ae04f0bd4fbafa12",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/RuleCompilerValidationTests.cs",
+      "sha256": "4907727c502828d8eb56a76eadc3edb89c93c969199ad0c66545a20d4428f38f",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/TargetMatrixTests.cs",
+      "sha256": "c6adf00bfbd157bea280a212cc816241a34f7b00a67f7b9e3e59f6d4a4848a8c",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/TargetRulesTests.cs",
+      "sha256": "250d6a97e55300713c74a110b9f6d5cc9c9670ee8848826d47ba22e582fcaf51",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/ThirdPartyPackagesTests.cs",
+      "sha256": "943463134ef421f28be0a30a6709bb293dbaa3ddb864f9d33dc751e2518f7ab5",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/UnityBuildGeneratorTests.cs",
+      "sha256": "5e0528d2bcaaa318713be666a77aef7d01c10d152a143ff4ed60c918ee633edc",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests/VisualStudioGeneratorSolutionTests.cs",
+      "sha256": "1d84ef376ccb40134019b4eea5979b7c0936c9a03a2d2dd95348015127af3251",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests.Fixtures/BadPlatformSdk.cs",
+      "sha256": "3dd75ff31820cf090fdd1f9c95f4c49ba60917c3a1e09301168ec8c141e17a10",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Core.Tests.Fixtures/Omen.Core.Tests.Fixtures.csproj",
+      "sha256": "2ef46ee310f84b5d2d9a60a82d77ef98ed8a4c23aef5a47db93d5699b2edc52c",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/BuildEventLogTests.cs",
+      "sha256": "d6bde73f7f2d9b046e878303158b4c775a6c640cd41b582d1620516031787932",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/BuildOrchestratorTests.cs",
+      "sha256": "ff4e3dacabe7ca2742a39697a07c08eb6b7049cfce0a6010dd1653fffd367de9",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/BuildServerTests.cs",
+      "sha256": "2bbb59f1ed11e02e5013b9f667cb0721e247bd03ba12c09fbd09e52879bbb221",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/BuildServicesTests.cs",
+      "sha256": "38efd666be45bb6c2d9d66d9fc265d72987fa07fff469f0770e8307c49fa84dd",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/BuildWarmStateTests.cs",
+      "sha256": "ae1f43bce871595a857bb8110dc153ef0523812a7386390fdeb19ddd0f390ebd",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/CleanOrchestratorTests.cs",
+      "sha256": "4a5380c781a1df44f71e53ccec9bbd34158c50ca98368ee65f0ad82c05dca932",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/FailureReportTests.cs",
+      "sha256": "1cfea7c3e3a2d16d89e07e7218fe1495b7852a63d90e5abd7443f7138c6fb349",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/GlobalUsings.cs",
+      "sha256": "8ad81eda73242657ec14e8e8887f21598672a5e707abec86e81ca1ccacd7481d",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/Omen.Executors.Tests.csproj",
+      "sha256": "a402739003de873c1c76ae2db5afb6725e7b26c1af0885cb33ea6f8829c0d58c",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/OptionsOrchestratorTests.cs",
+      "sha256": "382bc47727d53f51d6cc542fd293fb58f680a62ee693f90d1fb8fdab723ba3cb",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/OrchestratorEventTests.cs",
+      "sha256": "9a801ef09f1e0effcc988f3c30b0d8639e7c325caf0efa824bd75d4bea42eeac",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/ProgressReportingConcurrencyTests.cs",
+      "sha256": "01dff6549fc8604132e7aac619cf34bd18c39e804f1ae68cd92dde7c72a1c8dd",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/ProjectGenerationOrchestratorTests.cs",
+      "sha256": "c0d2e5777223d5f9d9b9ff81bd8d1bdb126be4e0fe9fa4f58837c98e2c438c0f",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/RunProcessCancelTests.cs",
+      "sha256": "5f7ec063cf7934781f8313487a8def7fd7a94c690858c87a332cf8daeaca1916",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/ServerClientTests.cs",
+      "sha256": "21d66c1b63f0c9ade6e02a5f8db242a0a7be550eb28990845074356443ac9614",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/ServerControlTests.cs",
+      "sha256": "fcf7db9aa953078d8a2ef636707f8eec8a8b3496eec7779b7ef48ca567f73c9a",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/SharedActionSchedulerTests.cs",
+      "sha256": "34835fe7411e023558a3efe1fe3017c820def534d658e587367ecd15d1676085",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/TestProjects.cs",
+      "sha256": "92d346d967d601328a50dc05e60e3a94ebb85f16335664f2c30c62daf32f1937",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/TrayModelTests.cs",
+      "sha256": "e3c380a7c8a2e8bfddf42574851dac1f67c54910c9c438ed8400bd713e9c4fbd",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.Executors.Tests/WarmColdEquivalenceTests.cs",
+      "sha256": "cfbb54629967683c9feb1d0e5c466886060524f5d09a500e2d7bddc5b2ca21c7",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.GUI.Tests/GlobalUsings.cs",
+      "sha256": "a44d999200b6a1d4a57c3118fe2c4b72f95c22258417eb6cf4a762520ea91981",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.GUI.Tests/MatrixPanelViewModelTests.cs",
+      "sha256": "a12f4f740f63a816c241af090854e8abf092887a92e1fc8f5928698c3839fb46",
+      "provenance": "recovery-integration-or-supporting-file"
+    },
+    {
+      "path": "tests/Omen.GUI.Tests/Omen.GUI.Tests.csproj",
+      "sha256": "d4cdecf7ca5a24bfa905ba03c3bac4c322c45447a2deda74f8a83f124bd584e9",
+      "provenance": "archived-original"
+    },
+    {
+      "path": "tests/Omen.GUI.Tests/RuleEditorDocumentTests.cs",
+      "sha256": "34bec0035aa81e752b730cbfc1a4f38596db8b6255964deba1961ed7c2874d26",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.GUI.Tests/RuleEditorPanelViewModelTests.cs",
+      "sha256": "a568bc5177fc9cdc85ea8dd578970bb36bb808184f622766b16b6c2463fc497e",
+      "provenance": "archived-original-with-recovery-repairs"
+    },
+    {
+      "path": "tests/Omen.GUI.Tests/RuleEditorServiceTests.cs",
+      "sha256": "879becb86f4433297bc0d2387ca039fe0105258ec114ea9d2ff1a14c62a37334",
+      "provenance": "archived-original-with-recovery-repairs"
+    }
+  ]
+}

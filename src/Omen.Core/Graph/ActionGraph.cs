@@ -211,56 +211,133 @@ public sealed class ActionGraph
     /// <summary>
     /// Checks if an action is up-to-date based on input/output timestamps.
     /// </summary>
-    public bool IsUpToDate(BuildAction action)
+    public bool IsUpToDate(BuildAction action) => Record(action, WhyNotUpToDate(action));
+
+    /// <summary>Why <paramref name="action"/> is out of date by timestamps; null when it is up to date.</summary>
+    public string? WhyNotUpToDate(BuildAction action)
     {
         // If any output doesn't exist, not up-to-date
-        if (action.Outputs.Any(o => !File.Exists(o.Path)))
-            return false;
-        
-        // Get the oldest output timestamp
-        var oldestOutput = action.Outputs
-            .Select(o => File.GetLastWriteTimeUtc(o.Path))
-            .Min();
-        
+        var oldestOutput = DateTime.MaxValue;
+        foreach (var output in action.Outputs)
+        {
+            var stamp = Stamp(output.Path);
+            if (stamp == null)
+                return $"missing-output {output.Path}";
+            if (stamp.Value < oldestOutput)
+                oldestOutput = stamp.Value;
+        }
+
         // Get the newest input timestamp
-        var newestInput = action.Inputs
-            .Where(i => File.Exists(i.Path))
-            .Select(i => File.GetLastWriteTimeUtc(i.Path))
-            .DefaultIfEmpty(DateTime.MinValue)
-            .Max();
-        
+        var newestInput = DateTime.MinValue;
+        string? newest = null;
+        foreach (var input in action.Inputs)
+        {
+            if (Stamp(input.Path) is { } stamp && stamp > newestInput)
+            {
+                newestInput = stamp;
+                newest = $"input-newer {input.Path}";
+            }
+        }
+
         // Also check dependency outputs
         foreach (var dep in action.Dependencies)
         {
             foreach (var output in dep.Outputs)
             {
-                if (File.Exists(output.Path))
+                if (Stamp(output.Path) is { } depTime && depTime > newestInput)
                 {
-                    var depTime = File.GetLastWriteTimeUtc(output.Path);
-                    if (depTime > newestInput)
-                        newestInput = depTime;
+                    newestInput = depTime;
+                    newest = $"dependency-output-newer {output.Path}";
                 }
             }
         }
-        
-        return oldestOutput > newestInput;
+        // >= not >: a Copy action preserves the source's timestamp, so output == input is
+        // the steady state of a correct copy - strict > made every dll-staging copy rerun
+        // on every build. (Make has the same equal-means-up-to-date rule.)
+        return oldestOutput >= newestInput ? null : newest;
+    }
+
+    private static bool Record(BuildAction action, string? reason)
+    {
+        action.RebuildReason = reason;
+        action.RootCause = reason;
+        return reason == null;
     }
     
+    /// <summary>
+    /// A file's last write time, or null when it does not exist. During the whole-graph pass
+    /// (MarkUpToDateActionsAsSkipped) every path is stat'ed once and remembered: a header is
+    /// an input to hundreds of actions, and stat'ing it twice per action (Exists, then the
+    /// write time) was 13 seconds of a 2,200-action no-op build. Outside the pass - the
+    /// executor re-checking an action once its dependencies have run - nothing is cached,
+    /// because those dependencies just wrote the outputs being checked.
+    /// </summary>
+    private Dictionary<string, DateTime?>? _stampCache;
+
+    /// <summary>
+    /// Stamps kept current by the caller between builds (a build server's file watcher); when set, used
+    /// instead of stat'ing.
+    /// </summary>
+    public IFileStamps? Stamps { get; set; }
+
+    private DateTime? Stamp(string path)
+    {
+        if (Stamps != null)
+            return Stamps.Get(path);
+        if (_stampCache == null)
+            return File.Exists(path) ? File.GetLastWriteTimeUtc(path) : null;
+
+        if (!_stampCache.TryGetValue(path, out var stamp))
+        {
+            var info = new FileInfo(path);
+            stamp = info.Exists ? info.LastWriteTimeUtc : null;
+            _stampCache[path] = stamp;
+        }
+        return stamp;
+    }
+
     /// <summary>
     /// Checks if an action is up-to-date by comparing its current command-line digest
     /// against the digest recorded for its primary output on a previous build. An edit
     /// to a rules file that changes no actual compiler flag leaves the digest unchanged
     /// and invalidates nothing.
     /// </summary>
-    public bool IsUpToDate(BuildAction action, IDigestCalculator calculator, ActionDigestStore digestStore)
+    public bool IsUpToDate(BuildAction action, IDigestCalculator calculator, ActionDigestStore digestStore) =>
+        Record(action, WhyNotUpToDate(action, calculator, digestStore));
+
+    /// <summary>
+    /// Why <paramref name="action"/> must run, by timestamps and then by digest; null when it is up to date.
+    /// A digest mismatch names the parts that changed ("command-changed flags,input-set").
+    /// </summary>
+    public string? WhyNotUpToDate(BuildAction action, IDigestCalculator calculator, ActionDigestStore digestStore)
     {
-        if (!IsUpToDate(action))
-            return false;
+        if (WhyNotUpToDate(action) is { } byTime)
+            return byTime;
 
         var currentDigest = action.ComputeDigest(calculator);
-        var primaryOutput = action.Outputs[0].Path;
+        if (!digestStore.TryGet(action.Outputs[0].Path, out var previousDigest, out var previousParts))
+            return "no-previous-digest";
+        if (currentDigest.Equals(previousDigest))
+            return null;
+        if (previousParts == null)
+            return "command-changed";
 
-        return digestStore.TryGet(primaryOutput, out var previousDigest) && currentDigest.Equals(previousDigest);
+        var now = action.ComputeDigestParts(calculator).Split(':');
+        var before = previousParts.Split(':');
+        var names = new[] { "flags", "input-set", "environment" };
+        var changed = names.Where((_, i) => i >= before.Length || now[i] != before[i]);
+        return $"command-changed {string.Join(",", changed)}";
+    }
+
+    /// <summary>Returns every action to how the graph builder left it, so a build server can build the graph again.</summary>
+    public void ResetForRebuild()
+    {
+        foreach (var action in Actions)
+        {
+            action.Status = ActionStatus.Pending;
+            action.RebuildReason = action.RootCause = action.SharedWith = null;
+            action.ActionDigest = null;
+        }
     }
 
     /// <summary>
@@ -271,23 +348,55 @@ public sealed class ActionGraph
     public int MarkUpToDateActionsAsSkipped(IDigestCalculator calculator, ActionDigestStore digestStore)
     {
         var skipped = 0;
-        foreach (var action in GetTopologicalOrder())
+        _stampCache = new Dictionary<string, DateTime?>(StringComparer.OrdinalIgnoreCase);
+        try
         {
-            if (action.Status != ActionStatus.Pending)
-                continue;
-
-            // A Pending dependency will still execute this build and produce a fresh
-            // output, which the on-disk timestamps below can't see yet - don't trust them.
-            if (action.Dependencies.Any(d => d.Status == ActionStatus.Pending))
-                continue;
-
-            if (IsUpToDate(action, calculator, digestStore))
+            foreach (var action in GetTopologicalOrder())
             {
-                action.Status = ActionStatus.Skipped;
-                skipped++;
+                if (action.Status != ActionStatus.Pending)
+                    continue;
+
+                // A Pending dependency will still execute this build and produce a fresh
+                // output, which the on-disk timestamps below can't see yet - don't trust them.
+                if (action.Dependencies.FirstOrDefault(d => d.Status == ActionStatus.Pending) is { } pending)
+                {
+                    action.RebuildReason = $"dependency-will-run {pending.Description}";
+                    action.RootCause = pending.RootCause ?? pending.RebuildReason;
+                    continue;
+                }
+
+                if (IsUpToDate(action, calculator, digestStore))
+                {
+                    action.Status = ActionStatus.Skipped;
+                    skipped++;
+                }
             }
         }
+        finally
+        {
+            _stampCache = null;
+        }
         return skipped;
+    }
+
+    /// <summary>
+    /// Why the still-Pending actions will run: counts per reason kind (the reason's first word), and the root
+    /// causes that invalidated the most actions.
+    /// </summary>
+    public RebuildSummary SummarizeRebuilds(int top = 10)
+    {
+        var pending = Actions.Where(a => a.Status == ActionStatus.Pending).ToList();
+        var byKind = pending
+            .GroupBy(a => (a.RebuildReason ?? "unknown").Split(' ')[0])
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Count());
+        var topCauses = pending
+            .GroupBy(a => a.RootCause ?? a.RebuildReason ?? "unknown")
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal)
+            .Take(top)
+            .Select(g => (g.Key, g.Count()))
+            .ToList();
+        return new RebuildSummary(pending.Count, byKind, topCauses);
     }
 
     /// <summary>
@@ -296,21 +405,29 @@ public sealed class ActionGraph
     public int MarkUpToDateActionsAsSkipped()
     {
         var skipped = 0;
-        foreach (var action in GetTopologicalOrder())
+        _stampCache = new Dictionary<string, DateTime?>(StringComparer.OrdinalIgnoreCase);
+        try
         {
-            if (action.Status != ActionStatus.Pending)
-                continue;
-
-            // A Pending dependency will still execute this build and produce a fresh
-            // output, which the on-disk timestamps below can't see yet - don't trust them.
-            if (action.Dependencies.Any(d => d.Status == ActionStatus.Pending))
-                continue;
-
-            if (IsUpToDate(action))
+            foreach (var action in GetTopologicalOrder())
             {
-                action.Status = ActionStatus.Skipped;
-                skipped++;
+                if (action.Status != ActionStatus.Pending)
+                    continue;
+
+                // A Pending dependency will still execute this build and produce a fresh
+                // output, which the on-disk timestamps below can't see yet - don't trust them.
+                if (action.Dependencies.Any(d => d.Status == ActionStatus.Pending))
+                    continue;
+
+                if (IsUpToDate(action))
+                {
+                    action.Status = ActionStatus.Skipped;
+                    skipped++;
+                }
             }
+        }
+        finally
+        {
+            _stampCache = null;
         }
         return skipped;
     }

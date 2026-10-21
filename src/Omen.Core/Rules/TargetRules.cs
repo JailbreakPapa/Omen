@@ -43,7 +43,8 @@ public abstract class TargetRules
         TargetPlatform.Linux,
         TargetPlatform.FreeBSD,
         TargetPlatform.Android,
-        TargetPlatform.iOS
+        TargetPlatform.iOS,
+        TargetPlatform.Mac
     ];
     
     /// <summary>
@@ -62,12 +63,17 @@ public abstract class TargetRules
     public LinkType LinkType { get; set; } = LinkType.Default;
     
     /// <summary>
-    /// Whether to use unity builds for this target.
+    /// Whether to use unity builds for this target. On by default for build speed; unity
+    /// compilation changes real build semantics (translation units share statics/usings once
+    /// combined), so a target that breaks under it opts out here, or a module via
+    /// <see cref="ModuleRules.UseUnityBuild"/> / a plugin flavor via PluginFlavor.UseUnityBuild.
     /// </summary>
     public bool UseUnityBuild { get; set; } = true;
-    
+
     /// <summary>
     /// Whether to use adaptive unity build (excludes recently modified files).
+    /// NOT yet honored: adaptive exclusion changes command lines per build (whatever was
+    /// edited recently), which churns the digest store; needs a stable design first.
     /// </summary>
     public bool UseAdaptiveUnityBuild { get; set; } = true;
     
@@ -145,7 +151,12 @@ public abstract class TargetRules
     {
         Context = context;
         Name = GetType().Name.Replace("Target", "");
+        RuleFilePath = context.RuleFileFor(GetType());
     }
+
+    /// <summary>The *.target.cs this target was declared in, so a generated solution can list
+    /// it. Null for a target built without compiled rules.</summary>
+    public string? RuleFilePath { get; }
     
     /// <summary>
     /// Override to add platform-specific configuration.

@@ -1,0 +1,26 @@
+<Application x:Class="Omen.GUI.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="Views/MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- WPF does not dedupe ResourceDictionary merges by Source URI - each merge is an
+                     independent dictionary instance. Colors.xaml must be merged in exactly ONE place
+                     tree-wide (here), because every Brush.* DynamicResource Color.* lookup in
+                     Brushes.xaml resolves against the nearest enclosing merge first. If Brushes.xaml
+                     (or anything else) re-merged Colors.xaml privately, brushes would bind to that
+                     private copy instead of this one, and Task 17's runtime palette swap - which
+                     replaces this single top-level dictionary - would have zero visible effect. -->
+                <ResourceDictionary Source="Themes/Colors.xaml" />
+                <ResourceDictionary Source="Themes/Metrics.xaml" />
+                <ResourceDictionary Source="Themes/Controls.xaml" />
+                <ResourceDictionary Source="Themes/Menus.xaml" />
+                <ResourceDictionary Source="Themes/ScrollBars.xaml" />
+                <ResourceDictionary Source="Themes/Docking.xaml" />
+                <ResourceDictionary Source="Themes/Icons.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
+

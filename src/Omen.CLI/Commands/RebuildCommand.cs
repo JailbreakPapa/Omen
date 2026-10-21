@@ -42,10 +42,21 @@ public static class RebuildCommand
                 context.ExitCode = cleanResult;
                 return;
             }
-            
-            // The build command handler will be reused
-            // For now, just indicate success
-            context.ExitCode = 0;
+
+            // Clean succeeded - now actually build. This used to exit 0 here, so a Rebuild
+            // from Visual Studio deleted every output and reported success having built
+            // nothing.
+            context.ExitCode = await BuildCommand.ExecuteBuildAsync(
+                context.ParseResult.GetValueForArgument(targetArgument),
+                context.ParseResult.GetValueForOption(platformOption),
+                context.ParseResult.GetValueForOption(configOption),
+                arch: null,
+                jobs: null,
+                clean: false,
+                distribute: false,
+                coordinator: null,
+                dryRun: false,
+                dim: []);
         });
         
         return command;
