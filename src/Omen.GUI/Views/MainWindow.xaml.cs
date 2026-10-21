@@ -18,8 +18,11 @@ namespace Omen.GUI.Views;
 
 public partial class MainWindow : Window
 {
-    public MainWindow()
+    public MainWindow() : this(new MainWindowViewModel()) { }
+
+    public MainWindow(MainWindowViewModel model)
     {
+        DataContext = model;
         InitializeComponent();
         BuildRails();
 

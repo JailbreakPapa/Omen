@@ -29,10 +29,6 @@
                              UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
 
-    <Window.DataContext>
-        <vm:MainWindowViewModel />
-    </Window.DataContext>
-
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="30" />

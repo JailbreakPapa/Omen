@@ -46,6 +46,30 @@ public partial class MenuBar : UserControl
 
     private void OnCancelClick(object sender, RoutedEventArgs e) => ViewModel?.CancelBuild();
 
+    private async void OnRunTestsClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is { } vm) await vm.RunTestsAsync();
+    }
+
+    private async void OnCheckToolchainClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is { } vm) await vm.CheckToolchainAsync();
+    }
+
+    private async void OnInstallProjectClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is not { } vm) return;
+        var dialog = new OpenFolderDialog { Title = "Choose installation prefix", Multiselect = false };
+        if (dialog.ShowDialog() == true) await vm.InstallProjectAsync(dialog.FolderName, package: false);
+    }
+
+    private async void OnPackageProjectClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is not { } vm) return;
+        var dialog = new SaveFileDialog { Title = "Package Project", Filter = "ZIP package (*.zip)|*.zip", FileName = vm.ProjectName + ".zip" };
+        if (dialog.ShowDialog() == true) await vm.InstallProjectAsync(dialog.FileName, package: true);
+    }
+
     private async void OnGenerateVs2026Click(object sender, RoutedEventArgs e) => await Generate(IdeKind.VS2026);
     private async void OnGenerateRiderClick(object sender, RoutedEventArgs e) => await Generate(IdeKind.Rider);
     private async void OnGenerateVs2022Click(object sender, RoutedEventArgs e) => await Generate(IdeKind.VS2022);

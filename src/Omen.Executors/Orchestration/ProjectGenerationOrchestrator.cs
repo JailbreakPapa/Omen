@@ -91,6 +91,11 @@ public sealed class ProjectGenerationOrchestrator
 			foreach (ResolvedTarget resolved in resolvedTargets)
 			{
 				TargetPlatform platform = resolved.Get<TargetPlatform>();
+				// Visual Studio projects emit Windows SDK, debugger and output paths. Foreign
+				// rows must not instantiate rules that probe or create files for another host.
+				if (request.Ide is IdeKind.VS2019 or IdeKind.VS2022 or IdeKind.VS2026
+					&& platform != TargetPlatform.Windows)
+					continue;
 				BuildConfiguration configuration2 = resolved.Get<BuildConfiguration>();
 				(BuildContext, IReadOnlyList<TargetRules>, IReadOnlyList<ModuleRules>) rules2 = RulesFor(platform, resolved.Get<TargetArchitecture>(), configuration2, Path.Combine(workingDir, "Intermediate", $"{platform}_{configuration2}"), Path.Combine(workingDir, "Binaries", $"{platform}_{configuration2}"));
 				LinkType? linkType = compiledRules.Project?.LinkTypeOverride;

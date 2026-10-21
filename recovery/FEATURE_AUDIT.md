@@ -36,6 +36,12 @@ Detailed logs, fixtures and validation utilities are retained in `F:\Omen-recove
 
 ## Provenance and limits
 
+The subsequent CMake workflow increment adds native presets, process tests/JUnit, install/package
+rules, configured files, compiler probes and visible GUI workflow commands. See
+[the current CMake comparison](../docs/cmake-feature-comparison.md). Its full solution tests pass
+403 Core / 149 Executors / 23 GUI cases (575 total); the earlier counts above record the VS2026
+recovery checkpoint.
+
 The archive audit found the VS2026 enum, generator/toolset handling, and newer menu commands,
 but did not find a recoverable original Omen SLNX emitter. SLNX output is a new implementation
 using the recovered solution's folder, dependency and configuration model, with BCL XML APIs
@@ -51,3 +57,13 @@ not been established; successful restoration tests do not prove complete histori
 The installed global tool and the running baseline GUI have not been replaced. Updated binaries
 are staged in `F:\Omen-githubpublic\artifacts\restored` for explicit launch. Both baseline and
 updated source backups are retained under `E:\Backups\Omen\2026-10-21`.
+
+A real LunaEngine VS2026 generation initially failed while evaluating LunaQtCore's Linux shim on
+Windows, then a Linux vcpkg lookup. The Visual Studio exporter now excludes foreign-platform
+matrix rows before constructing their rules. LunaEngine rules were left unchanged. Generation
+passes for 146 projects / 75 combinations; Microsoft's installed solution parser verifies all
+configuration/build/folder mappings. Three regression cases cover VS2019/2022/2026.
+
+The actual WPF Project > Generate Visual Studio 2026 (.slnx) command also completed against
+F:\lunaengine. Its rendered success screenshot is `F:\Omen-recovery-20261021\omen-luna-generation.png`.
+The user's existing GUI process was left running; launch the staged GUI for the new assemblies.

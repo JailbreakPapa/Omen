@@ -538,6 +538,7 @@ public sealed class BuildOrchestrator
                 continue;
             }
 
+            ProjectWorkflow.ConfigureFiles(context, compiledRules.Project, targetRules);
             var combinationResult = await BuildOneCombinationAsync(context, targetRules, includedModules, toolchain, request.Jobs ?? compiledRules.Project?.MaxParallelActions, combinationEvents, combinationProgress, eventLog, closureKey, ct);
             if (combinationResult != null)
                 eventLog?.BuildFinished(combinationResult);

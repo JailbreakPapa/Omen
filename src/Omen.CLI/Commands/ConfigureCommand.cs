@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Omen.Core.Options;
+using Omen.Core.Configuration;
 using Omen.Executors.Orchestration;
 using Spectre.Console;
 
@@ -30,6 +31,10 @@ public static class ConfigureCommand
 		Option<bool> advancedOption = new Option<bool>("--advanced", "List advanced options too.");
 		Option<string?> searchOption = new Option<string>(new string[2] { "--search", "-s" }, () => (string?)null, "List only options whose name or description contains this text.");
 		Command command = new Command("configure", "List and set build options (Omen's cmake -L / cmake -D)") { targetArgument, setOption, unsetOption, thirdPartyOption, advancedOption, searchOption };
+		var configuration = new Option<BuildConfiguration>(new[] { "--configuration", "-c" }, () => BuildConfiguration.Development, "Configuration used to discover options and render configuration files");
+		var platform = new Option<TargetPlatform?>(new[] { "--platform", "-p" }, "Target platform");
+		var architecture = new Option<TargetArchitecture?>(new[] { "--arch", "-a" }, "Target architecture");
+		command.AddOption(configuration); command.AddOption(platform); command.AddOption(architecture);
 		command.SetHandler(async (InvocationContext context) =>
 		{
 			string? valueForArgument = context.ParseResult.GetValueForArgument(targetArgument);
@@ -38,12 +43,12 @@ public static class ConfigureCommand
 			bool? thirdParty = context.ParseResult.GetValueForOption(thirdPartyOption);
 			bool advanced = context.ParseResult.GetValueForOption(advancedOption);
 			string search = context.ParseResult.GetValueForOption(searchOption);
-			context.ExitCode = await RunAsync(valueForArgument, sets, unsets, thirdParty, advanced, search);
+			context.ExitCode = await RunAsync(valueForArgument, sets, unsets, thirdParty, advanced, search, context.ParseResult.GetValueForOption(configuration), context.ParseResult.GetValueForOption(platform), context.ParseResult.GetValueForOption(architecture));
 		});
 		return command;
 	}
 
-	private static async Task<int> RunAsync(string? target, string[] sets, string[] unsets, bool? thirdParty, bool advanced, string? search)
+	private static async Task<int> RunAsync(string? target, string[] sets, string[] unsets, bool? thirdParty, bool advanced, string? search, BuildConfiguration configuration, TargetPlatform? platform, TargetArchitecture? architecture)
 	{
 		var (targetFile, allTargetFiles) = await BuildCommand.ResolveTargetFileAsync(target);
 		if (targetFile == null)
@@ -86,7 +91,8 @@ public static class ConfigureCommand
 		});
 		IReadOnlyList<BuildOptionDeclaration> declarations = await AnsiConsole.Status().StartAsync("Configuring...", (StatusContext _) => orchestrator.DiscoverAsync(new OptionsOrchestratorRequest
 		{
-			TargetFile = targetFile
+			TargetFile = targetFile, Configuration = configuration,
+			Platform = platform, Architecture = architecture
 		}, events));
 		if (declarations == null)
 		{

@@ -1,0 +1,39 @@
+{
+  "$schema": "../../schemas/omen-presets.schema.json",
+  "version": 1,
+  "presets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "commands": {
+        "configure": ["WorkflowSample", "-c", "Development", "--set", "ENABLE_GREETING=true"],
+        "build": ["WorkflowSample", "-c", "Development", "--no-server", "--jobs", "2"],
+        "test": ["WorkflowSample", "-c", "Development", "--jobs", "2", "--junit", "${sourceDir}/Intermediate/TestResults/results.xml"],
+        "install": ["WorkflowSample", "-c", "Development", "--prefix", "${sourceDir}/Install"],
+        "package": ["WorkflowSample", "-c", "Development", "--output", "${sourceDir}/Packages/WorkflowSample.zip"],
+        "check": ["--header", "vector", "--link", "--run"],
+        "generate.project": ["--ide", "vs2026"]
+      }
+    },
+    {
+      "name": "dev",
+      "description": "Configure, build, test and package the sample",
+      "inherits": ["base"],
+      "environment": { "OMEN_SAMPLE_PRESET": "${presetName}" }
+    }
+  ],
+  "workflows": [
+    {
+      "name": "ci",
+      "description": "Check the compiler, configure, build, test, stage and package",
+      "steps": [
+        ["check", "--preset", "dev"],
+        ["configure", "--preset", "dev"],
+        ["build", "--preset", "dev"],
+        ["test", "--preset", "dev"],
+        ["install", "--preset", "dev"],
+        ["package", "--preset", "dev"]
+      ]
+    }
+  ]
+}

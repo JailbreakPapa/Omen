@@ -21,6 +21,42 @@ public class ProjectGenerationOrchestratorTests : IDisposable
             Directory.Delete(_projectRoot, recursive: true);
     }
 
+    [Theory]
+    [InlineData(IdeKind.VS2019)]
+    [InlineData(IdeKind.VS2022)]
+    [InlineData(IdeKind.VS2026)]
+    public async Task GenerateAsync_VisualStudio_DoesNotEvaluateForeignPlatformRules(IdeKind ide)
+    {
+        File.WriteAllText(Path.Combine(_projectRoot, "Mixed.target.cs"), """
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+            public class MixedTarget : TargetRules
+            {
+                public static TargetMatrix SupportedTargets => TargetMatrix.Empty
+                    .For(TargetPlatform.Windows, TargetPlatform.Linux)
+                    .For(TargetArchitecture.X64).For(BuildConfiguration.Development);
+                public MixedTarget(BuildContext context) : base(context) { }
+            }
+            """);
+        File.WriteAllText(Path.Combine(_projectRoot, "Mixed.module.cs"), """
+            using System;
+            using Omen.Core.Configuration;
+            using Omen.Core.Rules;
+            public class MixedModule : ModuleRules
+            {
+                public MixedModule(BuildContext context) : base(context)
+                {
+                    if (context.Platform != TargetPlatform.Windows)
+                        throw new InvalidOperationException("Foreign SDK must not be evaluated for Visual Studio");
+                }
+            }
+            """);
+        var success = await new ProjectGenerationOrchestrator().GenerateAsync(
+            new ProjectGenerationOrchestratorRequest { ProjectRoot = _projectRoot, Ide = ide }, null);
+        success.Should().BeTrue();
+        File.Exists(Path.Combine(_projectRoot, "Mixed.sln")).Should().BeTrue();
+    }
+
     [Fact]
     public async Task GenerateAsync_NoTargetFile_ReportsErrorAndReturnsFalse()
     {
