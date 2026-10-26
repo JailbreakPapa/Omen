@@ -64,6 +64,12 @@ public sealed class VisualStudioGenerator
 	private static readonly string[] HeaderExtensions = new string[7] { ".h", ".hpp", ".hh", ".hxx", ".inl", ".inc", ".ipp" };
 
 	/// <summary>
+	/// Authored shader sources are project items, not C/C++ compilation inputs. Keep this list
+	/// broad enough for engine and game modules that mix Slang, HLSL, GLSL, Metal, or WGSL.
+	/// </summary>
+	private static readonly string[] ShaderExtensions = new string[10] { ".slang", ".hlsl", ".glsl", ".vert", ".frag", ".comp", ".metal", ".wgsl", ".ush", ".usf" };
+
+	/// <summary>
 	/// The files a module contributes to its project for browsing. A prebuilt third-party
 	/// package contributes none: it compiles nothing, and its SourceDirectory points at the
 	/// package root - or, for an O3DE 3rdParty rule converted with SourceDirectory ".", at the
@@ -105,7 +111,7 @@ public sealed class VisualStudioGenerator
 		List<(string Name, string Path, Guid Guid, bool IsCSharp)> projects = new List<(string, string, Guid, bool)>();
 		foreach (ModuleRules module in modules)
 		{
-			if (!(module is ThirdPartyPackageModuleRules))
+			if (IsVisibleProject(module))
 			{
 				Guid projectGuid = GenerateGuid(module.Name);
 				if (module.IsCSharpProject)
@@ -170,7 +176,7 @@ public sealed class VisualStudioGenerator
 		await Parallel.ForEachAsync(allModules.Select((ModuleRules m, int i) => (Module: m, Index: i)), ct, async ((ModuleRules Module, int Index) item, CancellationToken token) =>
 		{
 			var (module, _) = item;
-			if (!(module is ThirdPartyPackageModuleRules))
+			if (IsVisibleProject(module))
 			{
 				IReadOnlyList<(string Configuration, string Platform)> moduleConfigPlatforms = configPlatformsByModule[module.Name];
 				TargetRules moduleTarget = moduleOwningTarget[module.Name];
@@ -212,6 +218,9 @@ public sealed class VisualStudioGenerator
 
 	private async Task GenerateSolutionAsync(string solutionPath, string solutionName, TargetRules target, List<(string Name, string Path, Guid Guid, bool IsCSharp)> projects, IReadOnlyList<ModuleRules> modules, CancellationToken ct, IReadOnlyList<(string Configuration, string Platform)>? allConfigPlatforms = null, IReadOnlyDictionary<string, IReadOnlyList<(string Configuration, string Platform)>>? perModuleConfigPlatforms = null, IReadOnlyDictionary<string, TargetRules>? moduleOwningTarget = null)
 	{
+		var hiddenModules = modules.Where(m => m.HideFromSolution).Select(m => m.Name).ToHashSet();
+		if (hiddenModules.Count > 0)
+			projects = projects.Where(p => !hiddenModules.Contains(p.Name)).ToList();
 		IReadOnlyList<(string, string)> effectiveAllConfigPlatforms = allConfigPlatforms ?? DefaultConfigPlatforms;
 		StringBuilder sb = new StringBuilder();
 		var (formatVersion, vsVersion, minVsVersion) = _version switch
@@ -873,6 +882,7 @@ public sealed class VisualStudioGenerator
 		Guid projectGuid = GenerateGuid(module.Name);
 		List<string> sourceFiles = BrowsableFiles(module, ".cpp", ".cc", ".cxx", ".c").ToList();
 		List<string> headerFiles = BrowsableFiles(module, HeaderExtensions).ToList();
+		List<string> shaderFiles = DeclaredProjectFiles(module, ShaderExtensions).ToList();
 		List<string> uiFiles = new List<string>();
 		List<string> resourceFiles = new List<string>();
 		if (module.IsQtProject)
@@ -1455,6 +1465,13 @@ public sealed class VisualStudioGenerator
 			stringBuilder45.AppendLine(ref handler);
 		}
 		sb.AppendLine("  </ItemGroup>");
+		if (shaderFiles.Count > 0)
+		{
+			sb.AppendLine("  <ItemGroup>");
+			foreach (string shader in shaderFiles)
+				sb.AppendLine($"    <None Include=\"{Path.GetRelativePath(Path.GetDirectoryName(projectPath), shader)}\" />");
+			sb.AppendLine("  </ItemGroup>");
+		}
 		if (module.RuleFilePath != null)
 		{
 			sb.AppendLine("  <ItemGroup>");
@@ -1659,6 +1676,17 @@ public sealed class VisualStudioGenerator
 		return _browsableFiles.GetOrAdd(module.Name + "|" + string.Join(",", extensions), (string _) => BrowsableFilesUncached(module, extensions));
 	}
 
+	private IReadOnlyList<string> DeclaredProjectFiles(ModuleRules module, params string[] extensions)
+	{
+		if (module.Type == ModuleType.ThirdParty && module.BinaryType == TargetType.HeaderOnly)
+			return Array.Empty<string>();
+		return module.ResolveSourceFiles(_projectRoot, extensions)
+			.Select(Path.GetFullPath)
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+			.ToList();
+	}
+
 	private IReadOnlyList<string> BrowsableFilesUncached(ModuleRules module, params string[] extensions)
 	{
 		if (module != null && module.Type == ModuleType.ThirdParty)
@@ -1696,6 +1724,7 @@ public sealed class VisualStudioGenerator
 		string sourceDir = Path.GetFullPath(Path.Combine(_projectRoot, module.SourceDirectory ?? ("Source/" + module.Name)));
 		List<string> sourceFiles = BrowsableFiles(module, ".cpp", ".cc", ".cxx", ".c").ToList();
 		List<string> headerFiles = BrowsableFiles(module, HeaderExtensions).ToList();
+		List<string> shaderFiles = DeclaredProjectFiles(module, ShaderExtensions).ToList();
 		List<string> uiFiles = new List<string>();
 		List<string> resourceFiles = new List<string>();
 		if (module.IsQtProject)
@@ -1707,7 +1736,7 @@ public sealed class VisualStudioGenerator
 		StringBuilder sb = new StringBuilder();
 		sb.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
 		sb.AppendLine("<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
-		foreach (string file in sourceFiles.Concat(headerFiles).Concat(uiFiles).Concat(resourceFiles))
+		foreach (string file in sourceFiles.Concat(headerFiles).Concat(shaderFiles).Concat(uiFiles).Concat(resourceFiles))
 		{
 			string filterPath = FilterPathFor(file, sourceDir);
 			if (filterPath != null)
@@ -1797,6 +1826,20 @@ public sealed class VisualStudioGenerator
 			sb.AppendLine("    </ClInclude>");
 		}
 		sb.AppendLine("  </ItemGroup>");
+		if (shaderFiles.Count > 0)
+		{
+			sb.AppendLine("  <ItemGroup>");
+			foreach (string shader in shaderFiles)
+			{
+				string relativePath = Path.GetRelativePath(Path.GetDirectoryName(filtersPath), shader);
+				string filterPath = FilterPathFor(shader, sourceDir);
+				sb.AppendLine($"    <None Include=\"{relativePath}\">");
+				if (!string.IsNullOrEmpty(filterPath))
+					sb.AppendLine($"      <Filter>{filterPath}</Filter>");
+				sb.AppendLine("    </None>");
+			}
+			sb.AppendLine("  </ItemGroup>");
+		}
 		if (module.RuleFilePath != null)
 		{
 			sb.AppendLine("  <ItemGroup>");
@@ -1959,7 +2002,7 @@ public sealed class VisualStudioGenerator
 	private static Dictionary<string, string> ProjectNamesFor(IEnumerable<ModuleRules> modules)
 	{
 		List<string> projectModules = (from m in modules
-			where !(m is ThirdPartyPackageModuleRules)
+			where IsVisibleProject(m)
 			select m.Name).Distinct(StringComparer.Ordinal).ToList();
 		Dictionary<string, int> shortNameUses = projectModules.GroupBy(Unqualified, StringComparer.OrdinalIgnoreCase).ToDictionary((IGrouping<string, string> g) => g.Key, (IGrouping<string, string> g) => g.Count(), StringComparer.OrdinalIgnoreCase);
 		Dictionary<string, string> names = projectModules.ToDictionary((string name) => name, (string name) => (shortNameUses[Unqualified(name)] != 1) ? ModulePathName.Sanitize(name) : Unqualified(name), StringComparer.Ordinal);
@@ -1974,6 +2017,15 @@ public sealed class VisualStudioGenerator
 			return ModulePathName.Sanitize((separator < 0) ? moduleName : moduleName.Substring(separator + 2));
 		}
 	}
+
+	/// <summary>
+	/// Metadata-only *ExecutableLink modules carry per-executable linker flags into Omen's action graph.
+	/// They are implementation details of their owning target, not projects users should see or select
+	/// in Visual Studio (HaloExecutableLink used to appear beside the real Halo project).
+	/// </summary>
+	private static bool IsVisibleProject(ModuleRules module) =>
+		module is not ThirdPartyPackageModuleRules &&
+		!module.Name.EndsWith("ExecutableLink", StringComparison.Ordinal);
 
 	/// <summary>
 	/// Deletes project directories under Intermediate\ProjectFiles that this generation did not

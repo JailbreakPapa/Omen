@@ -25,6 +25,8 @@ public class VisualStudioGeneratorSolutionTests : IDisposable
         WriteFile("Code/Framework/AtomCore/Instance/thing.cpp", "int f() { return 0; }\n");
         WriteFile("Code/Framework/AtomCore/Instance/thing.h", "#pragma once\n");
         WriteFile("Code/Framework/AtomCore/std/containers.inl", "// inline impl\n");
+        WriteFile("Shaders/Authored.slang", "[shader(\"compute\")] void Main() {}\n");
+        WriteFile("Shaders/Generated/Material.slang", "// generated\n");
         WriteFile("Source/App/main.cpp", "int main() { return 0; }\n");
         WriteFile("3rdParty/Pkg/include/pkg.h", "#pragma once\n");
     }
@@ -194,6 +196,29 @@ public class VisualStudioGeneratorSolutionTests : IDisposable
         var xml = project("FilesList");
         xml.Should().Contain("thing.cpp");
         xml.Should().Contain("thing.h");
+    }
+
+    [Fact]
+    public async Task ShaderSources_AreNonCompilingProjectItemsAndHonorExplicitList()
+    {
+        var (_, project) = await GenerateAsync(new ShaderModule(CreateContext()));
+
+        var xml = project("Shaders");
+        xml.Should().Contain("<None Include=\"..\\..\\..\\Shaders\\Authored.slang\" />");
+        xml.Should().NotContain("Generated\\Material.slang");
+        xml.Should().NotContain("<ClCompile Include=\"..\\..\\..\\Shaders\\Authored.slang");
+    }
+
+    [Fact]
+    public async Task ExecutableLinkModules_AreHiddenImplementationDetails()
+    {
+        var (solution, _) = await GenerateAsync(
+            new AppModule(CreateContext()),
+            new ExecutableLinkModule(CreateContext()));
+
+        solution.Should().NotContain("ExecutableLink");
+        Directory.Exists(Path.Combine(_projectRoot, "Intermediate", "ProjectFiles", "PilotExecutableLink"))
+            .Should().BeFalse();
     }
 
     [Fact]
@@ -407,6 +432,24 @@ public class VisualStudioGeneratorSolutionTests : IDisposable
         {
             SourceDirectory = "Code/Framework/AtomCore";
             SourceFiles.Add("Instance/thing.cpp");
+        }
+    }
+
+    private sealed class ShaderModule : ModuleRules
+    {
+        public ShaderModule(BuildContext context) : base(context, explicitName: "Shaders")
+        {
+            SourceDirectory = "Shaders";
+            SourceFiles.Add("Authored.slang");
+        }
+    }
+
+    private sealed class ExecutableLinkModule : ModuleRules
+    {
+        public ExecutableLinkModule(BuildContext context) : base(context, explicitName: "PilotExecutableLink")
+        {
+            BinaryType = null;
+            SourceFiles.Add("Source/App/main.cpp");
         }
     }
 
