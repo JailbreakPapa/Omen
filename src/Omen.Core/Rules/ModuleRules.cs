@@ -466,6 +466,11 @@ public abstract class ModuleRules
     public bool IsQtProject => QtVersion != QtVersion.None;
 
     /// <summary>
+    /// Keeps the module out of the generated .sln/.slnx. Its project file is still written.
+    /// </summary>
+    public bool HideFromSolution { get; set; }
+
+    /// <summary>
     /// Whether this is a C# project (convenience property).
     /// </summary>
     public bool IsCSharpProject => Language == ModuleLanguage.CSharp;
